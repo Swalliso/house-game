@@ -27,7 +27,7 @@
 // lines a card's definition decides, from per-layout caches, so each play costs O(lines):
 // - count and none over static selectors (piece types, room, indoor, yard, outbuilding,
 //   viewSource, and any/all/not of them), weighted as conditions.ts counts (countsAs
-//   modifiers, the piece's own card);
+//   modifiers, the piece's own card), and capped at a line's max as it caps them (D-198);
 // - ratio (a Bathroom for every two Bedrooms), outline (A compact house: its rooms, the fill
 //   of their box, the box's aspect), and variety (a tidy yard, exempt types included);
 // - the current phase's stage of a staged line, and and/or/not of any of these.
@@ -58,7 +58,14 @@ import type {
   SpecDef,
   Tally,
 } from './index.ts';
-import { countMatching, currentStage, outlineOf, type Outline } from './conditions.ts';
+import {
+  cappedCount,
+  countMatching,
+  countOnce,
+  currentStage,
+  outlineOf,
+  type Outline,
+} from './conditions.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { SUN_STEP, terrainAt } from './lot.ts';
 import {
@@ -89,6 +96,24 @@ export interface Estimate {
   specHint: boolean;
   /** It would make another piece Sunny or take its sun, and the run has a Sunny reader. */
   sunHint: boolean;
+}
+
+/**
+ * D-193: what the estimate can read beyond what the bots ask of it. The shop's value lines ask
+ * for both; the bots ask for neither, so their play and the sim's numbers stay as they were.
+ */
+export interface EstimateOptions {
+  /**
+   * What the new piece would touch, where the run's modifiers and the house rules ask for it
+   * (Creekside's +100% for a piece by the creek), which the estimate otherwise counts as never.
+   */
+  touching?: boolean;
+  /**
+   * The modifiers that have a piece earn nothing (a change order's "A litter of puppies" on
+   * Flower Beds): the new piece's own pay is then nothing, and so is what it adds to a
+   * neighbor that earns nothing, so only what it does for the others counts.
+   */
+  earnNothing?: boolean;
 }
 
 /** The client's checklist and the current milestone, as the week's tally reads them. */
@@ -173,7 +198,10 @@ function neighborsOf(
   return { neighbors: out, connectors };
 }
 
-/** Does a selector match the piece being placed? Layout-dependent terms are approximated. */
+/**
+ * Does a selector match the piece being placed? Layout-dependent terms are approximated: what
+ * it would touch counts only when `near` is given (D-193's values), and never for the bots.
+ */
 function matchesNew(
   content: Content,
   layout: Layout,
@@ -181,11 +209,16 @@ function matchesNew(
   def: PieceDef,
   cells: readonly Cell[],
   sun: PlaySun,
+  near?: (sel: Selector) => number,
 ): boolean {
   if (sel === 'all') return true;
-  if ('any' in sel) return sel.any.some((s) => matchesNew(content, layout, s, def, cells, sun));
-  if ('all' in sel) return sel.all.every((s) => matchesNew(content, layout, s, def, cells, sun));
-  if ('not' in sel) return !matchesNew(content, layout, sel.not, def, cells, sun);
+  if ('any' in sel) {
+    return sel.any.some((s) => matchesNew(content, layout, s, def, cells, sun, near));
+  }
+  if ('all' in sel) {
+    return sel.all.every((s) => matchesNew(content, layout, s, def, cells, sun, near));
+  }
+  if ('not' in sel) return !matchesNew(content, layout, sel.not, def, cells, sun, near);
   if ('piece' in sel) {
     return typeof sel.piece === 'string'
       ? isType(def, sel.piece)
@@ -194,7 +227,7 @@ function matchesNew(
   if ('feature' in sel || 'host' in sel || 'hasFixture' in sel) return false;
   if ('tag' in sel) return def.tags.includes(sel.tag) || (sel.tag === 'Sunny' && sun.sunny);
   if ('in' in sel) return allInRegion(layout, cells, sel.in, sun);
-  if ('touching' in sel) return false;
+  if ('touching' in sel) return near ? near(sel.touching) >= (sel.min ?? 1) : false;
   switch (sel.property) {
     case 'indoor':
     case 'yard':
@@ -332,12 +365,14 @@ export function estimatePlay(
   cells: readonly Cell[],
   mods: readonly ActiveMod[] = [],
   checklist?: ChecklistCtx,
+  opts: EstimateOptions = {},
 ): Estimate {
   const { neighbors, connectors } = neighborsOf(content, layout, def, cells);
   const sun = playSun(layout, def, cells);
   const scoreOf = new Map(tally.pieces.map((p) => [p.uid, p]));
   const matchN = (sel: Selector) =>
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
+  const near = opts.touching ? matchN : undefined;
   const grants = houseGrants(mods);
   /** The room rules' effects on a placed piece (D-165), and its fixture's grants (D-194). */
   const grantedOn = (uid: number): Effect[] => [
@@ -405,7 +440,7 @@ export function estimatePlay(
           : 'in' in w
             ? allInRegion(layout, cells, w.in, sun)
             : 'is' in w
-              ? matchesNew(content, layout, w.is, def, cells, sun)
+              ? matchesNew(content, layout, w.is, def, cells, sun, near)
               : true;
         if (holds) addOwn(e.effect);
         break;
@@ -435,17 +470,32 @@ export function estimatePlay(
     } else addOwn(e);
   }
   for (const g of grants) {
-    if (matchesNew(content, layout, g.target, def, cells, sun)) addOwn(g.effect);
+    if (matchesNew(content, layout, g.target, def, cells, sun, near)) addOwn(g.effect);
   }
 
-  // The run's percentage modifiers that would match the new piece (blueprints, the crew).
+  // The run's percentage modifiers that would match the new piece (blueprints, the crew, the
+  // lot's traits).
+  let nothing = false;
+  const zeroing = opts.earnNothing ? mods.filter(({ mod }) => mod.kind === 'earnNothing') : [];
+  /** A placed piece that earns nothing whatever it touches (the view's read). */
+  const zeroed = (uid: number) =>
+    zeroing.some(
+      ({ mod, host }) =>
+        mod.kind === 'earnNothing' && matchesPiece(content, layout, mod.target, uid, host),
+    );
   for (const { mod } of mods) {
     if (
       mod.kind === 'earn' &&
       !mod.when &&
-      matchesNew(content, layout, mod.target, def, cells, sun)
+      matchesNew(content, layout, mod.target, def, cells, sun, near)
     ) {
       pct += mod.pct;
+    } else if (
+      opts.earnNothing &&
+      mod.kind === 'earnNothing' &&
+      matchesNew(content, layout, mod.target, def, cells, sun, near)
+    ) {
+      nothing = true;
     }
   }
 
@@ -480,7 +530,7 @@ export function estimatePlay(
     const odef = pieceDef(content, other);
     if (odef.connector) continue;
     const score = scoreOf.get(n.uid);
-    if (!score || score.unmet) continue;
+    if (!score || score.unmet || zeroed(n.uid)) continue;
     let dPoints = sunPoints.get(n.uid) ?? 0;
     let dPct = 0;
     for (const e of odef.effects) {
@@ -514,12 +564,12 @@ export function estimatePlay(
   // they touch (D-114).
   for (const uid of connectors) {
     const score = scoreOf.get(uid);
-    if (!score || score.unmet) continue;
+    if (!score || score.unmet || zeroed(uid)) continue;
     let dPoints = 0;
     for (const e of pieceDef(content, layout.byUid.get(uid)!).effects) dPoints += gain(uid, e);
     if (dPoints !== 0) delta += earnedFor(score.points + dPoints, score.pct) - score.earned;
   }
-  if (!blocked) delta += earnedFor(points, pct);
+  if (!blocked && !nothing) delta += earnedFor(points, pct);
 
   // Might it complete a set? A member type touching another member of the same set. Only sets
   // whose members must touch (a hub or one connected group): where an unconnected set's member
@@ -781,7 +831,8 @@ type VarietyRule = Extract<HouseCondition, { variety: unknown }>['variety'];
  */
 type Line =
   | { k: 'const'; v: boolean }
-  | { k: 'count'; sel: Selector; n: number; min?: number; max?: number }
+  // n: the weighted count; once: each piece once (D-198 caps the weighted count at max).
+  | { k: 'count'; sel: Selector; n: number; once: number; min?: number; max?: number }
   | {
       k: 'ratio';
       count: Selector;
@@ -947,11 +998,19 @@ function compile(
   if ('count' in cond) {
     if (!fixed(cond.count)) return null;
     const n = countMatching(content, layout, cond.count);
-    return { k: 'count', sel: cond.count, n, min: cond.min, max: cond.max };
+    const once = onceFor(content, layout, cond.count, n, cond.max);
+    return { k: 'count', sel: cond.count, n, once, min: cond.min, max: cond.max };
   }
   if ('none' in cond) {
     if (!fixed(cond.none)) return null;
-    return { k: 'count', sel: cond.none, n: countMatching(content, layout, cond.none), max: 0 };
+    const n = countMatching(content, layout, cond.none);
+    return {
+      k: 'count',
+      sel: cond.none,
+      n,
+      once: onceFor(content, layout, cond.none, n, 0),
+      max: 0,
+    };
   }
   if ('ratio' in cond) {
     const r = cond.ratio;
@@ -974,6 +1033,14 @@ function compile(
   }
   // countNew, adjacentPair, fencedYardTiles, group, set, demolishedSinceAccepted.
   return null;
+}
+
+/**
+ * A count line's pieces each counted once, for D-198's cap. The cap reads it only once a play
+ * takes the weighted count past the max, so below the max the weighted count stands in for it.
+ */
+function onceFor(content: Content, layout: Layout, sel: Selector, n: number, max?: number): number {
+  return max !== undefined && n >= max && n > 0 ? countOnce(content, layout, sel) : n;
 }
 
 function readsOutline(line: Line): boolean {
@@ -1011,8 +1078,11 @@ function holds(line: Line, def: PieceDef | null, outline: Outline | null): boole
       return line.parts.some((p) => holds(p, def, outline));
     case 'not':
       return !holds(line.part, def, outline);
-    case 'count':
-      return inRange(line.n + w(line.sel), line.min, line.max);
+    case 'count': {
+      // conditions.ts's count: the weighted count, capped at the line's max (D-198).
+      const add = w(line.sel);
+      return inRange(cappedCount(line.n + add, line.once + add, line.max), line.min, line.max);
+    }
     case 'ratio': {
       const per = line.perN + w(line.per);
       return line.have + w(line.count) >= Math.max(line.min ?? 0, Math.ceil(per / line.every));
