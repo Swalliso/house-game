@@ -653,6 +653,13 @@ export const FEEL = {
     spinDeg: -9,
     /** A hovered or focused polaroid rises this far, in CSS px (whole pixels: crisp text). */
     liftPx: 6,
+    /**
+     * S10's first test (D-187): the viewer's Play steps through the strip, a photo every
+     * `playMs` (about two a second), each with a thock a little higher than the last
+     * (`playRate` more each time, from 1).
+     */
+    playMs: 500,
+    playRate: 0.08,
   },
 
   /**

@@ -227,11 +227,35 @@ function Polaroid({
 }
 
 /**
+ * The viewer's slideshow (S10's first test, D-187): Play steps through the strip from the photo
+ * shown, a photo every FEEL.photos.playMs, and stops at the last. From the last it starts again
+ * at the first. Previous, Next, the arrow keys or closing the viewer stop it.
+ */
+const playing = signal(false);
+
+/** The slideshow's thock for the n-th photo it shows: a little higher each time. */
+const playThock = (n: number) => audio.play('place-room', { rate: 1 + n * F.playRate, gain: 0.55 });
+
+/**
  * A photo larger, over a scrim: at whole device pixels per art pixel when the window holds at
  * least one (D-097), else smoothly smaller. ← and → step through the strip; Esc closes it.
  */
 export function PhotoViewer() {
   const i = photoShown.value;
+  const on = playing.value;
+  const count = i === null ? 0 : milestoneShots(run.value.setup, log.value).length;
+  useEffect(() => {
+    if (!on) return;
+    if (i === null || i >= count - 1) {
+      playing.value = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      photoShown.value = i + 1;
+      playThock(i + 1);
+    }, F.playMs);
+    return () => window.clearTimeout(t);
+  }, [on, i, count]);
   if (i === null) return null;
   const s = run.value;
   const shots = milestoneShots(s.setup, log.value);
@@ -239,10 +263,22 @@ export function PhotoViewer() {
   if (!shot) return null;
   const close = () => (photoShown.value = null);
   const go = (d: number) => {
+    playing.value = false;
     const n = i + d;
     if (n < 0 || n >= shots.length) return;
     audio.play('select');
     photoShown.value = n;
+  };
+  const play = () => {
+    if (on) {
+      playing.value = false;
+      return;
+    }
+    // From the last photo, it starts again at the first.
+    const from = i >= shots.length - 1 ? 0 : i;
+    photoShown.value = from;
+    playThock(from);
+    playing.value = true;
   };
   const m = shot.record;
   const name = phaseName(m);
@@ -275,6 +311,20 @@ export function PhotoViewer() {
           <span class="photo-count num">
             {i + 1}/{shots.length}
           </span>
+          {shots.length > 1 && (
+            <Button
+              icon={on ? 'pause' : 'play'}
+              class="photo-play"
+              onClick={play}
+              tip={on ? 'Stop at this milestone' : 'Watch the house go up, milestone by milestone'}
+            >
+              {/* Both words take their place, so the button keeps its width as it turns. */}
+              <span class="photo-play-label">
+                <span aria-hidden={on ? undefined : 'true'}>Pause</span>
+                <span aria-hidden={on ? 'true' : undefined}>Play</span>
+              </span>
+            </Button>
+          )}
           <Button disabled={i === 0} onClick={() => go(-1)} tip="The milestone before (←)">
             ← Previous
           </Button>
