@@ -97,6 +97,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       installs: [],
       tools: [],
       shelf: {},
+      holds: { made: 0, back: 0, bought: 0, dropped: 0 },
     },
     pieces: {},
     layers: { comfort: 0, charm: 0, sparkle: 0 },
@@ -366,6 +367,7 @@ describe('the aggregation', () => {
           tool: { offered: 3, couldPay: 2, zero: 1 },
           fixture: { offered: 1, couldPay: 0, zero: 1 },
         },
+        holds: { made: 3, back: 2, bought: 1, dropped: 1 },
       },
     });
     const text = report(CONTENT, [rich, b], 'synthetic');
@@ -385,6 +387,8 @@ describe('the aggregation', () => {
       'Goods on offer per visit: 4.0 · could pay in the house 50% · the shop bot values at 0 50%',
       'tools 3 (67%, 33%)',
       'fixtures 1 (0%, 100%)',
+      // D-196: per run, then shares: back of those made, bought of those back.
+      'Holds per run: 1.50 · back on a later shelf 67% · bought 50% of those · dropped 1',
       // D-157: per run, then each struck type (a run strikes a type once).
       'Strikes per run: used 1.00 · bought 0.50 · held at the end 1.50',
       'Struck type',

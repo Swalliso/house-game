@@ -69,7 +69,7 @@ describe('what the first job shows', () => {
   const all = on(shownIn(at(1), false));
 
   it('is everything, from week 1, for any other run', () => {
-    expect(all).toHaveLength(11);
+    expect(all).toHaveLength(12);
     expect(on(shownIn(at(3), false))).toEqual(all);
   });
 
@@ -93,8 +93,8 @@ describe('what the first job shows', () => {
   });
 
   it('shows everything but the pins from Foundation, Strike from its second week', () => {
-    // D-186: the first job never shows the hand cards' pushpins.
-    const noPin = all.filter((k) => k !== 'pin');
+    // D-186, D-196: the first job never shows the hand cards' pushpins, or the shop cards'.
+    const noPin = all.filter((k) => k !== 'pin' && k !== 'hold');
     const noStrike = noPin.filter((k) => k !== 'strike');
     expect(on(shownIn(at(5, { phase: 1, slot: 1 }), true))).toEqual(noStrike);
     // And in the first shop, which opens before Foundation's first week.
@@ -102,6 +102,7 @@ describe('what the first job shows', () => {
     // D-157: one new thing a week, so Strike comes a week after Demolish.
     expect(on(shownIn(at(6, { phase: 1, slot: 2 }), true))).toEqual(noPin);
     expect(shownIn(at(20, { phase: 4, slot: 4 }), true).pin).toBe(false);
+    expect(shownIn(at(20, { phase: 4, slot: 4, screen: 'shop' }), true).hold).toBe(false);
   });
 
   it('shows budget as soon as a find pays some, and overtime in an overtime week', () => {

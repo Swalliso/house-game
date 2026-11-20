@@ -1703,6 +1703,14 @@ function shopBeat(e: GameEvent): void {
       // Strikes too. The ×Mult bell ('stamp') is for ×Mult only (§12, Sound; D-058).
       audio.play('buy');
       break;
+    case 'goodHeld':
+      // D-196: a pushpin going in, or coming out (higher and lighter), as the hand's (D-186).
+      audio.play('pin', e.held ? undefined : { rate: 1.35, gain: 0.8 });
+      break;
+    case 'holdDropped':
+      // D-196: a pin coming out, after the shop's chime; the line over the shelves says why.
+      audio.play('pin', { rate: 1.35, gain: 0.6, delay: 0.35 });
+      break;
     case 'picked':
       if (e.option === null) audio.play('rotate', { rate: 0.8 });
       break;

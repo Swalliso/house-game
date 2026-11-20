@@ -260,6 +260,20 @@ export interface Economy {
    * shop bot valued at 0 there (sim/policies/shop.ts's goodValue, whoever was playing).
    */
   shelf: Record<string, ShelfCount>;
+  /** D-196: the run's holds, from hold to purchase. */
+  holds: HoldCount;
+}
+
+/**
+ * D-196: goods held (each hold, a moved one included); holds whose good was back on a later
+ * visit's shelf (once each); of those, bought there or after; and holds dropped (the run came to
+ * own the good, or its type reached its limit).
+ */
+export interface HoldCount {
+  made: number;
+  back: number;
+  bought: number;
+  dropped: number;
 }
 
 /** D-192: one kind of good's offers, those that could pay, and those the shop bot valued at 0. */
@@ -474,7 +488,10 @@ export function simulateRun(
     installs: [],
     tools: [],
     shelf: {},
+    holds: { made: 0, back: 0, bought: 0, dropped: 0 },
   };
+  /** D-196: the hold now, the visit it was made in, and whether its good has been back since. */
+  let hold: { visit: number; back: boolean } | null = null;
   /**
    * D-192: the shelf as it opened or refreshed, read from the state with it on screen. The
    * shop bot's crate samples come from a stream of their own, so the bot's play is untouched.
@@ -835,15 +852,30 @@ export function simulateRun(
           economy.finalReward = e.reward.budget;
           economy.leftoverWow = e.reward.leftover?.score ?? 0;
         }
+      } else if (e.t === 'goodHeld') {
+        if (e.held) economy.holds.made++;
+        hold = e.held ? { visit: economy.visits, back: false } : null;
+      } else if (e.t === 'holdDropped') {
+        economy.holds.dropped++;
+        hold = null;
       } else if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
         if (e.t === 'shopOpened') economy.visits++;
         else economy.refreshes++;
+        if (e.t === 'shopOpened' && hold && state.held && !hold.back) {
+          hold.back = true;
+          economy.holds.back++;
+        }
         for (const o of e.offers) bump(economy.offered, goodKey(o));
         if (opts.shelfCounts ?? true) countShelf(state, e.offers);
       } else if (e.t === 'crateOpened') {
         for (const o of e.options) bump(economy.inCrates, goodKey(o));
       } else if (e.t === 'bought') {
         bump(economy.bought, goodKey(e.offer));
+        // D-196: buying the held good ends its hold.
+        if (hold && s.held && !state.held) {
+          if (hold.back) economy.holds.bought++;
+          hold = null;
+        }
         if (e.offer.kind === 'service' && e.offer.service === 'reroll') {
           economy.bonusRerollsBought++;
         }

@@ -15,18 +15,27 @@
 // The first job's shops run a shop behind (D-158; first-job.ts shopStageOf): its first is the
 // housewarming gift alone, its second has the shelves any run's first shop has, and from its
 // third it's the whole yard. A line under the shelves says what's still to come.
+//
+// D-196: each good wears the hand's pushpin (D-186) at its top corner, to hold it for the next
+// visit: red on the one held, which comes back pinned. A line over the shelves says when a held
+// good couldn't come back. The last shop, with no shop after it, has no pins to set, and the
+// first job has none at all.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { computed, signal } from '@preact/signals';
 import {
   CONTENT,
+  definite,
+  HOLD_REASONS,
   lastShopText,
   rules,
+  type Availability,
   type BlueprintId,
   type FixtureId,
   type FixtureValue,
   type OfferView,
   type ServiceId,
+  type ShopVisit,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
@@ -35,7 +44,7 @@ import { burstAt } from '../fx/particles.ts';
 import { settings } from '../settings.ts';
 import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
-import { shelfShown, shopStage, stageNote, type ShelfId } from '../hud/first-job.ts';
+import { shelfShown, shopStage, shown, stageNote, type ShelfId } from '../hud/first-job.ts';
 import { TagChips } from '../hud/Hand.tsx';
 import { FixtureArt, PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
 import { BLUEPRINT_ICONS, TOOL_ICONS } from '../sprites.ts';
@@ -61,7 +70,7 @@ import {
   type CardTone,
   type IconName,
 } from '../kit/kit.tsx';
-import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
+import { buy, holdOffer, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
 import { Notes } from './Overlays.tsx';
 import {
   cardReason,
@@ -189,6 +198,74 @@ function OfferChips({ good, kind = false }: { good: GoodRef; kind?: boolean }) {
   );
 }
 
+export const HOLD_TIP =
+  'Hold it for the next shop: it comes back in place of a new good of its kind, at that shop’s price. One hold at a time.';
+export const HELD_TIP =
+  'Held for the next shop: it comes back in place of a new good of its kind, at that shop’s price. Click to let it go.';
+export const BACK_TIP = 'Held from your last visit. No shop comes after this one.';
+
+function holdAt(i: number, can: Availability): void {
+  if (!can.ok || !holdOffer(i)) audio.play('illegal');
+}
+
+/**
+ * D-196: a good's pushpin, in the hand's look (D-186): grey on a good not held, red on the one
+ * held for the next visit, stabbing in as it's held and as the shelf it came back to opens. With
+ * no pins to set (`toggles` off: the last shop, or the first job) the held good keeps its red pin
+ * as a mark. None on a service or a sold good. No hooks, so a test can call it in place.
+ */
+export function HoldPin({
+  o,
+  can,
+  toggles,
+}: {
+  o: OfferView;
+  can: Availability;
+  toggles: boolean;
+}) {
+  if (o.offer.kind === 'service' || isSold(o)) return null;
+  if (!toggles) {
+    if (!o.held) return null;
+    return (
+      <span class="hold-pin is-held is-mark" role="img" aria-label={BACK_TIP} data-tip={BACK_TIP}>
+        <Icon name="pin" class="pin-on" />
+      </span>
+    );
+  }
+  const on = !!o.held;
+  return (
+    <button
+      type="button"
+      class={`hold-pin ${on ? 'is-held' : ''}`}
+      aria-pressed={on}
+      aria-label={
+        on ? `Held for the next shop: let ${o.name} go` : `Hold ${o.name} for the next shop`
+      }
+      data-tip={can.ok ? (on ? HELD_TIP : HOLD_TIP) : can.reason}
+      disabled={!can.ok}
+      onMouseDown={noFocus}
+      onClick={() => holdAt(o.i, can)}
+    >
+      {/* Grey, or red under the pointer and once held (shop.css). */}
+      <Icon name="pinOff" class="pin-off" />
+      <Icon name="pin" class="pin-on" />
+    </button>
+  );
+}
+
+/**
+ * D-196: why the good held at the last visit isn't back: the run owns it now, or (a special
+ * piece) its type is at its limit.
+ */
+export function droppedText(dropped: NonNullable<ShopVisit['dropped']>): string {
+  const good = dropped.good as GoodRef;
+  const name =
+    good.kind === 'piece' || good.kind === 'fixture' ? definite(goodName(good)) : goodName(good);
+  return dropped.why === 'owned'
+    ? `Your hold on ${name} is gone: you own it now.`
+    : `Your hold on ${name} is gone: your house has as many as it can take.`;
+}
+
 /** Buy's label: Buy, Full (its reason is at the shelf's tag), or what the budget is short by. */
 function buyLabel(o: OfferView, short: number): string {
   if (fullReason(o) !== null) return 'Full';
@@ -220,6 +297,9 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
   const short = shortBy(o, run.value.budget);
   const alert = cardReason(o) ?? undefined;
   const service = o.offer.kind === 'service' ? o.offer.service : null;
+  // D-196: its pushpin, unless no shop follows this one (or it's the first job, which has none).
+  const hold = rules.canHold(run.value, o.i);
+  const toggles = shown.value.hold && hold.reason !== HOLD_REASONS.lastShop;
   return (
     <Card
       class={`offer kind-${o.offer.kind} ${o.onSale ? 'on-sale' : ''} ${sold ? 'sold' : ''} ${justBought.value === o.i ? 'just-bought' : ''}`}
@@ -242,6 +322,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
       {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" ref={rareRef} />}
+      <HoldPin o={o} can={hold} toggles={toggles} />
       {o.onSale && !sold && (
         <span class="sale-tag">
           <Tip term="sale">Sale</Tip>
@@ -587,6 +668,12 @@ export function ShopScreen() {
       </header>
       <Notes docked />
       <div class={`panel-body shop-body ${stage === 'gift' ? 'gift-only' : ''}`}>
+        {visit.dropped && (
+          <p class="shop-dropped" role="note">
+            <Icon name="pinOff" />
+            <span>{droppedText(visit.dropped)}</span>
+          </p>
+        )}
         <div class="shelves">
           {shelves.map(({ id, ...shelf }, k) => (
             <Section key={id} {...shelf} full={full[k]!} />

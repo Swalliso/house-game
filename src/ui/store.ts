@@ -1089,6 +1089,11 @@ export function refreshShop(): boolean {
   return dispatch({ t: 'refreshShop' });
 }
 
+/** D-196: holds shop offer i for the next visit, moves the hold to it, or lets it go. */
+export function holdOffer(i: number): boolean {
+  return dispatch({ t: 'hold', i });
+}
+
 export function leaveShop(): boolean {
   return dispatch({ t: 'leaveShop' });
 }
