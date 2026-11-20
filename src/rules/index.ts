@@ -2119,6 +2119,74 @@ export interface BlueprintValue {
   held: boolean;
 }
 
+/**
+ * D-193: what a piece would add to the house as it stands (a shop offer, a crate's option, a
+ * piece in Your goods), for its line: its best play from Your goods in the week it would go down
+ * (in the shop, the next phase's first, after its start-of-week transforms, as for a fixture),
+ * and each week left in the run added up with nothing more built (D-141's projection).
+ */
+export interface PieceValue {
+  /**
+   * How it goes down at its best: built at a spot, or, for a type at its limit, a Renovation or
+   * an extension of a room of its type (D-168).
+   */
+  how: 'place' | 'renovate' | 'extend';
+  /**
+   * Where: the spot's top-left, its turn and a pack's tiles, as the placement (or the extension)
+   * takes them. A Renovation has none.
+   */
+  spot?: { x: number; y: number; rot: Rot; shape?: readonly string[] };
+  /** The room a Renovation or an extension grows: its uid, and its piece as it's valued. */
+  room?: { uid: number; defId: PieceId };
+  /** The Wow it adds in the week it goes down. */
+  gain: number;
+  /**
+   * For a piece with a rhythm (the Pool's every 3rd week): how often it pays, and what it adds
+   * in the first week it does. Unset when that week adds no more than `gain`.
+   */
+  rhythm?: { every: number; gain: number };
+  /** Weeks still to play in the run, the first one valued included; never overtime. */
+  weeksLeft: number;
+  /**
+   * Each of those weeks' gain, added up, with nothing more built: the house's timers run on
+   * (the Pool pays in its weeks, a Sapling becomes a Tree), and each phase's last week counts
+   * as one. Roughly what it adds over the rest of the run.
+   */
+  overRun: number;
+  /** The budget it would pay over those weeks (the Henhouse's eggs). */
+  budget: number;
+  /**
+   * When it adds nothing because something has it earn nothing (a change order's "A litter of
+   * puppies" on Flower Beds): that source's name, for its line to say why.
+   */
+  nothing?: string;
+}
+
+/**
+ * D-193: what a tool would do for the house as it stands, for its line. In the shop the week
+ * valued is the next phase's first, after its start-of-week transforms, as for a fixture.
+ * - `week`: a tool for one week's tally (Rush Order): that week's total with it, less without.
+ * - `level`: a Remodel Plan for a set the house holds: the set's next level, what it adds to the
+ *   week, and each week left added up with nothing more built.
+ * - `needs`: one that would add nothing as the house stands, and what it's waiting for ("No
+ *   Entertainer yet"); `set` names a Remodel Plan's set, so its line can say what one is.
+ * - `note`: one with no number (a Fertilizer, a Copy Machine): what it would do here ("Your
+ *   Sapling becomes a Tree the week after you use it"), or why it has no number.
+ */
+export type ToolValue =
+  | { kind: 'week'; gain: number }
+  | {
+      kind: 'level';
+      set: SetId;
+      /** The level the set would go up to. */
+      level: number;
+      gain: number;
+      weeksLeft: number;
+      overRun: number;
+    }
+  | { kind: 'needs'; needs: string; set?: SetId }
+  | { kind: 'note'; note: string };
+
 export interface Legality {
   legal: boolean;
   reason?: string;
@@ -2286,7 +2354,7 @@ export interface Slots {
 // The API.
 
 export type { EarlyOffer, Rules, ToolPreview } from './run.ts';
-export type { Estimate } from './estimate.ts';
+export type { Estimate, EstimateOptions } from './estimate.ts';
 export { stream, type Rng } from './rng.ts';
 export { createRules, IllegalAction } from './run.ts';
 export { encodeRunCode, decodeRunCode, contentHash } from './runcode.ts';
@@ -2325,6 +2393,7 @@ export {
   featureWantedText,
   modifierText,
   multNumber,
+  ordinal,
   plural,
   regionText,
   rewardText,
