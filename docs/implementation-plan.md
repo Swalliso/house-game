@@ -1340,7 +1340,7 @@ npm run sim -- --ban blueprint:fengShui
 - Milestone 1 teaches: `novice` passes it in at least 90% of runs.
 - `greedy` clears milestones 1–3 in 92–98% of runs, and wins 40–50%.
 - Early completion: `--early always` and `--early never` win within 10 points of each other, paired by seed, and the report prints the median ratio of their final scores. `early:smart`'s 25% waits for M6.
-- Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4.
+- Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4, in the weeks' first hands or by the standing stock (D-197).
 - `planner` and no must-buy print as NOT MEASURED until M6. Until then, `--ban` on paired seeds stands in for no must-buy. Since M4 the client and crew spread is measured on runs that cover more than one client or crew (`--client all`, the default, and `--crew all`).
 
 ### Determinism
