@@ -409,15 +409,17 @@ describe('a real Hendersons run', () => {
       s = out.state;
     }
     // D-160: the standing stock's Hallway and Fence came in Foundation's first week (week 5)
-    // and wait unplaced, so each arrival's cards follow them.
+    // and wait unplaced, so each arrival's cards follow them. D-188: the twins' week is
+    // Framing's first, so the wrong delivery's piece (this seed's is a Hot Tub) lands after them.
     expect(arrived).toEqual([
-      { week: 9, arrival: 'twins', reserve: 3 },
-      { week: 17, arrival: 'grandma', reserve: 5 },
+      { week: 9, arrival: 'twins', reserve: 4 },
+      { week: 17, arrival: 'grandma', reserve: 6 },
     ]);
     expect(s.reserve).toEqual([
       { id: 'hallway', stock: true },
       { id: 'fence', stock: true },
       { id: 'nursery', arrival: 'twins' },
+      { id: 'hotTub', surprise: true },
       { id: 'grandmasRoom', arrival: 'grandma' },
       { id: 'bathroom', arrival: 'grandma' },
     ]);

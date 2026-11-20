@@ -999,6 +999,16 @@ export interface Balance {
     firstJobSlot: number;
     refill: boolean;
   };
+  /**
+   * D-188: the wrong delivery. Once a run, in the first week of `phase` (never in a first job or
+   * an overtime week), one of `pieces` turns up free in the reserve's extra slots: the first, in
+   * an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the
+   * client. If none fits, nothing comes. No pieces: off.
+   */
+  surpriseDelivery: {
+    phase: number;
+    pieces: readonly PieceId[];
+  };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -1149,7 +1159,8 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
 /**
  * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
  * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b),
- * the client's or the standing stock's (D-160). shop.ts' inExtraSlot says which.
+ * the client's or the standing stock's (D-160), or the wrong delivery's (D-188). shop.ts'
+ * inExtraSlot says which.
  */
 export interface ReservePiece {
   id: PieceId;
@@ -1164,6 +1175,8 @@ export interface ReservePiece {
   client?: true;
   /** D-160: a card from the standing stock (balance.standingStock), in an extra slot. */
   stock?: true;
+  /** D-188: the wrong delivery's piece (balance.surpriseDelivery), in an extra slot. */
+  surprise?: true;
 }
 
 export interface OwnedBlueprint {
@@ -1853,12 +1866,13 @@ export type GameEvent =
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
   /**
    * D-160: cards went into the reserve's extra slots at the start of a week, after any arrival
-   * and before the draw: what the client brought ('client'), the standing stock's top-up, or
-   * (D-171) the card from the crew's own stock ('crew').
+   * and before the draw: what the client brought ('client'), the standing stock's top-up,
+   * (D-171) the card from the crew's own stock ('crew'), or (D-188) the wrong delivery's piece,
+   * once a run ('surprise'), in that order.
    */
   | {
       t: 'delivered';
-      from: 'client' | 'stock' | 'crew';
+      from: 'client' | 'stock' | 'crew' | 'surprise';
       phase: number;
       cards: readonly PieceId[];
     }

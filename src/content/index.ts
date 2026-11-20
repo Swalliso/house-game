@@ -562,6 +562,23 @@ export function validateContent(content: Content): string[] {
     problems.push(`${stockAt}: firstJobSlot must be a week of the phase`);
   }
 
+  // D-188: the wrong delivery is pieces the weekly draw never deals (draw weight 0), none of them
+  // a member's room or an Addition, none twice, in a phase of the run.
+  const surprise = content.balance.surpriseDelivery;
+  const surpriseAt = 'balance surpriseDelivery';
+  for (const id of surprise.pieces) {
+    known(id, surpriseAt);
+    const def = content.pieces[id];
+    if (def && def.drawWeight !== 0) problems.push(`${surpriseAt}: ${id} is in the weekly draw`);
+    if (def && (def.member || def.addition)) {
+      problems.push(`${surpriseAt}: ${id} is a member's room or an Addition`);
+    }
+  }
+  if (new Set(surprise.pieces).size !== surprise.pieces.length) {
+    problems.push(`${surpriseAt}: a piece twice`);
+  }
+  if (!isPhase(surprise.phase)) problems.push(`${surpriseAt}: phase must be a phase of the run`);
+
   // M4b: change orders.
   for (const [key, def] of Object.entries(content.changeOrders)) {
     const where = `change order ${key}`;

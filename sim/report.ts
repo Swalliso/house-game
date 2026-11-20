@@ -902,7 +902,8 @@ function fenceReport(records: readonly RunRecord[]): string {
 
 /**
  * D-160: reserve cards played per run, by where they came from. The standing stock's and what
- * the client brought are the ones a bot could leave waiting all run.
+ * the client brought are the ones a bot could leave waiting all run; D-188's wrong delivery
+ * comes once, at Framing, so its number is the share of runs that build it.
  */
 function reserveReport(records: readonly RunRecord[]): string {
   const n = Math.max(1, records.length);
@@ -910,7 +911,8 @@ function reserveReport(records: readonly RunRecord[]): string {
     (sumOf(records.map((r) => r.reservePlays[k])) / n).toFixed(2);
   return (
     `Reserve cards played per run: the stock ${per('stock')} · the client’s ${per('client')}` +
-    ` · the crew’s ${per('crew')} · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
+    ` · the crew’s ${per('crew')} · the wrong delivery’s ${per('surprise')}` +
+    ` · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
   );
 }
 

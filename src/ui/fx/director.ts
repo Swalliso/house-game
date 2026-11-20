@@ -278,11 +278,12 @@ export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(nul
  */
 export const walkIn = signal<{ arrival: ArrivalId; id: number } | null>(null);
 /**
- * D-160: the standing stock's or the client's cards, or (D-171) the crew's, just in the reserve:
- * the reserve slots (`slots`, by index) that pop in, after `delayMs`.
+ * D-160: the standing stock's or the client's cards, (D-171) the crew's, or (D-188) the wrong
+ * delivery's piece, just in the reserve: the reserve slots (`slots`, by index) that pop in, after
+ * `delayMs`. `from` is the last of the week's deliveries; `slots` holds them all.
  */
 export const justDelivered = signal<{
-  from: 'client' | 'stock' | 'crew';
+  from: 'client' | 'stock' | 'crew' | 'surprise';
   slots: readonly number[];
   delayMs: number;
   id: number;
@@ -300,6 +301,8 @@ export const fxHooks: {
 } = { wobble: () => {}, shake: () => {}, zoom: () => {}, toScreen: () => null };
 
 let nextId = 1;
+/** D-188: the state the showing delivery pop was taken from, so a week's deliveries pop together. */
+let deliveredAfter: RunState | null = null;
 let skipping = false;
 let holding = false;
 let accelerator = 0;
@@ -1764,15 +1767,17 @@ function sheetBeat(e: GameEvent, after: RunState): void {
  * they never play): the cards pop into the reserve's extra slots with a soft shimmer, and nothing
  * holds the week up. They're the reserve's last cards of their mark. A member arriving the same
  * week comes first in the events: then they wait for the doorbell and pop with the member's, and
- * the arrival's shimmer is theirs too.
+ * the arrival's shimmer is theirs too. D-188: a week can bring several (the stock's, the crew's
+ * and the wrong delivery's at Framing): each adds its slots to the week's pop, so none is lost.
  */
 function deliveredBeat(e: Extract<GameEvent, { t: 'delivered' }>, after: RunState): void {
-  const marked = after.reserve.flatMap((r, i) =>
-    (e.from === 'stock' ? r.stock : e.from === 'crew' ? r.crew : r.client) ? [i] : [],
-  );
+  const marked = after.reserve.flatMap((r, i) => (r[e.from] ? [i] : []));
   const withMember = justArrived.value !== null;
   const delayMs = withMember ? FEEL.arrival.landDelayMs : 0;
-  const pop = { from: e.from, slots: marked.slice(-e.cards.length), delayMs, id: nextId++ };
+  const same = justDelivered.value !== null && deliveredAfter === after;
+  const slots = [...(same ? justDelivered.value!.slots : []), ...marked.slice(-e.cards.length)];
+  const pop = { from: e.from, slots, delayMs, id: nextId++ };
+  deliveredAfter = after;
   justDelivered.value = pop;
   setTimeout(() => {
     if (justDelivered.value?.id === pop.id) justDelivered.value = null;

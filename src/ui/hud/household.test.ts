@@ -1,6 +1,6 @@
 // Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods tags it and
-// Inspect says it: the crew, a household member, the client, or the standing stock. A card in
-// the reserve's own slots (bought, picked or copied) says nothing.
+// Inspect says it: the crew, a household member, the client, the standing stock, or (D-188) the
+// wrong delivery. A card in the reserve's own slots (bought, picked or copied) says nothing.
 
 import { describe, expect, it } from 'vitest';
 import { extraSlotWords } from './household.ts';
@@ -44,6 +44,15 @@ describe('an extra slot’s words', () => {
       // D-169: refilled at each milestone, in as many words as the others' notes (16).
       note: 'From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone.',
     });
+    // D-188: the wrong delivery, once a run; its note is as long as the stock's and the crew's.
+    const pool = extraSlotWords('juniper', { id: 'pool', surprise: true })!;
+    expect(pool).toEqual({
+      tag: 'Mix-up',
+      whose: ' (delivered by mistake)',
+      from: 'Delivered by mistake',
+      note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
+    });
+    expect(pool.note!.split(/\s+/)).toHaveLength(16);
   });
 
   it('say nothing for a bought card', () => {

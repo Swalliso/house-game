@@ -1258,7 +1258,8 @@ export function createRules(content: Content): Rules {
 
   /**
    * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
-   * what the client brings for that phase, and the standing stock's top-up (D-160).
+   * what the client brings for that phase, the standing stock's top-up (D-160), the crew's own
+   * card and the wrong delivery's piece (D-171, D-188), and the crew's tool.
    */
   function arrive(state: RunState, events: GameEvent[]): RunState {
     if (state.overtimeWeek !== 0) return state;
@@ -1269,24 +1270,26 @@ export function createRules(content: Content): Rules {
       }
       s = deliver(s, events);
     }
-    return crewTool(crewStock(restock(s, events), events), events);
+    return crewTool(surprise(crewStock(restock(s, events), events), events), events);
   }
 
-  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171). */
+  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171, D-188). */
   function addExtra(
     s: RunState,
-    from: 'client' | 'stock' | 'crew',
+    from: 'client' | 'stock' | 'crew' | 'surprise',
     cards: readonly PieceId[],
     events: GameEvent[],
   ): RunState {
     if (cards.length === 0) return s;
     events.push({ t: 'delivered', from, phase: s.phase, cards: [...cards] });
-    const mark =
+    const mark: Omit<ReservePiece, 'id'> =
       from === 'client'
-        ? { client: true as const }
+        ? { client: true }
         : from === 'crew'
-          ? { crew: true as const }
-          : { stock: true as const };
+          ? { crew: true }
+          : from === 'surprise'
+            ? { surprise: true }
+            : { stock: true };
     return { ...s, reserve: [...s.reserve, ...cards.map((id): ReservePiece => ({ id, ...mark }))] };
   }
 
@@ -1329,11 +1332,12 @@ export function createRules(content: Content): Rules {
    * reserve.
    */
   /**
-   * D-171: a crew's stock in the order it comes this run: drawn once from `crew/stock`, every
-   * card before any comes again.
+   * `pool` in an order drawn once a run from the stream `key`: D-171's crew stock
+   * (`crew/stock`), every card before any comes again, and D-188's wrong delivery
+   * (`delivery/surprise`).
    */
-  function crewStockOrder(seed: string, pool: readonly PieceId[]): PieceId[] {
-    const rng = stream(seed, 'crew/stock');
+  function runOrder(seed: string, key: string, pool: readonly PieceId[]): PieceId[] {
+    const rng = stream(seed, key);
     const left = [...pool];
     const order: PieceId[] = [];
     while (left.length > 0) order.push(...left.splice(rng.int(left.length), 1));
@@ -1364,8 +1368,26 @@ export function createRules(content: Content): Rules {
     const pool = content.crews[s.setup.crewId].stock;
     if (!pool || pool.length === 0 || !crewStockDue(s)) return s;
     if (s.reserve.some((r) => r.crew)) return s;
-    const order = crewStockOrder(s.setup.seed, pool);
+    const order = runOrder(s.setup.seed, 'crew/stock', pool);
     return addExtra(s, 'crew', [order[s.phase % order.length]!], events);
+  }
+
+  /**
+   * D-188: the wrong delivery. Once a run, in the first week of `surpriseDelivery.phase` (never
+   * in a first job or an overtime week), a piece nobody ordered lands in the reserve's extra
+   * slots: the first in the run's order (`delivery/surprise`, the seed alone) whose type isn't at
+   * a limit for this client; if none fits, nothing comes. A struck type still comes, as the
+   * standing stock does (D-157). The week starts once, so nothing marks it as done.
+   */
+  function surprise(s: RunState, events: GameEvent[]): RunState {
+    const due = b.surpriseDelivery;
+    if (due.pieces.length === 0 || s.setup.mode === 'firstJob') return s;
+    if (s.overtimeWeek !== 0 || s.slot !== 1 || s.phase !== due.phase) return s;
+    const full = typesAtLimit(limitsOf(s));
+    const id = runOrder(s.setup.seed, 'delivery/surprise', due.pieces).find(
+      (p) => !full.has(rootType(content.pieces[p])),
+    );
+    return id ? addExtra(s, 'surprise', [id], events) : s;
   }
 
   /**

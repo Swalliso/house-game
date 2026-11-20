@@ -905,6 +905,8 @@ class Checker {
       if (s.reserve[a.i]?.crew) this.see('place:crew');
       if (s.reserve[a.i]?.client) this.see('place:client');
       if (s.reserve[a.i]?.stock) this.see('place:stock');
+      // D-188: the wrong delivery's piece.
+      if (s.reserve[a.i]?.surprise) this.see('place:surprise');
     }
     if (a.t === 'answerChangeOrder') this.see(`answer:${a.i === 0 ? 'first' : 'second'}`);
     if (a.t === 'useTool') {
@@ -999,6 +1001,9 @@ const COVERAGE: readonly string[] = [
   ...prefixed('event', ['crewTool']),
   ...prefixed('install', ['free']),
   ...prefixed('extend', ['addition']),
+  // D-188: the wrong delivery lands at Framing's start, and is placed.
+  ...prefixed('delivered', ['surprise']),
+  ...prefixed('place', ['surprise']),
 ];
 
 /** The kinds of check that must each have run. */
