@@ -1057,6 +1057,9 @@ export const TEST_BALANCE: Balance = {
     strikeMinTypes: { rooms: 5, layout: 4 },
     crateOptions: 3,
     interestPer: 5,
+    // D-192's lean is off here, so the test content's shelves are what they always were;
+    // shelf.test.ts turns it on.
+    relevantWeight: 1,
   },
   fencedYardMin: 4,
   complexityPct: [

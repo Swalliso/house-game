@@ -368,8 +368,10 @@ describe('the greedy bot', () => {
       reserve: [],
     };
     expect(unreached(rules, s, CONTENT.pieces.driveway).map((p) => p.defId)).toEqual(['garage']);
+    // Unreached, it earns its own +2 alone (D-195); its +3 and garage sales wait for the drive.
     const garage = () => rules.currentTally(s).pieces.find((p) => p.defId === 'garage')!;
-    expect(garage().unmet).toBe('touching the street or a Driveway');
+    expect(garage()).toMatchObject({ points: 2 });
+    expect(garage().unmet).toBeUndefined();
     const listed = rules.legalPlacements(s).filter((p) => p.i === 0);
     expect(listed.length).toBeGreaterThan(0);
     expect(listed.every((p) => rules.scoreOnly(s, p) === rules.scoreOnly(s, listed[0]!))).toBe(
@@ -384,7 +386,8 @@ describe('the greedy bot', () => {
       shape: ['#', '#', '#', '#', '#', '#', '#', '#'],
     });
     expect([4, 5]).toContain(plans[0]!.play.x);
-    // It's the week's best play (the Garage's 5 and the Driveway's 1 + 3), so greedy lays it.
+    // It's the week's best play (the Garage's +3 more and the Driveway's 1 + 3), so greedy lays
+    // it.
     const act = greedy.act(rules, s, stream('drive', 'act'));
     expect(act).toEqual(plans[0]!.play);
     const after = rules.apply(s, act).state;

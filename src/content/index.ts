@@ -661,6 +661,24 @@ export function validateContent(content: Content): string[] {
     if (def.rarity !== 'rare' && def.modifiers.some((m) => m.kind === 'xMult')) {
       problems.push(`${where}: only Rare blueprints carry ×Mult`);
     }
+    // D-192: the pieces it pays on name known pieces, and never a host.
+    if (def.paysOn) {
+      const ids: PieceId[] = [];
+      selectorPieceIds(def.paysOn, ids);
+      ids.forEach((id) => known(id, `${where} paysOn`));
+      if (hasHost(def.paysOn)) problems.push(`${where}: paysOn can't name a host`);
+    }
+    // D-192: where it's stocked names lot features, each once.
+    if (def.stockIf) {
+      const has = def.stockIf.lotHas;
+      if (has.length === 0) problems.push(`${where}: stockIf.lotHas names no feature`);
+      if (new Set(has).size !== has.length) problems.push(`${where}: stockIf.lotHas repeats one`);
+      for (const f of has) {
+        if (!Object.hasOwn(content.features, f) || (f as string) === 'street') {
+          problems.push(`${where}: stockIf.lotHas: "${f}" isn't a lot feature`);
+        }
+      }
+    }
   }
   for (const [key, def] of Object.entries(content.tools)) {
     const where = `tool ${key}`;
@@ -756,6 +774,9 @@ export function validateContent(content: Content): string[] {
   }
   for (const [id, p] of Object.entries(shop.services)) {
     if (p.base < 0 || p.step < 0 || p.max < p.base) problems.push(`balance: service ${id} prices`);
+  }
+  if (!Number.isInteger(shop.relevantWeight) || shop.relevantWeight < 1) {
+    problems.push('balance: shop.relevantWeight must be a whole number ≥ 1');
   }
   const v = b.verdicts;
   if (v.length === 0 || v[0]!.minPctOfTarget !== 0)

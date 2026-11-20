@@ -8,7 +8,14 @@
 // against never on offer): the dead ones got a job, Feng Shui and Good Bones were narrowed, and
 // It's a House became a build. Their numbers are placeholders for the playtest and the re-fit.
 
-import type { BlueprintDef, BlueprintId, Modifier, Rarity } from '../rules/index.ts';
+import type {
+  BlueprintDef,
+  BlueprintId,
+  Modifier,
+  Rarity,
+  Selector,
+  TerrainId,
+} from '../rules/index.ts';
 import { PRICES } from './balance.ts';
 
 const blueprint = (
@@ -26,6 +33,10 @@ const blueprint = (
   modifiers,
   offered,
 });
+
+/** The lot's water: what Waterfront pays beside, and where it's stocked (D-192). */
+const WATER = ['pond', 'creek', 'lake'] as const satisfies readonly TerrainId[];
+const NEAR_WATER = { touching: { feature: WATER } } as const satisfies Selector;
 
 export const BLUEPRINTS: Readonly<Record<BlueprintId, BlueprintDef>> = {
   // Common: a tag or a place earns more.
@@ -54,9 +65,17 @@ export const BLUEPRINTS: Readonly<Record<BlueprintId, BlueprintDef>> = {
   partyHouse: blueprint('partyHouse', 'Party House', 'common', [
     { kind: 'earn', target: { tag: 'Social' }, pct: 50 },
   ]),
-  waterfront: blueprint('waterfront', 'Waterfront', 'common', [
-    { kind: 'earn', target: { touching: { feature: ['pond', 'creek', 'lake'] } }, pct: 100 },
-  ]),
+  // D-192: stocked only on a lot with water, and the shelf leans toward it once a piece touches
+  // the water. Every lot has water today (D-119), so the lean is what moves it: it was on more
+  // shelves than any other blueprint and among the least bought, mostly beside houses built
+  // away from the water.
+  waterfront: {
+    ...blueprint('waterfront', 'Waterfront', 'common', [
+      { kind: 'earn', target: NEAR_WATER, pct: 100 },
+    ]),
+    stockIf: { lotHas: WATER },
+    paysOn: NEAR_WATER,
+  },
 
   // Uncommon: structure, terrain, and economy.
   // A great room is the Entertainer's three rooms, so it pays for the set (D-143). Its link

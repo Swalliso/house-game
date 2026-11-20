@@ -76,7 +76,9 @@ describe('a Garage nothing reaches (D-189)', () => {
     expect(statsOf(placements).garageUnreached).toBe(unreached);
   });
 
-  it("agrees with the rules' tally: the Garage earns nothing exactly when it's unreached", () => {
+  it("agrees with the rules' tally: the Garage earns its +2 alone exactly when it's unreached", () => {
+    // D-195: unreached, it earns its own +2; its drive's +3 (and a workshop) wait for the street
+    // or a Driveway.
     const s = rules.newRun(setup('house-stats'));
     for (const [name, placements, unreached] of cases) {
       const house = houseFrom(CONTENT, ROWS, placements);
@@ -84,7 +86,7 @@ describe('a Garage nothing reaches (D-189)', () => {
         .currentTally({ ...s, house, hand: [] })
         .pieces.find((p) => p.defId === 'garage');
       if (!garage) continue;
-      expect({ name, unmet: garage.unmet !== undefined }).toEqual({ name, unmet: unreached });
+      expect({ name, alone: garage.points === 2 }).toEqual({ name, alone: unreached });
     }
   });
 });

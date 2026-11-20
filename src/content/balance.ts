@@ -193,6 +193,10 @@ export const BALANCE: Balance = {
     strikeMinTypes: { rooms: 5, layout: 4 }, // in each row (D-121)
     crateOptions: 3, // open a crate, keep 1 of 3
     interestPer: 5, // Savings Account: +1 per 5 held, up to the interestMax rule
+    // D-192: a good that can pay in the house as it stands (a fixture with a room to go in,
+    // Remodel Plans for a set held, a special piece under its limit) counts 3 times in its
+    // pick, against 1 for one that can't yet. A placeholder for the playtest.
+    relevantWeight: 3,
   },
 
   // A fenced yard has at least 10 tiles (D-069, amending D-046's 4, confirmed 2026-11-05): at
