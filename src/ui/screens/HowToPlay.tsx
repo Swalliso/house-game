@@ -639,6 +639,12 @@ export function HowToPlayText() {
             placing one doesn't use your week. <b>Fixtures</b> wait in your supplies and install for
             free.
           </li>
+          {b.shop.relevantWeight > 1 && (
+            <li>
+              The shelf leans toward what can pay in your house now, such as a fixture with a room
+              to take it or Remodel Plans for a set you hold.
+            </li>
+          )}
           <li>
             One good is on sale each visit. Refreshing costs a little more each time. Leave without
             buying and you get +{b.shop.skipReward} for saving up.

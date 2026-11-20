@@ -39,6 +39,7 @@ import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../s
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
 import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
+import { goodValue } from './policies/shop.ts';
 
 /** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
 export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise';
@@ -258,6 +259,19 @@ export interface Economy {
   }[];
   /** Each tool use and the change to that week's total. */
   tools: { id: string; gain: number; week: number; weeksLeft: number }[];
+  /**
+   * D-192: the goods on offer (each visit and refresh; the services aside), by kind: how many,
+   * how many the rules said could pay in the house as it stood (`canPay`), and how many the
+   * shop bot valued at 0 there (sim/policies/shop.ts's goodValue, whoever was playing).
+   */
+  shelf: Record<string, ShelfCount>;
+}
+
+/** D-192: one kind of good's offers, those that could pay, and those the shop bot valued at 0. */
+export interface ShelfCount {
+  offered: number;
+  couldPay: number;
+  zero: number;
 }
 
 export function goodKey(o: ShopOffer | PickOption): string {
@@ -274,6 +288,11 @@ export interface SimOptions {
   deadCards?: boolean;
   /** Probe the enclosure cost at the start of this phase (0-based); null to skip. */
   probePhase?: number | null;
+  /**
+   * D-192: count each shelf's goods that could pay and that the shop bot values at 0 (default
+   * on). The benchmark gate turns it off, as it does the probe: it measures, it doesn't play.
+   */
+  shelfCounts?: boolean;
   /** Stop after this many weeks (for benchmarks and quick checks). */
   maxWeeks?: number;
   /** A SimError past this many actions in one week of the run (default 400). */
@@ -459,6 +478,21 @@ export function simulateRun(
     strikesHeld: 0,
     installs: [],
     tools: [],
+    shelf: {},
+  };
+  /**
+   * D-192: the shelf as it opened or refreshed, read from the state with it on screen. The
+   * shop bot's crate samples come from a stream of their own, so the bot's play is untouched.
+   */
+  const countShelf = (at: RunState, offers: readonly ShopOffer[]) => {
+    const rng = stream(seed, `shelf/${at.week}/${economy.visits}/${economy.refreshes}`);
+    for (const o of offers) {
+      if (o.kind === 'service') continue;
+      const c = (economy.shelf[o.kind] ??= { offered: 0, couldPay: 0, zero: 0 });
+      c.offered++;
+      if (rules.canPay(at, o)) c.couldPay++;
+      if (goodValue(rules, at, o, rng, { salt: 0 }) <= 0) c.zero++;
+    }
   };
   const pieces: Record<string, PieceStats> = {};
   const layers = { comfort: 0, charm: 0, sparkle: 0 };
@@ -823,6 +857,7 @@ export function simulateRun(
         if (e.t === 'shopOpened') economy.visits++;
         else economy.refreshes++;
         for (const o of e.offers) bump(economy.offered, goodKey(o));
+        if (opts.shelfCounts ?? true) countShelf(state, e.offers);
       } else if (e.t === 'crateOpened') {
         for (const o of e.options) bump(economy.inCrates, goodKey(o));
       } else if (e.t === 'bought') {

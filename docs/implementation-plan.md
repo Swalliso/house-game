@@ -783,7 +783,9 @@ interface ClientDef {
 
 type Rarity = 'common' | 'uncommon' | 'rare'
 
-interface BlueprintDef { id; name; tier; rarity: Rarity; price: number; modifiers: Modifier[] }
+interface BlueprintDef { id; name; tier; rarity: Rarity; price: number; modifiers: Modifier[]
+  stockIf?: { lotHas: TerrainId[] }   // D-192: stocked only where the lot has one (Waterfront: water)
+  paysOn?: Selector }                 // D-192: the shelf leans on it once a placed piece matches
 
 interface CrewDef { id; name; tier; blurb: string; modifiers: Modifier[]; startReserve?: PieceId[];
                     stock?: PieceId[];     // D-171: its own card each time the standing stock comes, one at a time
@@ -833,6 +835,7 @@ type ShopOffer =
 - **Where things go:** blueprints into their slots; pieces into the reserve (placing one doesn't use the week, D-163); fixtures and tools into supplies (free to use).
 - **Prices:** generated from the item's price, the `shopPricePct` rule, and the sale. Services rise by 1 per purchase for the rest of the run, up to a cap. The refresh price rises within a visit and resets at the next.
 - **Stock:** each visit's slot counts and rarity weights per phase are numbers in `balance.ts` (Appendix A).
+- **The shelf stocks for the house** (D-192, `rules/shelf.ts`): once a pick's rarity is rolled, a good that can pay in the house as it stands counts `shop.relevantWeight` times (3), one that can't yet once. Can pay: a fixture some placed piece could take; Remodel Plans for a set the house holds, or Full House one member short; a special piece under its limit; a blueprint whose `paysOn` (Waterfront: a piece touching the water) has a piece, or that has none; every other tool, crate and upgrade. A blueprint whose `stockIf` fails (`{ lotHas: TerrainId[] }`: Waterfront without water) is never stocked, on a shelf or in a crate. The Blueprint Folio, the Housewarming crate and the Fixture Crate lean the same way, and the Showroom offers a special piece at its limit only when the rest can't fill it. The streams are unchanged, and with every weight in a pick alike it lands where it did before.
 - **Rarity** is shown on every blueprint, fixture, and tool as a colored border plus a label, not color alone. Blueprint, fixture, and tool slots, and the Folio and Fixture Crate, all roll rarity with the current shop's blueprint weights.
 - **Full slots:** buying needs a free slot where the good goes, and a crate needs a free slot of its contents' kind; otherwise the offer is greyed out with the reason. Offers and crate options never include a blueprint or upgrade you already own. An opened crate can be discarded instead of picked.
 

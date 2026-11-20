@@ -110,6 +110,7 @@ import type {
   SetId,
   SetProgress,
   SetScore,
+  ShelfGood,
   Slots,
   Tag,
   TagSource,
@@ -220,6 +221,7 @@ import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
 import { isType, matchesPiece, meetsCondition, rootType, type Yard } from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
+import { shelfFor, type Shelf } from './shelf.ts';
 import { isRoom } from './layout.ts';
 import {
   canStrike,
@@ -416,6 +418,13 @@ export interface Rules {
    * previewed. Null for a set whose members must touch.
    */
   setProgress(state: RunState, set: SetId): SetProgress | null;
+  /**
+   * D-192: whether a good could pay in the house as it stands, the check the shop's shelf leans
+   * on (shelf.ts): a fixture some piece could take, Remodel Plans for a set the house holds (or
+   * Full House one member short), a special piece under its limit, a blueprint the lot allows,
+   * and every crate and upgrade.
+   */
+  canPay(state: RunState, good: ShelfGood): boolean;
   /** The shop's offers with prices and whether each can be bought. Empty outside the shop. */
   shopOffers(state: RunState): OfferView[];
   canRefresh(state: RunState): Availability & { price: number };
@@ -594,6 +603,10 @@ export function createRules(content: Content): Rules {
     }
     return l;
   }
+
+  /** D-192: what a shop's shelf leans toward, read through the run's own layout and limits. */
+  const shelfOf = (state: RunState): Shelf =>
+    shelfFor(content, state, { layout: () => layoutFor(state), limits: () => limitsOf(state) });
 
   /** D-165: the per-house cap a card's type has reached (one Kitchen), if any. */
   function capReached(state: RunState, def: PieceDef): TypeLimit | null {
@@ -1998,7 +2011,7 @@ export function createRules(content: Content): Rules {
   }
 
   function openShop(s: RunState, number: number, forced: boolean, events: GameEvent[]): RunState {
-    const shop = openVisit(content, s, number, forced);
+    const shop = openVisit(content, s, number, forced, shelfOf(s));
     events.push({ t: 'shopOpened', number, offers: shop.offers, sale: shop.sale });
     // The hand is set aside, and a pin with it (D-186): it doesn't cross a shop.
     let next: RunState = { ...unpinned(s), screen: 'shop', hand: [], offers: { shop } };
@@ -2006,7 +2019,7 @@ export function createRules(content: Content): Rules {
     const n = stockFor(content, number).housewarming;
     if (n > 0) {
       const key = `crate/${number}/0/housewarming`;
-      const options = crateOptions(content, next, 'housewarming', key, n);
+      const options = crateOptions(content, next, 'housewarming', key, n, shelfOf(next));
       if (options.length > 0) {
         events.push({ t: 'crateOpened', source: 'housewarming', options });
         next = { ...next, offers: { shop, pick: { source: 'housewarming', options } } };
@@ -2397,7 +2410,7 @@ export function createRules(content: Content): Rules {
     if (offer.kind === 'crate') {
       const v = s.offers!.shop!;
       const key = `crate/${v.number}/${v.refreshes}/${action.i}`;
-      const options = crateOptions(content, s, offer.id, key);
+      const options = crateOptions(content, s, offer.id, key, undefined, shelfOf(s));
       events.push({ t: 'crateOpened', source: offer.id, options });
       s = { ...s, offers: { ...s.offers, pick: { source: offer.id, options } } };
     }
@@ -2896,7 +2909,7 @@ export function createRules(content: Content): Rules {
         const can = canRefresh(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
         const visit = visitOf(state);
-        const next = refreshVisit(content, state, visit);
+        const next = refreshVisit(content, state, visit, shelfOf(state));
         const budget = state.budget - can.price;
         events.push({
           t: 'shopRefreshed',
@@ -4148,6 +4161,7 @@ export function createRules(content: Content): Rules {
       };
     },
     setProgress: (state, set) => setProgressOf(content, layoutFor(state), set),
+    canPay: (state, good) => shelfOf(state).canPay(good),
     shopOffers: (state) => viewOffers(content, state),
     canRefresh,
     sellPrice: (state, from, i) => {

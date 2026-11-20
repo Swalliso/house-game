@@ -424,9 +424,10 @@ function benchmarkGate(rules: Rules): { ok: boolean; record: RunRecord | null } 
     if (terrain > most) [densest, most] = [seed, terrain];
   }
   try {
-    simulateRun(rules, 'bench-warmup', POLICIES.greedy!, { probePhase: null, maxWeeks: 8 });
+    const opts = { probePhase: null, shelfCounts: false };
+    simulateRun(rules, 'bench-warmup', POLICIES.greedy!, { ...opts, maxWeeks: 8 });
     const start = performance.now();
-    const { record } = simulateRun(rules, densest, POLICIES.greedy!, { probePhase: null });
+    const { record } = simulateRun(rules, densest, POLICIES.greedy!, opts);
     const ms = performance.now() - start;
     const ok = ms < GATE_MS;
     console.log(
