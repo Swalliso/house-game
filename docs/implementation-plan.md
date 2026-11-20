@@ -364,6 +364,8 @@ interface RunState {
   demolitionsLeft: number
   overtimeLeft: number
   swapped: { i: number; was: Card }[]  // D-121: the hand's cards that replaced a card with no play, and what each replaced
+  pinned?: number                      // D-186: the hand card pinned for next week; one at a time, gone with its card or the hand
+  kept?: number                        // D-186: the hand card last week's pin kept; it can't be pinned again, and swaps skip it
   blueprints: { id: BlueprintId; boughtWeek: number }[]   // 4 slots; sells for half its list price
   upgrades: UpgradeId[]                // company upgrades, permanent for the run
   servicesBought: { reroll: number; demolition: number; strike: number }   // their prices rise per purchase
@@ -399,6 +401,7 @@ type Action =
   | { t: 'useTool'; i: number; target?: { uid: number; x?: number; y?: number; rot?: 0 | 1 | 2 | 3 } }
   | { t: 'reroll' }
   | { t: 'strikeCard'; i: number }                    // D-157: hand card i's type is struck for the run; each card of it is replaced from its row
+  | { t: 'pin'; i: number }                           // D-186: hand card i pinned for next week, the pin moved to it, or taken off it
   | { t: 'demolish'; x: number; y: number }
   | { t: 'completeEarly' }
   | { t: 'setAutoComplete'; on: boolean }
@@ -414,14 +417,15 @@ type Action =
 
 **The week's card versus free actions (D-050, D-051, D-163):**
 - Placing a piece from the hand, installing a fixture **from the hand**, renovating a room with a hand card (D-102), extending a room with one (D-168), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | { extend } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture, Renovation or extension preview goes through the same path as a piece preview. `rules.endsWeek(state, play)` says whether a play ends the week: under the Handyman's `freeInstalls` (D-171) a fixture from the hand doesn't.
-- Placing a piece **from the reserve** (Your goods), or renovating or extending a room with one, is a free action (D-163, D-169): it goes down at once and earns from this week's tally. So are installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
+- Placing a piece **from the reserve** (Your goods), or renovating or extending a room with one, is a free action (D-163, D-169): it goes down at once and earns from this week's tally. So are installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), pinning one for next week (D-186), and demolishing. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
 - So a week places one piece from the hand at most (two with Weekend Crew, D-083) and any number from the reserve: D-163 changed D-004 that way (Accepted 2026-11-13).
 
 `GameEvent` covers:
 
-- `handDrawn` (the final hand; `reroll` when a reroll drew it, both rows (D-132); `free` and `swapped` when swaps replaced cards with no play, D-121)
+- `handDrawn` (the final hand; `reroll` when a reroll drew it, both rows (D-132); `free` and `swapped` when swaps replaced cards with no play, D-121; `kept`, the slot of the card a pin kept, D-186)
 - `arrived` (D-103: a household member moves in, with their cards) and `delivered` (D-160: the client's or the standing stock's cards into the reserve's extra slots), in that order before the week's `handDrawn`
 - `cardStruck` (D-157: the card picked, the type, each slot's old and new card, strikes left)
+- `cardPinned` (D-186: the hand card, and whether it's now pinned or its pin came off)
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
@@ -456,6 +460,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 | `build` | `place`, `install` from the hand, `renovate` (D-102), `extend` (D-168), or `pass`: ends the week | → end of week (below) |
 | | `reroll` if `rerollsLeft > 0` | new hand; `draws + 1` |
 | | `strikeCard` if `strikesLeft > 0`, its type comes up in the weekly draw, and its row keeps its floor (D-157) | its type struck for the run; each hand card of it replaced from its row; `draws` unchanged |
+| | `pin` on any hand card but the one last week's pin kept (D-186) | the pin set on it, moved to it, or taken off it; nothing else changes |
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
 | | `completeEarly` if score ≥ target, weeks remain in the phase, and it isn't an overtime week | → fast-forward (below) |
@@ -481,6 +486,8 @@ The UI keeps an event queue and plays it through an animation director (place �
 2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188).
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
+
+   Between steps 3 and 4 (D-186), the card last week's pin kept goes back into its row, at the slot it was pinned from (the row's last if the row is shorter), in place of the card drawn there; if the draw dealt the same card elsewhere in the row, that slot takes the displaced card instead, so the row stays distinct. The draw's keys don't change, so nothing shifts. The swaps skip the kept card, and so do a reroll and the Catalog's redraw, which redraw the rest around it. A milestone, its shop and Complete early drop a pin, and an overtime week takes it.
 
 **Fast-forward (D-040):**
 

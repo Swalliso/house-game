@@ -401,6 +401,11 @@ export interface Rules {
    * the type, the hand cards that would leave (it, and any other of its type), and the words.
    */
   previewStrike(state: RunState, i: number): StrikePreview;
+  /**
+   * D-186: whether hand card i can be pinned for next week now, or its pin taken off, and why
+   * not: the card last week's pin kept can't be pinned again.
+   */
+  canPin(state: RunState, i: number): Availability;
   /** Whether a tool can be used now, with this target. */
   canUseTool(state: RunState, action: UseToolAction): Availability;
   /**
@@ -450,6 +455,13 @@ interface WeekResult {
   installed: Extract<GameEvent, { t: 'installed' }> | null;
   renovated: Extract<GameEvent, { t: 'renovated' }> | null;
   extended: Extract<GameEvent, { t: 'extended' }> | null;
+}
+
+/** D-186: the card a pin carries into the next week's hand, and its place in its row. */
+interface Keep {
+  card: Card;
+  /** Its slot in its row: the slot it comes back to. */
+  k: number;
 }
 
 /** One shape a card is listed at: a rotation of its own, or a pack's tiles at rot 0. */
@@ -1096,7 +1108,8 @@ export function createRules(content: Content): Rules {
    * first of up to `swapTries` cards from its row that has one, or by the last tried. The
    * draw's `n` keys the swaps' streams, one per card. The draw's one `handDrawn` event carries
    * the hand after its swaps, and what each swapped card replaced. A reroll's swaps leave out
-   * the `held` cards it replaced while enough others remain (D-132).
+   * the `held` cards it replaced while enough others remain (D-132). The card a pin kept is
+   * never swapped (D-186).
    */
   function swapDead(
     state: RunState,
@@ -1109,7 +1122,8 @@ export function createRules(content: Content): Rules {
     for (const r of DRAW_ROWS) {
       const at = s.hand.flatMap((c, i) => (rowOf(content, c) === r ? [i] : []));
       at.forEach((i, k) => {
-        if (cardHasPlay(s, i)) return;
+        // The card a pin kept stays, with a play or without one (D-186).
+        if (i === s.kept || cardHasPlay(s, i)) return;
         const was = s.hand[i]!;
         const inRow = at.map((j) => s.hand[j]!);
         const tries = swapCandidates(
@@ -1232,7 +1246,12 @@ export function createRules(content: Content): Rules {
         layoutFor(state, h),
       );
     },
-    drawSpecial: (state) => drawFor(state, state.draws, true),
+    // D-186: the card a pin kept stays where it is through the Catalog's redraw.
+    drawSpecial: (state) => {
+      const hand = drawFor(state, state.draws, true);
+      const keep = keptNow(state);
+      return keep ? withKept(hand, keep) : { hand };
+    },
     payReward: (state, reward, key, events) => payReward(state, reward, key, events),
     payFinds: (state, finds, events, lot) => payFinds(state, finds, events, lot),
   };
@@ -1716,10 +1735,16 @@ export function createRules(content: Content): Rules {
     return view;
   }
 
-  function startWeek(state: RunState, events: GameEvent[]): RunState {
+  /** `keep`: the card last week's pin carries in (D-186). */
+  function startWeek(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     // Step 1: transforms; step 2 (M4b): arrivals, in their phase's first week; step 3: the draw.
-    let s = arrive(resolveTransforms(state, events), events);
+    let s = unpinned(arrive(resolveTransforms(state, events), events));
     s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
+    // D-186: the kept card takes a slot of its row, on the draw's own keys: nothing shifts.
+    if (keep) {
+      const put = withKept(s.hand, keep);
+      s = { ...s, hand: put.hand, kept: put.kept };
+    }
     // Start of week, step 4 (D-121): a card with no play is swapped for one from its row.
     const after = swapDead(s, 0);
     events.push({
@@ -1730,6 +1755,7 @@ export function createRules(content: Content): Rules {
       hand: after.state.hand,
       reroll: false,
       ...swapNote(after.swapped),
+      ...(s.kept === undefined ? {} : { kept: s.kept }),
     });
     return after.state;
   }
@@ -1789,7 +1815,8 @@ export function createRules(content: Content): Rules {
       events.push({ t: 'targetReached', phase: state.phase, target, score });
     }
     return {
-      ...state,
+      // The hand goes, and a pin with it: what it keeps travels as afterTally's `keep` (D-186).
+      ...unpinned(state),
       house,
       score,
       budget,
@@ -1810,16 +1837,20 @@ export function createRules(content: Content): Rules {
   }
 
   /** End of week, after the tally: early completion, the milestone, overtime, or the next week. */
-  function afterTally(s: RunState, events: GameEvent[]): RunState {
+  /**
+   * `keep`: the card a pin carries into the next week (D-186). It comes into the phase's next
+   * week or an overtime week; a milestone (its shop) and Complete early drop it.
+   */
+  function afterTally(s: RunState, events: GameEvent[], keep?: Keep): RunState {
     const target = targetOf(s);
     if (s.overtimeWeek === 0 && s.slot < W && s.autoComplete && s.score >= target) {
       return completeEarly(s, W - s.slot, false, events);
     }
-    if (s.overtimeWeek > 0 || s.slot >= W) return endOfPhase(s, events);
-    return startWeek({ ...s, slot: s.slot + 1, week: s.week + 1 }, events);
+    if (s.overtimeWeek > 0 || s.slot >= W) return endOfPhase(s, events, keep);
+    return startWeek({ ...s, slot: s.slot + 1, week: s.week + 1 }, events, keep);
   }
 
-  function endOfPhase(s: RunState, events: GameEvent[]): RunState {
+  function endOfPhase(s: RunState, events: GameEvent[], keep?: Keep): RunState {
     const target = targetOf(s);
     const forced = s.forcedMiss === s.phase && s.overtimeWeek === 0;
     if (s.score >= target && !forced) {
@@ -1840,7 +1871,8 @@ export function createRules(content: Content): Rules {
         target,
         score: s.score,
       });
-      return startWeek(next, events);
+      // D-186: a pin carries into an overtime week: no shop comes between.
+      return startWeek(next, events, keep);
     }
     return resolveMilestone(s, 'failed', 0, null, events);
   }
@@ -1890,7 +1922,7 @@ export function createRules(content: Content): Rules {
     };
     events.push({ t: 'milestone', name: phaseName(b, s.phase), ...record });
     let next: RunState = {
-      ...s,
+      ...unpinned(s),
       score,
       budget: s.budget + reward.budget,
       budgetEarned: s.budgetEarned + reward.budget,
@@ -1936,7 +1968,8 @@ export function createRules(content: Content): Rules {
   function openShop(s: RunState, number: number, forced: boolean, events: GameEvent[]): RunState {
     const shop = openVisit(content, s, number, forced);
     events.push({ t: 'shopOpened', number, offers: shop.offers, sale: shop.sale });
-    let next: RunState = { ...s, screen: 'shop', hand: [], offers: { shop } };
+    // The hand is set aside, and a pin with it (D-186): it doesn't cross a shop.
+    let next: RunState = { ...unpinned(s), screen: 'shop', hand: [], offers: { shop } };
     // Shop 1's free Housewarming crate: 1 of 3 Common blueprints, to teach blueprints.
     const n = stockFor(content, number).housewarming;
     if (n > 0) {
@@ -1967,7 +2000,8 @@ export function createRules(content: Content): Rules {
       weeksSaved,
       rule(s, 'earlyRewardPct'),
     );
-    let cur: RunState = { ...s, hand: [], draws: 0 };
+    // The hand goes, and a pin with it (D-186).
+    let cur: RunState = { ...unpinned(s), hand: [], draws: 0 };
     for (let k = 0; k < weeksSaved; k++) {
       if (!(manual && k === 0)) {
         cur = resolveTransforms({ ...cur, slot: cur.slot + 1, week: cur.week + 1 }, events);
@@ -2121,7 +2155,118 @@ export function createRules(content: Content): Rules {
       slots.push({ i: j, was, card: s.hand[j]! });
     }
     events.push({ t: 'cardStruck', i, type, slots, strikesLeft: s.strikesLeft });
-    return s;
+    // A pin, or the card a pin kept, goes with its card (D-186).
+    return withMarks(
+      s,
+      s.pinned !== undefined && gone.includes(s.pinned) ? undefined : s.pinned,
+      s.kept !== undefined && gone.includes(s.kept) ? undefined : s.kept,
+    );
+  }
+
+  // -------------------------------------------------------------------------------------
+  // Pins (D-186): one hand card kept for next week, in its row in place of a fresh card.
+
+  const KEPT_AGAIN = 'Kept from last week: it can’t be pinned again.';
+
+  function canPin(state: RunState, i: number): Availability {
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
+    if (!Number.isInteger(i) || !state.hand[i]) {
+      return { ok: false, reason: 'Pick a card in your hand.' };
+    }
+    // Pinned again and again, a card would stand in the hand for good (D-121 turned that down).
+    if (i === state.kept) return { ok: false, reason: KEPT_AGAIN };
+    return { ok: true };
+  }
+
+  /** Pins hand card i (already checked), moving the pin from another card, or takes it off. */
+  function pin(state: RunState, i: number, events: GameEvent[]): RunState {
+    const on = state.pinned !== i;
+    events.push({ t: 'cardPinned', i, pinned: on });
+    return withMarks(state, on ? i : undefined, state.kept);
+  }
+
+  /** The state with no pin and no kept card: the hand they pointed into is gone. */
+  function unpinned(state: RunState): RunState {
+    if (state.pinned === undefined && state.kept === undefined) return state;
+    const { pinned: _pinned, kept: _kept, ...rest } = state;
+    return rest;
+  }
+
+  /** `state` with its pin and its kept card at these places in the hand (none if undefined). */
+  function withMarks(
+    state: RunState,
+    pinned: number | undefined,
+    kept: number | undefined,
+  ): RunState {
+    if (state.pinned === pinned && state.kept === kept) return state;
+    return {
+      ...unpinned(state),
+      ...(pinned === undefined ? {} : { pinned }),
+      ...(kept === undefined ? {} : { kept }),
+    };
+  }
+
+  /**
+   * Hand card i leaves mid-week (Weekend Crew's play, D-075; the Handyman's install, D-171):
+   * the cards after it move up, and the pin and the kept card's places with them. A pin on it
+   * goes with it.
+   */
+  function withoutHandCard(state: RunState, i: number): RunState {
+    const shift = (j: number | undefined) =>
+      j === undefined || j === i ? undefined : j > i ? j - 1 : j;
+    return withMarks(
+      { ...state, hand: state.hand.filter((_, k) => k !== i) },
+      shift(state.pinned),
+      shift(state.kept),
+    );
+  }
+
+  /** Hand card i's place in its row: the slot a pin brings it back to. */
+  function rowSlot(hand: readonly Card[], i: number): number {
+    const row = rowOf(content, hand[i]!);
+    return hand.slice(0, i).filter((c) => rowOf(content, c) === row).length;
+  }
+
+  /**
+   * What a pin carries out of the week ending now: the pinned card, and its place in its row.
+   * Nothing when `played`, the hand card that ends the week, is the pinned one.
+   */
+  function keepOf(state: RunState, played?: number): Keep | undefined {
+    const i = state.pinned;
+    if (i === undefined || i === played) return undefined;
+    const card = state.hand[i];
+    return card ? { card, k: rowSlot(state.hand, i) } : undefined;
+  }
+
+  /** The card the hand's kept card is, to carry through a redraw in the same week. */
+  function keptNow(state: RunState): Keep | undefined {
+    const i = state.kept;
+    const card = i === undefined ? undefined : state.hand[i];
+    return card ? { card, k: rowSlot(state.hand, i!) } : undefined;
+  }
+
+  /**
+   * A drawn hand with the kept card in it: in its row's k-th slot (the row's last when the row
+   * is shorter), in place of the card drawn there. Where the draw dealt the same card in
+   * another slot of the row, that slot takes the card it displaced instead, so the row stays
+   * distinct (D-043) and the kept card stays where it was pinned. A row the draw left empty
+   * (a pool run dry) gets it on its own.
+   */
+  function withKept(hand: readonly Card[], keep: Keep): { hand: Card[]; kept: number } {
+    const row = rowOf(content, keep.card);
+    const out = [...hand];
+    const at = out.flatMap((c, j) => (rowOf(content, c) === row ? [j] : []));
+    if (at.length === 0) {
+      const r = DRAW_ROWS.indexOf(row);
+      const before = out.filter((c) => DRAW_ROWS.indexOf(rowOf(content, c)) < r).length;
+      out.splice(before, 0, keep.card);
+      return { hand: out, kept: before };
+    }
+    const i = at[Math.min(keep.k, at.length - 1)]!;
+    const dealt = at.find((j) => j !== i && sameType(out[j]!, keep.card));
+    if (dealt !== undefined) out[dealt] = out[i]!;
+    out[i] = keep.card;
+    return { hand: out, kept: i };
   }
 
   function canCompleteEarly(state: RunState): EarlyOffer {
@@ -2580,9 +2725,10 @@ export function createRules(content: Content): Rules {
           let s: RunState = crew
             ? { ...state, house: result.house, freePlay: 'used' }
             : { ...state, house: result.house };
+          // A hand card's place goes, and the pin's and the kept card's move with it (D-186).
           s = fromReserve
             ? { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) }
-            : { ...s, hand: s.hand.filter((_, k) => k !== play.i) };
+            : withoutHandCard(s, play.i);
           // M4b: a piece a running restriction forbids breaks it.
           if (result.placed) {
             const uid = result.placed.uid;
@@ -2604,8 +2750,10 @@ export function createRules(content: Content): Rules {
         }
         // A Time Capsule built over pays before the tally.
         s = payFinds(s, check?.finds, events);
+        // D-186: the pinned card comes into next week's hand, unless it's the card played.
+        const keep = keepOf(s, play?.from === 'hand' ? play.i : undefined);
         s = recordTally(s, week.house, week.tally, play === null, false, events);
-        return done(afterTally(s, events));
+        return done(afterTally(s, events, keep));
       }
       case 'reroll': {
         const can = canReroll(state);
@@ -2614,17 +2762,27 @@ export function createRules(content: Content): Rules {
         // Neither deals back a card the hand holds now while its row's pool has enough others.
         const n = state.draws;
         const held = state.hand;
+        // D-186: the card a pin kept stays where it is, on the draw's own keys; a card pinned
+        // this week goes with the rest, and its pin with it.
+        let hand = drawFor(state, n, false, held);
+        let kept: number | undefined;
+        const keep = keptNow(state);
+        if (keep) ({ hand, kept } = withKept(hand, keep));
         // The phase's own rerolls go first; bought ones never expire.
         const fromPhase = state.rerollsLeft > 0;
         const after = swapDead(
-          {
-            ...state,
-            hand: drawFor(state, n, false, held),
-            swapped: [],
-            draws: n + 1,
-            rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
-            bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
-          },
+          withMarks(
+            {
+              ...state,
+              hand,
+              swapped: [],
+              draws: n + 1,
+              rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
+              bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
+            },
+            undefined,
+            kept,
+          ),
           n,
           held,
         );
@@ -2636,6 +2794,7 @@ export function createRules(content: Content): Rules {
           hand: after.state.hand,
           reroll: true,
           ...swapNote(after.swapped),
+          ...(kept === undefined ? {} : { kept }),
         });
         return done(after.state);
       }
@@ -2643,6 +2802,11 @@ export function createRules(content: Content): Rules {
         const can = canStrikeCard(state, action.i);
         if (!can.ok) throw new IllegalAction(can.reason!);
         return done(strikeFromHand(state, action.i, events));
+      }
+      case 'pin': {
+        const can = canPin(state, action.i);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        return done(pin(state, action.i, events));
       }
       case 'demolish': {
         if (state.demolitionsLeft <= 0) throw new IllegalAction(REASONS.noDemolitions);
@@ -3151,6 +3315,10 @@ export function createRules(content: Content): Rules {
     state.hand.forEach((_, i) => {
       if (canStrikeCard(state, i).ok) out.push({ t: 'strikeCard', i });
     });
+    // D-186: a pin on any card the last week's pin didn't keep, or off the pinned one.
+    state.hand.forEach((_, i) => {
+      if (canPin(state, i).ok) out.push({ t: 'pin', i });
+    });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
       const layout = layoutFor(state);
@@ -3625,6 +3793,7 @@ export function createRules(content: Content): Rules {
     canStrikeAny,
     canStrikeCard,
     previewStrike,
+    canPin,
     canUseTool: (state, action) => canUseTool(toolCtx, state, action),
     previewTool: (state, action) => {
       const before = state.screen === 'build' ? score(passTally(state)) : NO_SCORE;

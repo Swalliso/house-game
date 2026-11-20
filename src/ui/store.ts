@@ -972,7 +972,9 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
   batch(() => {
     run.value = result.state;
     log.value = [...log.value, action];
-    if (opts.keepWeek) {
+    if (action.t === 'pin') {
+      // D-186: a pin changes nothing but the pin, so what's picked, armed or carried stays.
+    } else if (opts.keepWeek) {
       // A free action keeps the card being placed, unless the list it came from changed: a
       // reroll redraws the whole hand (D-132); a strike (D-157) replaces its type's cards, and
       // the placement of one of them goes with it.
@@ -1029,6 +1031,14 @@ export function strikeCard(i: number): boolean {
     strikeArmed.value = null;
   }
   return ok;
+}
+
+/**
+ * D-186: pins hand card i for next week, moves the pin to it, or takes its pin out. A free
+ * action that changes nothing else, so a card being placed stays picked.
+ */
+export function pinCard(i: number): boolean {
+  return dispatch({ t: 'pin', i }, { keepWeek: true });
 }
 
 export function demolishAt(x: number, y: number): boolean {

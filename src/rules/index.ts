@@ -1380,6 +1380,18 @@ export interface RunState {
   overtimeLeft: number;
   /** Cards swapped in this week because the ones they replaced had no play (D-121). */
   swapped: readonly SwappedCard[];
+  /**
+   * D-186: the hand card pinned for next week, by its place in `hand`. One at a time, set and
+   * taken off by `pin`. It goes with its card (played, struck, or redrawn by a reroll or the
+   * Catalog), and a milestone or Complete early, which empty the hand, drop it.
+   */
+  pinned?: number;
+  /**
+   * D-186: the card last week's pin kept, by its place in `hand`: it took a slot of its row in
+   * place of a fresh card. It can't be pinned again this week. A reroll and the Catalog's
+   * redraw leave it where it is, and the week's swaps (D-121) skip it.
+   */
+  kept?: number;
   /** D-040: complete each milestone as soon as its target is met. Starts off. */
   autoComplete: boolean;
   /** A run stat for scaling ×Mult (Ahead of Schedule, M3). */
@@ -1469,6 +1481,12 @@ export type RerollAction = { t: 'reroll' };
  * a card from its row. A free action that uses one of `strikesLeft`.
  */
 export type StrikeCardAction = { t: 'strikeCard'; i: number };
+/**
+ * D-186: pins hand card i for next week, or takes the pin off it. One pin at a time: pinning
+ * another card moves it there. A free action. Next week the card is back in its row, in place
+ * of a fresh card; the card a pin kept can't be pinned again.
+ */
+export type PinAction = { t: 'pin'; i: number };
 export type DemolishAction = { t: 'demolish'; x: number; y: number };
 export type CompleteEarlyAction = { t: 'completeEarly' };
 export type SetAutoCompleteAction = { t: 'setAutoComplete'; on: boolean };
@@ -1539,6 +1557,7 @@ export type Action =
   | PassAction
   | RerollAction
   | StrikeCardAction
+  | PinAction
   | DemolishAction
   | CompleteEarlyAction
   | SetAutoCompleteAction
@@ -1694,6 +1713,8 @@ export type GameEvent =
       slots: readonly StruckSlot[];
       strikesLeft: number;
     }
+  /** D-186: hand card i was pinned for next week (`pinned`), or its pin was taken off. */
+  | { t: 'cardPinned'; i: number; pinned: boolean }
   | {
       t: 'handDrawn';
       phase: number;
@@ -1708,6 +1729,11 @@ export type GameEvent =
       swapped?: readonly SwappedCard[];
       /** The Catalog's redraw from special pieces and fixtures. */
       special?: true;
+      /**
+       * D-186: the hand slot holding the card last week's pin kept: in a week's first hand, the
+       * card back in its row; after a reroll or the Catalog's redraw, the card left in place.
+       */
+      kept?: number;
     }
   | {
       t: 'placed';

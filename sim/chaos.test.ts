@@ -16,6 +16,11 @@
 //   of the struck type leaves and its slot takes a card of another type from its row, the rest
 //   of the hand stays, and no later hand deals the type; +1 strike adds one, and an old run
 //   code's typed strike (D-084) strikes its type and adds none;
+// - a pin (D-186) is a free action too: it pins a hand card, moves the pin, or takes it off,
+//   and the hand stays; the week after, if no milestone comes first, holds the card in its row
+//   at the slot it was pinned from, in place of a card of that week's own draw, which nothing
+//   else shifts; a reroll and the Catalog leave the kept card where it is and take a pin with
+//   its card, and so does a strike of its type;
 // - malformed actions throw IllegalAction (never a TypeError) and change nothing, and a
 //   sample of listed legal actions apply;
 // - no query or apply() changes the state it's given;
@@ -59,7 +64,7 @@ import {
   stream,
   weekTotal,
 } from '../src/rules/index.ts';
-import { drawnBefore } from '../src/rules/testing.ts';
+import { drawnBefore, keptInto, rowSlot } from '../src/rules/testing.ts';
 import { findMove, makeChaos, offerKind } from './policies/chaos.ts';
 import { SimError, simulateRun } from './simulate.ts';
 
@@ -121,12 +126,18 @@ const passTally = (s: RunState): Tally | undefined =>
   tallyEvent(rules.apply(s, { t: 'pass' }).events)?.tally;
 /**
  * The first hand drawn in these events that isn't a reroll or the Catalog's, as it was drawn:
- * before its swaps (D-121), which depend on the lot.
+ * before its swaps (D-121), which depend on the lot. A kept card (D-186) is in it.
  */
 const firstHand = (events: readonly GameEvent[]) => {
   const e = events.find((e) => e.t === 'handDrawn' && !e.reroll && !e.special);
   return e ? drawnBefore(e) : undefined;
 };
+
+/** The state without its pin (D-186), as if the pinned card had been left alone. */
+function withoutPin(s: RunState): RunState {
+  const { pinned: _pinned, ...rest } = s;
+  return rest;
+}
 
 /** Whether apply() accepts the action: true, false for an IllegalAction, or the other error. */
 function accepts(s: RunState, a: Action): boolean | string {
@@ -172,6 +183,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   useTool: true,
   answerChangeOrder: true,
   strikeCard: true,
+  pin: true,
   debug: true,
 };
 const DEBUG_OPS: Record<DebugAction['op'], true> = {
@@ -311,6 +323,10 @@ class Checker {
       return s;
     }
     if (a.t === 'strikeCard') this.checkStrike(s, a, out.state, out.events);
+    if (a.t === 'pin') this.checkPin(s, a, out.state, out.events);
+    if (a.t === 'reroll' || (a.t === 'useTool' && out.events.some((e) => e.t === 'handDrawn'))) {
+      this.checkRedraw(s, out.state);
+    }
     this.invariants(out.state, s, a, out.events);
     if (J(s) !== before) this.fail('a query or apply() changed the state it was given');
     this.record(s, a, out.events);
@@ -488,8 +504,9 @@ class Checker {
     if (s2.draws !== s.draws + (catalog ? 1 : 0)) this.fail('a tool use changed the draws', a);
     if (!catalog && J(s2.hand) !== J(s.hand)) this.fail('a tool use changed the hand', a);
     // Next week's first hand is the same with or without it (when both reach the same week).
+    // The Catalog's redraw takes a pinned card with it (D-186), and with it the pin.
     const next = (x: RunState) => rules.apply(x, { t: 'pass' });
-    const n1 = next(s);
+    const n1 = next(catalog ? withoutPin(s) : s);
     const n2 = next(s2);
     if (isBuild(n1.state) && isBuild(n2.state) && J(clock(n1.state)) === J(clock(n2.state))) {
       this.see(`check:nextHand:${use}`);
@@ -544,6 +561,72 @@ class Checker {
     for (let i = 0; i <= s.hand.length; i++) {
       agree('canStrikeCard', rules.canStrikeCard(s, i).ok, { t: 'strikeCard', i });
     }
+    // D-186: canPin too.
+    for (let i = 0; i <= s.hand.length; i++) {
+      agree('canPin', rules.canPin(s, i).ok, { t: 'pin', i });
+    }
+  }
+
+  /**
+   * D-186: a pin is a free action. It pins hand card i, moves the pin there, or takes it off,
+   * and the hand, the week and the draws stay. The week after (a pass here), unless a milestone
+   * comes first, holds the card in its row at the slot it was pinned from, in place of a card of
+   * that week's own draw: the same week without the pin draws the rest.
+   */
+  checkPin(
+    s: RunState,
+    a: Extract<Action, { t: 'pin' }>,
+    out: RunState,
+    events: readonly GameEvent[],
+  ) {
+    this.see('check:pin');
+    const clock = (x: RunState) => [x.screen, x.week, x.slot, x.phase, x.overtimeWeek, x.draws];
+    if (J(clock(out)) !== J(clock(s))) this.fail('a pin moved the week or the draws');
+    if (J(out.hand) !== J(s.hand)) this.fail('a pin changed the hand');
+    const on = s.pinned !== a.i;
+    if (out.pinned !== (on ? a.i : undefined))
+      this.fail('a pin didn’t pin or unpin the card', { was: s.pinned, now: out.pinned });
+    if (out.kept !== s.kept) this.fail('a pin moved the kept card');
+    const e = events.find((x) => x.t === 'cardPinned');
+    if (e?.t !== 'cardPinned' || e.i !== a.i || e.pinned !== on)
+      this.fail('a pin sent no cardPinned event, or the wrong one', e);
+    if (!on) return;
+    const card = s.hand[a.i]!;
+    const withPin = rules.apply(out, { t: 'pass' });
+    const without = rules.apply(withoutPin(out), { t: 'pass' });
+    const next = withPin.state;
+    if (withPin.events.some((x) => x.t === 'milestone') || !isBuild(next)) {
+      if (next.kept !== undefined || next.pinned !== undefined)
+        this.fail('a pin crossed a milestone');
+      return;
+    }
+    this.see('check:pinKept');
+    const k = next.kept;
+    if (k === undefined || J(next.hand[k]) !== J(card)) {
+      this.fail('the pinned card isn’t kept in next week’s hand', { card, kept: k });
+      return;
+    }
+    if (next.pinned !== undefined) this.fail('a pin outlasted its week');
+    const drawn = firstHand(withPin.events);
+    const plain = firstHand(without.events);
+    const expected = plain && keptInto(CONTENT, plain, card, rowSlot(CONTENT, s.hand, a.i)).hand;
+    if (J(drawn) !== J(expected)) this.fail('a pin shifted next week’s draw', { drawn, expected });
+    if (rules.canPin(next, k).ok) this.fail('a kept card can be pinned again');
+  }
+
+  /**
+   * D-186: a reroll or the Catalog's redraw leaves the card a pin kept where it is, and takes a
+   * card pinned this week with the rest, and its pin with it.
+   */
+  checkRedraw(s: RunState, out: RunState) {
+    if (out.pinned !== undefined) this.fail('a pin outlasted a redraw of its card');
+    if (s.kept === undefined) {
+      if (out.kept !== undefined) this.fail('a redraw made up a kept card');
+      return;
+    }
+    this.see('check:keptRedraw');
+    if (out.kept !== s.kept || J(out.hand[s.kept]) !== J(s.hand[s.kept]))
+      this.fail('a redraw moved the kept card', { was: s.kept, now: out.kept });
   }
 
   /**
@@ -585,6 +668,13 @@ class Checker {
       else if (rowOf(CONTENT, c) !== rowOf(CONTENT, s.hand[j]!))
         this.fail('a struck slot took a card from another row', c);
     });
+    // D-186: a pin, or the card a pin kept, goes with its card.
+    for (const k of ['pinned', 'kept'] as const) {
+      const was = s[k];
+      if (was === undefined) continue;
+      if (out[k] !== (slots.includes(was) ? undefined : was))
+        this.fail(`a strike left ${k} wrong`, { was, now: out[k], slots });
+    }
     const pass = rules.apply(out, { t: 'pass' });
     for (const x of pass.events) {
       if (x.t === 'handDrawn' && x.hand.some(same))
@@ -700,6 +790,13 @@ class Checker {
       { t: 'strikeCard', i: 0.5 },
       { t: 'strikeCard', i: '0' },
       { t: 'strikeCard' },
+      // D-186.
+      { t: 'pin', i: hand },
+      { t: 'pin', i: -1 },
+      { t: 'pin', i: 0.5 },
+      { t: 'pin', i: '0' },
+      { t: 'pin' },
+      ...(s.kept !== undefined ? [{ t: 'pin', i: s.kept }] : []),
       { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'zzz' } },
       { t: 'debug', op: 'giveGood', good: null },
       { t: 'debug', op: 'giveGood', good: { kind: 'nothing', id: 'bedroom' } },
@@ -731,6 +828,7 @@ class Checker {
             { t: 'useTool', i: 0 },
             { t: 'demolish', x: 0, y: 0 },
             { t: 'strikeCard', i: 0 },
+            { t: 'pin', i: 0 },
           ]),
     ];
     const maybe: unknown[] = [
@@ -803,6 +901,17 @@ class Checker {
     }
     // M4b: each member arrives once, and nothing draws, sells, or copies a member's room.
     if (new Set(s.arrived).size !== s.arrived.length) this.fail('a member arrived twice');
+    // D-186: a pin and a kept card each point at a hand card, never the same one, and the week's
+    // last hand says where the kept card is.
+    for (const k of ['pinned', 'kept'] as const) {
+      const v = s[k];
+      if (v !== undefined && (!Number.isInteger(v) || v < 0 || v >= s.hand.length))
+        this.fail(`${k} points at no hand card`, { [k]: v, hand: s.hand.length });
+    }
+    if (s.pinned !== undefined && s.pinned === s.kept) this.fail('the kept card is pinned again');
+    const drawn = events.findLast((e) => e.t === 'handDrawn');
+    if (drawn?.t === 'handDrawn' && isBuild(s) && drawn.kept !== s.kept)
+      this.fail('handDrawn’s kept card isn’t the state’s', { event: drawn.kept, state: s.kept });
     for (const e of events) {
       if (e.t === 'handDrawn') {
         for (const c of e.hand) {
@@ -1021,6 +1130,9 @@ const CHECKS: readonly string[] = [
   'check:malformed',
   'check:strike',
   'check:strikeBuys',
+  'check:pin',
+  'check:pinKept',
+  'check:keptRedraw',
   ...keys(TOOL_USES).map((k) => `check:previewTool:${k}`),
   'check:toolRefused:move',
   'check:changeOrderOffer',

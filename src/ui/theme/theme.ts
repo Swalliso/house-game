@@ -27,3 +27,10 @@ style.setProperty('--strike-thump', String(FEEL.strike.thumpScale));
 style.setProperty('--strike-drop', String(FEEL.strike.dropPx));
 style.setProperty('--strike-tilt', `${FEEL.strike.tiltDeg}deg`);
 style.setProperty('--strike-from', String(FEEL.strike.fromPx));
+// D-186: the pushpin stabbing in, and a hand dealt around a kept card (hand.css).
+style.setProperty('--dur-pin-stick', `${FEEL.pin.stickMs}ms`);
+style.setProperty('--pin-stick-from', String(FEEL.pin.stickPx));
+style.setProperty('--dur-deal', `${FEEL.pin.dealMs}ms`);
+style.setProperty('--dur-deal-stagger', `${FEEL.pin.staggerMs}ms`);
+style.setProperty('--deal-from', String(FEEL.pin.dealFromPx));
+style.setProperty('--dur-kept-in', `${FEEL.pin.keptInMs}ms`);

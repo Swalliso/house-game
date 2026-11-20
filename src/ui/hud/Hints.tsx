@@ -4,7 +4,8 @@
 // .hint-extra. M4's keys are here too: the change orders' sheet (1 or 2 picks one, D-144), a
 // pack's tiles (D-106), and a Renovation (D-102). A tool or a fixture from the supplies gets its
 // own keys: it's a free action, so the strip never offers Enter for it. Strike mode (D-157) has
-// its own too: a card's click or number key, pressed twice.
+// its own too: a card's click or number key, pressed twice. P pins a card (D-186), where the
+// strip has room for it.
 //
 // No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
@@ -21,6 +22,7 @@ import {
   run,
   selected,
   selection,
+  source,
   tentative,
   tool,
 } from '../store.ts';
@@ -189,6 +191,12 @@ export function Hints() {
                     ? 'extend it'
                     : 'end the week'}
           </Hint>
+          {/* D-186: a hand card picked, not yet placed, can be pinned for next week instead. */}
+          {shown.value.pin && source.value === 'hand' && !pending && (
+            <Hint keys={['P']} extra>
+              {s.pinned === selected.value ? 'unpin it' : 'pin it'}
+            </Hint>
+          )}
           <Hint keys={['Esc']}>
             {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
           </Hint>
@@ -209,6 +217,12 @@ export function Hints() {
         {shown.value.strike && (
           <Hint keys={['S']} extra>
             strike
+          </Hint>
+        )}
+        {/* D-186: the card under the pointer, or the one Tab is on. Never in the first job. */}
+        {shown.value.pin && (
+          <Hint keys={['P']} extra>
+            pin
           </Hint>
         )}
         <Hint keys={['Scroll']} extra>
