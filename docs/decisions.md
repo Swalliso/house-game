@@ -1134,6 +1134,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-16 (D-176, Proposed):** a proposed change, awaiting the user's pick from its stage 1 sheet: the rooms of a held set open into each other where they share a wall. A Suite's Bedroom opens into its Bathroom and its Closet, each Bedroom of a Jack-and-Jill into the Bathroom they share, and the Entertainer's rooms through an opening about a cell wide. Rooms still never merge: the wall between every two rooms stays, and an opening keeps a stub of it at each end, so each room still reads as its own. Doorways stay decoration.
 
+**2026-11-20 (D-189, Proposed):** the house report gains two lines these measures missed: extra Bathrooms (more than the Bathroom ratio's floor and a spare) and a Garage nothing reaches. On 200 held-out greedy runs, 24% of the wins have extra Bathrooms, and in 74% of the wins with a Garage nothing reaches it. Held to realistic Bathroom counts, greedy scores the same, so the extra ones are the bot's; the unreached Garage is paid for by Full House.
+
 ### D-101 · The house rules: seven lines every checklist starts with
 **Status:** Accepted · 2026-11-06 (D-093's option B, chosen by the team). The numbers are placeholders for the sim.
 **Decision:**
@@ -4842,6 +4844,43 @@ What the columns mean:
 - **Ordinary weeks have no deal** (Considered).
 - **The pin can't be reached with Tab** on its own: P on the focused card does it.
 
+### D-189 · The house report checks two things a glance catches: extra Bathrooms, and a Garage nothing reaches
+**Status:** Proposed · 2026-11-20, a fix pull request (`fix/sim-realism-checks`), from a review the user asked for: do the rules make houses look unrealistic, or does the greedy bot? A won bot run (D-187's `tl-2`) had 7 Bathrooms for 4 Bedrooms, a Garage in the middle of the house, and a jagged outline, while the user's own houses mostly look like houses. Of the review's options the user picked these two checks (2026-11-20: "Add two sim checks only"), over leaving everything as is and over Full House needing a reached Garage. Sim only: nothing under `src/rules` or `src/content` changed, and `contentHash(CONTENT)` stays `afeff7e3`. D-186 and D-188 are taken by S14 and S16's pull requests.
+**Decision:**
+- **The house report gains two lines** (`sim/house.ts`, `houseReport` in `sim/report.ts`), for wins and for all runs like the rest. Neither is one of §8's criteria.
+  - **Extra Bathrooms (2+ past the ratio):** more Bathrooms than the Bathroom ratio's floor (one for every two Bedrooms, at least one) and a spare: more than 2 Bathrooms for up to 2 Bedrooms, 3 for 3–4, and 4 for 5–6. A member's room counts as a Bedroom, as it does for the ratio. The ratio was the report's only Bathroom measure, and a floor, so 7 Bathrooms for 4 Bedrooms passed it.
+  - **A Garage nothing reaches (of those with one):** a Garage with no tile on the street edge or beside a Driveway's tile, D-140's requirement. It earns nothing and has no drive, yet still counts for Full House (D-140). `house.test.ts` checks the measure against the rules' tally on six layouts, and the smoke sim on each finished greedy house, so a change to the Garage's requirement fails a test rather than drift.
+- **The rules stay as they are.**
+
+**The review** (greedy, 200 held-out runs an arm, `check-0` to `check-199`, the five clients in turn with the General Contractor, develop at 6182321). A scratch harness narrowed greedy's plays or changed its pick, and one arm changed the rules in a copy; its scripts are in the project's files (`house-realism/`). In brackets: seeds won only by plain greedy, then only by the arm.
+
+| Arm | Wins | Final Wow against plain, per seed (p50; where the runs differ) | Compact outline (H1g), wins | Extra Bathrooms, wins | Full House at the end |
+|---|---|---|---|---|---|
+| Plain greedy | 46.5% | | 14.0% | 23.7% | 36.5% |
+| At most ⌈Bedrooms/2⌉ + 1 Bathrooms, and a Closet per Bedroom | 45.5% (4, 2) | 1.00; 1.00 | 11.0% | 0% | 39.5% |
+| … and a Garage only where the street or a Driveway already reaches | 33.0% (29, 2) | 1.00; 0.88 | 22.7% | 0% | 9.5% |
+| Indoor plays keep A compact house's fill and box, or don't worsen them | 35.5% (39, 17) | 0.99; 0.93 | 31.0% | 12.7% | 31.0% |
+| The rules changed: Full House counts a Garage only once it's reached | 32.5% (28, 0) | 1.00; 0.69 | 21.5% | 21.5% | 8.5% |
+| The tidiest outline within 3% of the week's best, against the same pick at 0% (45.5%) | 37.0% (40, 23) | 0.985; 0.98 | 51.4% (23.1% at 0%) | 44.6% (27.5%) | 32.5% |
+
+- **Extra Bathrooms are greedy's, not the rules':** held to realistic counts, greedy scores the same. It places any piece that adds to the week, and a 1×1 Bathroom beside a Bedroom always does a little. In `tl-2` the bot held Mood Lighting from week 9 (+0.4 Charm for each Dark room, with no cap), and a Bathroom tucked inside is the cheapest Dark room: 6 of its 7 Bathrooms each added one, worth 4–13% of their week. With the limits `tl-2` still wins, at 132,514 (140,816 without) against 100,430.
+- **The Garage is where the rules pay for an odd house:** 74% of greedy's wins hold Full House, and in 74% of those nothing reaches the Garage. Sparkle is 33% of the Wow in greedy's wins, and runs that end with Full House win 94.5% against 18.9%. In `tl-2` the Garage, built mid-house in week 16, took that week from 1,987 Wow to 3,943. Greedy plans no drive (D-140), so a reached Garage costs it 13–14 points of wins; a player who builds it by the street loses little.
+- **Sprawl pays a little:** 14% of greedy's wins pass the compact outline (32.5% of all runs, where D-165 measured 66.5%; D-169 found the stock's top-ups took some of that). Taking the tidiest play within 3% of the best doubles that for 1.5% of the median Wow, 8.5 points of wins on targets set for greedy. The tidier houses fill their notches with 1×1 Bathrooms and Closets, so a compact outline and a sensible Bathroom count pull against each other.
+
+**Why:** the house report (D-093) is how the sim says whether houses look like houses, and both patterns in the user's screenshot passed it. With the two lines, a change that starts paying for them shows in the next report.
+**Considered:**
+- **Full House needs a reached Garage** (D-140's first Considered line, its next thing to try): Garages by the street, but greedy wins 32.5% on today's targets (above), so it needs a re-fit and likely a drive planner that looks ahead. Not now, by the user's pick.
+- **Leaving the report as it was:** the next rules change could make either pattern worse unseen.
+- **Criteria for them in §8:** there's no line yet to hold them to; the report shows them.
+- **A Closet line:** past one per Bedroom in 8.6% of greedy's wins, and limiting Closets with the Bathrooms cost nothing. Left out, to keep to the two the user picked.
+- **Capping Mood Lighting:** with the Bathroom limits, runs that bought it won as often (55.8% against 55.0%), so a cap would buy little.
+
+**Changes:** D-093 (Accepted) and D-140 (Proposed): dated notes. `implementation-plan.md`: the house report's line in §8's reports.
+**Checked:** `npm test` (153 files, 2,605 tests, and the art re-cut skipped without `art-source/`), `npm run typecheck` and `npm run format:check`. New tests: `house.test.ts` (extra Bathrooms at 0 to 5 Bedrooms, a member's room as a Bedroom, the ratio unchanged; the Garage on the street edge, in the middle, with a Driveway up to it, beside it, a tile short and a column away, each against the rules' tally); the smoke sim checks the Garage's reach on its 25 finished greedy houses. `npm run sim -- --runs 20 --seed check` prints both lines.
+**Known gaps:**
+- **The reach is read from the tiles,** as the rules read D-140's requirement today (the tests hold the two together).
+- **Bunk Beds count once,** as in the report's other room counts, so a Bedroom they double can show a spare Bathroom as extra.
+
 ### D-187 · The house builds itself: after the look down the street, the house goes up again on the board, and the photo viewer plays the strip
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/house-builds-itself`), backlog story S10 (`docs/backlog/s10-house-builds-itself.md`), built while S14 (D-186) and S16 (D-188) were built beside it. Stage 1, the story's cheaper first test (Play in the photo viewer), went up first; the user looked at it and asked for the full rebuild in the same pull request (2026-11-20: "Build the full rebuild"), stage 2. UI only: nothing under `src/rules` or `src/content` changed and `contentHash(CONTENT)` stays `afeff7e3`, so saves and run codes carry over. The user OK'd merging it into develop for their playtest on /dev/ (2026-11-20: "Merge it for a playtest"); it stays Proposed until they've played it.
 **Decision:**
@@ -5244,6 +5283,8 @@ A review of the merged branch in four parts (where the four builds meet, the mot
 - A Driveway cut off from the street by a demolition earns nothing itself but still counts as a Driveway for the Garage beside it.
 - "By" on the compact card means touching. Inspect has the exact words.
 - `yard.test.ts` parks the car on every pack of up to 8 tiles (2,725 shapes of 8, from 216 of 6): about 3 seconds alone and 6 to 7 in the full suite, so that test has a longer timeout.
+
+*2026-11-20 (D-189):* the first Considered line above, tried in the sim on develop 6182321: with Full House counting a Garage only once the street or a Driveway reaches it, greedy wins 32.5% of 200 held-out runs (`check-0` to `check-199`) against 46.5% (28 seeds won only today, none only with it). Full House holds at the end in 8.5% of runs against 36.5%, and the Garages built end unreached in 30% of houses against 74%. Greedy still plans no drive (0.32 Driveways a run against 0.35), so it mostly stops building the Garage. The user kept today's rule; the house report now counts the Garages nothing reaches.
 
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Superseded by D-147 · 2026-11-10: the user took the roof out before the first showing. Was Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request, extending D-127.

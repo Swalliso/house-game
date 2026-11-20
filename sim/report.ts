@@ -201,6 +201,15 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
     ['  No yard inside the house (H2)', ...cols((rs) => share(rs, (r) => H(r).h2))],
     ['  One of each shared room (H3)', ...cols((rs) => share(rs, (r) => H(r).h3))],
     ['  Visible repeats', ...cols((rs) => share(rs, (r) => H(r).visibleRepeats))],
+    [
+      '  A Garage nothing reaches (of those with one)',
+      ...cols((rs) =>
+        share(
+          rs.filter((r) => (H(r).roomCounts.garage ?? 0) > 0),
+          (r) => H(r).garageUnreached,
+        ),
+      ),
+    ],
     ["  research.md's plausibility check", ...cols((rs) => share(rs, (r) => H(r).plausible))],
     ['  Corners, median', ...cols((rs) => median(rs, (r) => H(r).corners))],
     ['  Fill, median', ...cols((rs) => median(rs, (r) => H(r).fill, 2))],
@@ -208,6 +217,10 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
     ['The household'],
     ['  No household', ...cols((rs) => share(rs, (r) => H(r).noHousehold))],
     ['  Bathroom ratio held', ...cols((rs) => share(rs, (r) => H(r).bathroomRatio))],
+    [
+      '  Extra Bathrooms (2+ past the ratio)',
+      ...cols((rs) => share(rs, (r) => H(r).extraBathrooms)),
+    ],
     ['  Bedrooms per run', ...cols((rs) => mean(rs, (r) => H(r).bedrooms))],
     ['  Rooms, median', ...cols((rs) => median(rs, (r) => H(r).rooms))],
     ['  Tiny houses (8 or fewer rooms)', ...cols((rs) => share(rs, (r) => H(r).tiny))],
