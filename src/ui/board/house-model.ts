@@ -8,8 +8,9 @@
 //   Touching connectors (Hallway, Long Hallway) open into each other (D-159): a hall reads as one
 //   corridor, while each piece stays its own for hover, Inspect and its label. A room never
 //   opens into a hall that way, nor into another room.
-// - Doorways are decoration and change no score. Hallways open into every room the rules link
-//   through them (rules.describePiece's `linked`). A front door goes in a street-facing wall of
+// - Doorways are decoration and change no score. A corridor (touching Hallways) opens once into
+//   each room the rules link through it (rules.describePiece's `linked`), and a set's back room
+//   opens only through its set door (D-184). A front door goes in a street-facing wall of
 //   the best entry room (a garage, a bathroom or a closet only when no other room can have one;
 //   onto the woods only when nothing else can), a back door onto each touching Patio or Hot
 //   Tub, and a garage door faces a Driveway or the street. Then a spanning tree from the entry,
@@ -1146,29 +1147,24 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks, sets: H
   };
 
   // Touching Hallways are one corridor, open into each other with no wall between them
-  // (buildModel, D-159), so the door tree takes them as joined. Hallways open into every room
-  // the rules link through them. (A room linked to nothing, the only one on its Hallways, gets
-  // its door from the tree.)
+  // (buildModel, D-159), so the door tree takes them as joined. Each corridor opens into the
+  // rooms the rules link through it, after the set doors (below).
+  const isHall = (u: number) => isConnector(defOf(u));
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const a = at(x, y);
-      if (!a || !isConnector(defOf(a))) continue;
+      if (!a || !isHall(a)) continue;
       for (const b of [at(x + 1, y), at(x, y + 1)]) {
-        if (b && b !== a && isConnector(defOf(b))) join(a, b);
+        if (b && b !== a && isHall(b)) join(a, b);
       }
     }
   }
+  /** Each Hallway's corridor, by the root of its touching Hallways (only they are joined yet). */
+  const corridorOf = new Map<number, number>();
+  for (const uid of m.rooms.keys()) if (isHall(uid)) corridorOf.set(uid, find(uid));
   const touching = [...runsOf.keys()].map((k) => k.split('-').map(Number) as [number, number]);
   touching.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
   const linked = (u: number) => (links.get(u)?.length ?? 0) > 0;
-  for (const [a, b] of touching) {
-    const ca = isConnector(defOf(a));
-    const cb = isConnector(defOf(b));
-    if ((ca && linked(b)) || (cb && linked(a))) {
-      const d = doorBetween(a, b);
-      if (d) addDoor({ ...d, why: 'hall' });
-    }
-  }
 
   // Set doors (D-176): a held set's rooms open into each other where they share a wall. A
   // Suite's Bedroom opens into its Bathroom and its Closet, and one of those with no wall on the
@@ -1221,6 +1217,38 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks, sets: H
       const y = backs.find((o) => off.has(o) && runsOf.has(pairKey(o, x)));
       if (y !== undefined) laySetDoor(y, x, [x]);
     }
+  }
+
+  // Hall doors (D-184): a corridor opens once into each room the rules link through it, at the
+  // best spot along all its Hallways' walls with that room, so a room the corridor runs past
+  // gets one door, not one a Hallway. A set's back room with its set door (a Suite's Bathroom or
+  // Closet, a Jack-and-Jill's Bathroom) opens only through that, as an en-suite does. (A room
+  // linked to nothing, the only one on its Hallways, gets its door from the tree, and the tree
+  // reaches a back room through its set door.)
+  const onHall = new Map<string, { corridor: number; room: number; halls: number[] }>();
+  for (const [a, b] of touching) {
+    if (isHall(a) === isHall(b)) continue;
+    const [piece, room] = isHall(a) ? [a, b] : [b, a];
+    if (!linked(room) || setBacks.has(room)) continue;
+    const corridor = corridorOf.get(piece)!;
+    const k = `${corridor}-${room}`;
+    const seen = onHall.get(k);
+    if (seen) seen.halls.push(piece);
+    else onHall.set(k, { corridor, room, halls: [piece] });
+  }
+  const hallRooms = [...onHall.values()].sort((p, q) => p.corridor - q.corridor || p.room - q.room);
+  for (const { room, halls } of hallRooms) {
+    // Ties keep the earlier Hallway and run, so it's deterministic.
+    let best: { run: Run; gap: Rect; clear: Rect; pref: number } | null = null;
+    for (const piece of halls) {
+      for (const run of runsOf.get(pairKey(piece, room)) ?? []) {
+        const d = doorIn(run);
+        if (d && (!best || d.pref < best.pref)) best = { run, ...d };
+      }
+    }
+    if (!best) continue;
+    const { run, gap, clear } = best;
+    addDoor({ a: run.a, b: run.b, dir: run.dir, gap, clear, why: 'hall' });
   }
 
   // The entry: the front door's room, or the most public room.
