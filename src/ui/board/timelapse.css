@@ -1,0 +1,20 @@
+/* The house building itself at the end of a run (TimelapseLayer.tsx, D-187): the lot as it stood,
+   a canvas at art resolution over the live lot, at whole device pixels per art pixel like the
+   board (D-097). It never takes the pointer. */
+.board > .timelapse {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-timelapse);
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* While it plays, what stands over the lot on later layers keeps off the lot it shows: the flock
+   (on the lot's life layer), and the last tally's highlights, digits and badges. Opacity, since
+   the crows' own frames set their visibility. */
+.board.timelapse-on > .life-flock,
+.board.timelapse-on > .highlights,
+.board.timelapse-on > .labels {
+  opacity: 0;
+}

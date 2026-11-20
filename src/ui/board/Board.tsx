@@ -141,6 +141,7 @@ import { people as placePeople, roomPeople, walkObstacles } from './people.ts';
 import { PeopleLayer } from './PeopleLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
 import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
+import { TimelapseLayer, timelapseOn } from './TimelapseLayer.tsx';
 import './board-m2.css';
 import './labels.css';
 import './install-gains.css';
@@ -1002,6 +1003,8 @@ export function Board() {
     // Under the shop's sheet or a change order's (M4b): the water and the animated props hold
     // still (terrain.css).
     shopShown.value || changeOrderShown.value ? 'covered' : '',
+    // D-187: the house building itself over the lot, which the flock keeps off (timelapse.css).
+    timelapseOn(state.setup) ? 'timelapse-on' : '',
   ].join(' ');
 
   return (
@@ -1075,6 +1078,8 @@ export function Board() {
           {wallsLayer}
           {overhangLayer}
           <PeopleLayer people={household} model={model} obstacles={walkBlocks} scale={scale} />
+          {/* D-187: the end of a run's time-lapse, over the lot and under its life. */}
+          <TimelapseLayer state={state} scale={scale} />
           {highlightsLayer}
           <ChainArc lot={lot} scale={scale} />
           {labelsLayer}

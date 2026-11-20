@@ -10,12 +10,14 @@ import {
   placedCells,
   rules,
   type Action,
+  type GameEvent,
   type HouseState,
   type PlacedPiece,
+  type RunState,
 } from '../../rules/index.ts';
 import { boardRows, isIndoor } from '../board/geometry.ts';
 import { CELL } from '../sprites.ts';
-import { milestoneShots, photoFrame } from './photos.ts';
+import { buildSteps, milestoneShots, photoFrame } from './photos.ts';
 
 // The greedy bot completing every milestone early that it can, on the first seeds where it wins
 // with early and overtime milestones, and loses with a missed one. Found by search, so tuning
@@ -98,6 +100,107 @@ describe('the milestones’ photos', () => {
 
   it('has no photos before the first milestone resolves', () => {
     expect(milestoneShots(won.state.setup, won.actions.slice(0, 2))).toEqual([]);
+  });
+});
+
+// The house building itself at the end of a run (D-187): every action that changed how the house
+// looks, in order, from the lot as the run began to the finished house.
+describe('the time-lapse’s builds', () => {
+  /** The actions whose events change the house's look, and each one's state after it. */
+  function replayed(r: ReturnType<typeof simulateRun>) {
+    const looks = new Set([
+      'placed',
+      'moved',
+      'demolished',
+      'transformed',
+      'extended',
+      'renovated',
+      'installed',
+    ]);
+    const kept: { state: RunState; events: readonly GameEvent[] }[] = [];
+    let s = rules.newRun(r.state.setup);
+    for (const a of r.actions) {
+      const out = rules.apply(s, a);
+      s = out.state;
+      if (out.events.some((e) => looks.has(e.t))) kept.push(out);
+    }
+    return kept;
+  }
+
+  it('starts from the lot as the run began, with nothing built', () => {
+    const { start } = buildSteps(won.state.setup, won.actions);
+    expect(start).toEqual(rules.newRun(won.state.setup));
+    expect(start.house.pieces).toHaveLength(0);
+  });
+
+  for (const [name, run] of [
+    ['won', won],
+    ['lost', lost],
+  ] as const) {
+    it(`keeps the state after each action that changed the house, in order (${name})`, () => {
+      const { steps } = buildSteps(run.state.setup, run.actions);
+      const want = replayed(run);
+      expect(steps.length).toBe(want.length);
+      expect(steps.length).toBeGreaterThan(10);
+      steps.forEach((step, i) => expect(step.state).toEqual(want[i]!.state));
+      // Fewer builds than actions: passes, the shop and change orders build nothing.
+      expect(steps.length).toBeLessThan(run.actions.length);
+    });
+
+    it(`ends on the finished house (${name})`, () => {
+      const { steps } = buildSteps(run.state.setup, run.actions);
+      expect(steps.at(-1)!.state.house).toEqual(run.state.house);
+    });
+  }
+
+  it('says whether each build was a room or the yard, for its sound', () => {
+    const { steps } = buildSteps(won.state.setup, won.actions);
+    const want = replayed(won);
+    expect(new Set(steps.map((s) => s.kind))).toEqual(new Set(['room', 'yard']));
+    let placed = 0;
+    let installed = 0;
+    steps.forEach((step, i) => {
+      const e = want[i]!.events.find((ev) => ev.t === 'placed' || ev.t === 'installed');
+      if (e?.t === 'placed') {
+        placed++;
+        expect(step.kind).toBe(isIndoor(e.defId) ? 'room' : 'yard');
+      } else if (e?.t === 'installed') {
+        // A fixture goes with its host: into a room, a room's sound.
+        installed++;
+        const host = step.state.house.pieces.find((p) => p.uid === e.uid)!;
+        expect(step.kind).toBe(isIndoor(host.defId) ? 'room' : 'yard');
+      }
+    });
+    expect(placed).toBeGreaterThan(0);
+    expect(installed).toBeGreaterThan(0);
+  });
+
+  it('replays once for the same run, and again for another', () => {
+    const a = buildSteps(won.state.setup, won.actions);
+    expect(buildSteps(won.state.setup, won.actions)).toBe(a);
+    const b = buildSteps(lost.state.setup, lost.actions);
+    expect(b).not.toBe(a);
+    expect(buildSteps(won.state.setup, [...won.actions])).toEqual(a);
+  });
+
+  it('stops quietly where the log stops applying, keeping the builds before it', () => {
+    // Half the run, then an action that can't apply (no hand card 99), then the rest.
+    const half = Math.floor(won.actions.length / 2);
+    const broken: Action[] = [
+      ...won.actions.slice(0, half),
+      { t: 'place', from: 'hand', i: 99, x: 0, y: 0, rot: 0 },
+      ...won.actions.slice(half),
+    ];
+    const { steps } = buildSteps(won.state.setup, broken);
+    const before = buildSteps(won.state.setup, won.actions.slice(0, half)).steps;
+    expect(steps.length).toBe(before.length);
+    expect(steps.map((s) => s.state)).toEqual(before.map((s) => s.state));
+    expect(steps.length).toBeLessThan(buildSteps(won.state.setup, won.actions).steps.length);
+  });
+
+  it('has no builds before the first piece goes down', () => {
+    const first = won.actions.findIndex((a) => a.t === 'place');
+    expect(buildSteps(won.state.setup, won.actions.slice(0, first)).steps).toEqual([]);
   });
 });
 
