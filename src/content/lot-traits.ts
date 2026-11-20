@@ -15,14 +15,16 @@ export const LOT_TRAITS: Readonly<Record<LotTraitId, LotTraitDef>> = {
   // deal Patios, a deck by the water (D-166). D-174: +100%, as the pond and the lake pay. At +50%
   // a creek lot was greedy's weakest (38.7% of 463 lots of hold-*, all lots 44.9%, on D-171's
   // targets), and a creek through the middle won 40.0%: what the creek takes from the lot cost
-  // more than its bank paid back.
+  // more than its bank paid back. D-191: +150%, as the creek bends. A curve's bank runs in steps
+  // a house of square rooms can't line up along, so at +100% greedy won 43.0% of 477 creek lots
+  // of hold-* that won 50.7% with the old creeks; at +150%, 47.2%.
   creekside: {
     id: 'creekside',
     name: 'Creekside',
     blurb: 'Only a Driveway crosses it.',
     when: { terrain: 'creek', min: 1 },
     modifiers: [
-      { kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 100 },
+      { kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 150 },
       { kind: 'drawWeight', target: { piece: 'patio' }, pct: 100 },
     ],
   },

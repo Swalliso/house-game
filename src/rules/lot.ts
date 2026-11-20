@@ -776,24 +776,27 @@ export function cutBox(
 }
 
 /**
- * A pond lot's round ponds (D-191): boxes with their corners cut in steps (cutBox), 16 to 20
- * tiles, so no side runs straight for long and no tile sticks out alone. The 3 × 6 ones lean.
+ * A pond lot's round ponds (D-191): boxes with their corners cut (cutBox), 16 to 20 tiles. Most
+ * lean, two corners across from each other cut; the 4 × 6 ones lose all four. Each cut corner
+ * shortens the bank by a tile and leaves a step a room can't lie flush against, so they're cut
+ * no more than that: the banks stay as long as the ponds grown a tile at a time before (the
+ * sim check, D-191). No tile sticks out alone.
  */
 export const ROUND_PONDS: readonly { w: number; h: number; cuts: readonly number[] }[] = [
-  { w: 4, h: 5, cuts: [1, 1, 1, 1] },
-  { w: 5, h: 4, cuts: [1, 1, 1, 1] },
-  { w: 5, h: 5, cuts: [2, 1, 1, 1] },
-  { w: 5, h: 5, cuts: [1, 2, 1, 1] },
-  { w: 5, h: 5, cuts: [1, 1, 2, 1] },
-  { w: 5, h: 5, cuts: [1, 1, 1, 2] },
-  { w: 5, h: 5, cuts: [2, 1, 2, 1] },
-  { w: 5, h: 5, cuts: [1, 2, 1, 2] },
-  { w: 4, h: 6, cuts: [1, 1, 1, 1] },
-  { w: 6, h: 4, cuts: [1, 1, 1, 1] },
+  { w: 4, h: 5, cuts: [1, 0, 1, 0] },
+  { w: 4, h: 5, cuts: [0, 1, 0, 1] },
+  { w: 5, h: 4, cuts: [1, 0, 1, 0] },
+  { w: 5, h: 4, cuts: [0, 1, 0, 1] },
   { w: 3, h: 6, cuts: [1, 0, 1, 0] },
   { w: 3, h: 6, cuts: [0, 1, 0, 1] },
   { w: 6, h: 3, cuts: [1, 0, 1, 0] },
   { w: 6, h: 3, cuts: [0, 1, 0, 1] },
+  { w: 3, h: 7, cuts: [1, 0, 1, 0] },
+  { w: 3, h: 7, cuts: [0, 1, 0, 1] },
+  { w: 7, h: 3, cuts: [1, 0, 1, 0] },
+  { w: 7, h: 3, cuts: [0, 1, 0, 1] },
+  { w: 4, h: 6, cuts: [1, 1, 1, 1] },
+  { w: 6, h: 4, cuts: [1, 1, 1, 1] },
 ];
 
 /**

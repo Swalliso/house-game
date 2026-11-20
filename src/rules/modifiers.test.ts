@@ -1418,7 +1418,7 @@ const CREEKSIDE: Content = {
     ...C.lotTraits,
     creekside: {
       ...C.lotTraits.creekside,
-      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 100 }],
+      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 150 }],
     },
   },
 };
@@ -1445,7 +1445,7 @@ describe('lot traits (D-119)', () => {
     expect(sourceName(CREEKSIDE, { kind: 'lot', id: 'creekside' })).toBe('Creekside');
   });
 
-  it('Creekside: a piece touching the creek earns +100%, on a Creekside line', () => {
+  it('Creekside: a piece touching the creek earns +150%, on a Creekside line', () => {
     const r = createRules(CREEKSIDE);
     // The right Bedroom (x 3–4) touches the creek; the left one (x 1–2) touches only it.
     const s = {
@@ -1456,10 +1456,10 @@ describe('lot traits (D-119)', () => {
       ]),
     };
     const t = r.currentTally(s);
-    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 2 = 8.
-    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 100, earned: 8 });
+    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 2.5 = 10.
+    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 150, earned: 10 });
     expect(scoreOf(t, 1).lines.filter((l) => l.op === 'pct')).toEqual([
-      { label: 'Creekside', op: 'pct', value: 100, from: [] },
+      { label: 'Creekside', op: 'pct', value: 150, from: [] },
     ]);
     expect(scoreOf(t, 2)).toMatchObject({ points: 4, pct: 0, earned: 4 });
   });
@@ -1467,7 +1467,7 @@ describe('lot traits (D-119)', () => {
   it('read as a tip: what they pay, all run, what they deal more of (D-166), then the blurb', () => {
     const creekside = CONTENT.lotTraits.creekside;
     expect(lotTraitText(CONTENT, creekside)).toBe(
-      'Pieces touching the Creek earn +100%, all run. More Patios in the draw. Only a Driveway crosses it.',
+      'Pieces touching the Creek earn +150%, all run. More Patios in the draw. Only a Driveway crosses it.',
     );
     expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(
       'Pieces touching a Tree earn +25%, all run. More Treehouses and Birdhouses in the draw. Building over a Tree clears it.',
