@@ -107,8 +107,8 @@ function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number):
 
 /**
  * How a reserve card pops in (inventory.css' slot-arrive), or null: a member's cards after the
- * doorbell (FEEL.arrival), and the stock's or the client's at once as they land (FEEL.delivered;
- * D-160), only the cards that just came.
+ * doorbell (FEEL.arrival), and the stock's, the client's, the crew's or the wrong delivery's at
+ * once as they land (FEEL.delivered; D-160, D-171, D-188), only the cards that just came.
  */
 function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale: number } | null {
   const member = justArrived.value;
@@ -125,9 +125,9 @@ function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale
 }
 
 /**
- * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins", "Dale", "Stock")
- * with where it came from in its tip (household.ts extraSlotWords). A card that just came pops
- * in (popOf).
+ * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins", "Dale", "Stock",
+ * "Mix-up") with where it came from in its tip (household.ts extraSlotWords). A card that just
+ * came pops in (popOf).
  */
 function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
   const s = run.value;

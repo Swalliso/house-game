@@ -2,7 +2,7 @@
 // they bring. The rules hold the data (each client's `household`); this only phrases it, for the
 // job board, the checklist, the reserve, the inspect panel, and the arrival's banner. D-160:
 // likewise where any card in the reserve's extra slots came from: the crew, an arrival, the
-// client, or the standing stock.
+// client, the standing stock, or (D-188) the wrong delivery.
 
 import {
   CONTENT,
@@ -96,10 +96,10 @@ function possessive(name: string): string {
 
 /**
  * Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods and Inspect say
- * it: its slot's tag ("Crew", "Twins", "Dale", "Stock"), whose it is mid-sentence for the slot's
- * tip (" (with the twins)"), and Inspect's line ("Came with the twins"), or the whole of
- * Inspect's note where it says more (a refilled stock's). Null for a card in the reserve's own
- * slots (bought, picked or copied).
+ * it: its slot's tag ("Crew", "Twins", "Dale", "Stock", "Mix-up"), whose it is mid-sentence for
+ * the slot's tip (" (with the twins)"), and Inspect's line ("Came with the twins"), or the whole
+ * of Inspect's note where it says more (a refilled stock's, the wrong delivery's). Null for a
+ * card in the reserve's own slots (bought, picked or copied).
  */
 export function extraSlotWords(
   clientId: ClientId,
@@ -148,6 +148,15 @@ export function extraSlotWords(
       ...(CONTENT.balance.standingStock.refill && {
         note: 'From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone.',
       }),
+    };
+  }
+  if (r.surprise) {
+    // D-188: the wrong delivery, once a run. Its note is the stock's and the crew's length (16).
+    return {
+      tag: 'Mix-up',
+      whose: ' (delivered by mistake)',
+      from: 'Delivered by mistake',
+      note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
     };
   }
   return null;

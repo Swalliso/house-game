@@ -488,7 +488,8 @@ export function SetProgressLines({ id }: { id: PieceId }) {
 
 /**
  * A card in the reserve's extra slots (M4b, D-160): where it came from (the crew, a household
- * member, the client, or the standing stock), and that it doesn't take a slot of the reserve's.
+ * member, the client, the standing stock, or the wrong delivery, D-188), and that it doesn't
+ * take a slot of the reserve's.
  */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
   const words = extraSlotWords(run.value.setup.clientId, r, run.value.setup.crewId);
