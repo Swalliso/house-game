@@ -692,8 +692,10 @@ type HouseCondition =                             // about the house: specs, req
   | { and: HouseCondition[] } | { or: HouseCondition[] } | { not: HouseCondition }
 // Counts over piece types count rooms by their own card, weighted by countsAs modifiers for
 // that type: Bunk Beds make a Bedroom count twice (D-101). (A Kitchen Island never added a
-// Dining Room, and since D-194 it doesn't count as one at all.) A count with a `max` over piece types is that type's limit (D-102, D-104), and so
-// is a card's `perHouse` (D-165).
+// Dining Room, and since D-194 it doesn't count as one at all.) A count with a `max` reads
+// max(once, min(weighted, max)), each piece once in `once` (D-198): Bunk Beds lift it to the
+// max, never past it. A count with a `max` over piece types is that type's limit (D-102, D-104),
+// at the weighted count, and so is a card's `perHouse` (D-165).
 ```
 
 ### Effect kinds
@@ -1984,7 +1986,7 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 | Blackout Curtains | most rooms (D-172: not a Bathroom, Closet or Garage) | `grantTag host Dark`; `removeTag host Sunny` (D-120) | Common | M3a |
 | Soundproofing | any room | `blockPenalties host from {tag Loud}` (the street included); `earn host +25` (D-194) | Common | M3a |
 | Kitchen Island | kitchen | `earn host +25`; `grantEffect host neighbor [diningRoom, herbGarden] +2`, so its Kitchen's +2 for each becomes +4 (D-194; it was `countsAs host diningRoom`) | Uncommon | M3a |
-| Bunk Beds | bedroom | `countsAs host bedroom times 2` (counts twice in `count` conditions, such as the Hendersons' 4 Bedrooms; once in sets) | Uncommon | M3a |
+| Bunk Beds | bedroom | `countsAs host bedroom times 2` (counts twice in `count` conditions, such as the Hendersons' 4 Bedrooms, up to a `max` and never past it, D-198; once in sets) | Uncommon | M3a |
 | Bay Window | most exterior rooms (D-172: not a Bathroom, Closet or Garage) | `grantView host`; `earn host +25` (D-194) | Common | M3a |
 | Sprinkler | lawn | `earn host +100` | Common | M3a |
 | Pergola | patio or lawn (D-194) | `grantView host`; `earn host +50` | Uncommon | M3a |

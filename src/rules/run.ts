@@ -88,6 +88,7 @@ import type {
   PieceId,
   PieceInfo,
   PieceScore,
+  PieceValue,
   PlaceAction,
   PlacedPiece,
   Region,
@@ -116,6 +117,7 @@ import type {
   Tally,
   TileInfo,
   ToolId,
+  ToolValue,
   TypeLimit,
   UseToolAction,
   WeekScore,
@@ -139,10 +141,20 @@ import {
   countingMod,
   grows,
   lastWeekOnly,
+  modifiersNeeds,
   scalingStat,
   scoresWeek,
   totalWithOneMore,
 } from './blueprint-value.ts';
+import {
+  clearNote,
+  copyNote,
+  NO_NUMBER,
+  payingDef,
+  rhythmOf,
+  setNeeds,
+  timersNote,
+} from './good-value.ts';
 import {
   DRAW_ROWS,
   drawableTypes,
@@ -154,7 +166,7 @@ import {
   strikeCandidates,
   swapCandidates,
 } from './draw.ts';
-import { estimatePlay, type Estimate } from './estimate.ts';
+import { estimatePlay, type Estimate, type EstimateOptions } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
   bounds,
@@ -192,7 +204,7 @@ import {
   targetPctFor,
   verdictFor,
 } from './milestones.ts';
-import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
+import { ruleFrom, runModifiers, setupRule, sourceName, type ActiveMod } from './modifiers.ts';
 import {
   addPiece,
   clearTiles,
@@ -362,14 +374,33 @@ export interface Rules {
    */
   blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null;
   /**
+   * D-193: what a piece would add to the house as it stands, for its line on a shop card, a
+   * crate's option, or in Inspect: its best play from Your goods (a spot, or for a type at its
+   * limit a Renovation or an extension), found as the shop bot finds one (the best few spots by
+   * estimatePlay, and the few it flags as blind spots, each scored exactly), with the week's
+   * total with it less without, and each week left in the run added up with nothing more built,
+   * as blueprintValue's are. In the shop the first week is the next phase's first, after the
+   * transforms that start it. Null if it has no legal play, or off the build and shop screens.
+   */
+  pieceValue(state: RunState, id: PieceId): PieceValue | null;
+  /**
+   * D-193: what a tool would do for the house as it stands, used in the week a fixture would be
+   * valued in: a one-week tool's gain that week (Rush Order); a Remodel Plan's next level, that
+   * week and over the run, or what it's waiting for; and for a tool whose worth hangs on a
+   * choice made when it's used, what it would do here (a Fertilizer, a Copy Machine, a
+   * Dumpster) or why it has no number. Null off the build and shop screens.
+   */
+  toolValue(state: RunState, id: ToolId): ToolValue | null;
+  /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
    * candidates before scoring the best few exactly (§4, Performance), checklist lines that
    * counts decide included (`specFlips`). Its hints mark plays whose payoff it can't see:
    * `setHint`, one that might complete a set; `yardHint`, a Fence that would close a new
    * fenced yard; `linkHint`, a Hallway that would link rooms anew; `specHint`, a piece that
-   * would join an unmet pair line's types.
+   * would join an unmet pair line's types. `opts`: what it reads beyond what the bots ask of
+   * it, as the value lines do (D-193).
    */
-  estimatePlay(state: RunState, play: PlaceAction): Estimate;
+  estimatePlay(state: RunState, play: PlaceAction, opts?: EstimateOptions): Estimate;
   /** The tile counts of the house's fenced yards. */
   fencedYards(state: RunState): readonly number[];
   /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
@@ -3004,7 +3035,67 @@ export function createRules(content: Content): Rules {
     return weekStarted(state) ? s : resolveTransforms(s, []);
   }
 
+  /**
+   * D-193: what no good's value reads. A click in the shop (buying, selling, a refresh, opening
+   * a crate) changes only these, so its values carry over from the state before.
+   */
+  const VALUE_BLIND: ReadonlySet<string> = new Set<keyof RunState>([
+    'budget',
+    'reserve',
+    'supplies',
+    'offers',
+    'servicesBought',
+    'bonusRerolls',
+    'demolitionsLeft',
+    'strikesLeft',
+    'struck',
+  ]);
+  let valuedLast: RunState | null = null;
+
+  /**
+   * D-193: the state a good's values are kept by: the last one valued, while this one differs
+   * from it only in what no value reads (VALUE_BLIND, and of the offers, only whether the ?debug
+   * panel forced them), else this one.
+   */
+  function valuedState(state: RunState): RunState {
+    const last = valuedLast;
+    if (last === state) return state;
+    if (last && sameForValues(last, state)) return last;
+    valuedLast = state;
+    return state;
+  }
+
+  function sameForValues(a: RunState, b: RunState): boolean {
+    if (!!a.offers?.shop?.forced !== !!b.offers?.shop?.forced) return false;
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const k of keys) {
+      if (!VALUE_BLIND.has(k) && a[k as keyof RunState] !== b[k as keyof RunState]) return false;
+    }
+    return true;
+  }
+
+  /** Each kind of value, kept by the state it's worked out from (valuedState). */
+  function kept<K, V>(
+    cache: WeakMap<RunState, Map<K, V>>,
+    state: RunState,
+    key: K,
+    work: (s: RunState, key: K) => V,
+  ): V {
+    const s = valuedState(state);
+    let known = cache.get(s);
+    if (!known) cache.set(s, (known = new Map()));
+    if (!known.has(key)) known.set(key, work(s, key));
+    return known.get(key)!;
+  }
+
+  /** Kept (D-193): Inspect asks again as it renders, as for a blueprint. */
+  const fixtureValues = new WeakMap<RunState, Map<FixtureId, FixtureValue | null>>();
+
   function fixtureValue(state: RunState, fixture: FixtureId): FixtureValue | null {
+    return kept(fixtureValues, state, fixture, valueFixture);
+  }
+
+  function valueFixture(state: RunState, fixture: FixtureId): FixtureValue | null {
     if (!Object.hasOwn(content.fixtures, fixture)) return null;
     const week = installWeek(state);
     if (!week) return null;
@@ -3047,22 +3138,63 @@ export function createRules(content: Content): Rules {
     return resolveTransforms(next, []);
   }
 
+  /**
+   * D-141's projection (D-193 shares it): the week a good bought now would first count in
+   * (installWeek's), then each week after it to the run's end with nothing more built, the
+   * house's timers running on. This phase's weeks left, then every later phase's; overtime can't
+   * be foreseen. Kept by state, so every good on a shelf walks the same weeks. Null on the
+   * screens installWeek has none for.
+   */
+  const idleRuns = new WeakMap<RunState, readonly RunState[] | null>();
+
+  function idleRun(state: RunState): readonly RunState[] | null {
+    let run = idleRuns.get(state);
+    if (run === undefined) {
+      const first = installWeek(state);
+      if (first) {
+        const weeks = weeksLeft(first) + Math.max(0, phaseCount(b) - 1 - first.phase) * W;
+        const out = [first];
+        for (let k = 1; k < weeks; k++) out.push(idleNextWeek(out[k - 1]!));
+        run = out;
+      } else run = null;
+      idleRuns.set(state, run);
+    }
+    return run;
+  }
+
+  /** Each of idleRun's weeks' Wow and budget as the house stands, for D-193's gains. */
+  const idleTallies = new WeakMap<RunState, { wow: number[]; budget: number[] }>();
+
+  function idleTotals(
+    state: RunState,
+    run: readonly RunState[],
+  ): { wow: number[]; budget: number[] } {
+    let t = idleTallies.get(state);
+    if (!t) {
+      t = { wow: [], budget: [] };
+      for (const s of run) {
+        const tally = tallyOf(s, s.house, false);
+        t.wow.push(tally.total);
+        t.budget.push(tally.budget);
+      }
+      idleTallies.set(state, t);
+    }
+    return t;
+  }
+
   const blueprintValues = new WeakMap<RunState, Map<BlueprintId, BlueprintValue | null>>();
 
   function blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null {
-    let known = blueprintValues.get(state);
-    if (!known) blueprintValues.set(state, (known = new Map()));
-    let value = known.get(id);
-    if (value === undefined) known.set(id, (value = valueBlueprint(state, id)));
-    return value;
+    return kept(blueprintValues, state, id, valueBlueprint);
   }
 
   function valueBlueprint(state: RunState, id: BlueprintId): BlueprintValue | null {
     if (!Object.hasOwn(content.blueprints, id)) return null;
     const def = content.blueprints[id];
     const scoring = def.modifiers.filter(scoresWeek);
-    const first = installWeek(state);
-    if (scoring.length === 0 || !first) return null;
+    const run = idleRun(state);
+    if (scoring.length === 0 || !run) return null;
+    const first = run[0]!;
     // As if bought now (its granted timers count from here), or as it is if it's held already.
     const held = first.blueprints.some((o) => o.id === id);
     const boughtWeek = first.week;
@@ -3076,17 +3208,15 @@ export function createRules(content: Content): Rules {
       return { wow: a.total - z.total, budget: a.budget - z.budget };
     };
 
-    // This phase's weeks left, then every later phase's (overtime can't be foreseen): each one
-    // tallied with and without it, with nothing more built.
-    const weeks = weeksLeft(first) + Math.max(0, phaseCount(b) - 1 - first.phase) * W;
+    // Each week left in the run, tallied with and without it, with nothing more built.
+    const weeks = run.length;
     const lastOnly = lastWeekOnly(scoring);
-    let cur = first;
     let shown: RunState | null = null;
     let overRun = 0;
     let budget = 0;
     let top = 0;
     let any = false;
-    for (let k = 0; k < weeks; k++) {
+    for (const cur of run) {
       // The week the line's gain is for: the first, or the first that's a phase's last.
       if (!shown && (!lastOnly || isLastWeek(cur))) shown = cur;
       const g = gainIn(cur);
@@ -3094,7 +3224,6 @@ export function createRules(content: Content): Rules {
       budget += g.budget;
       top = Math.max(top, g.wow);
       any ||= g.wow !== 0 || g.budget !== 0;
-      if (k < weeks - 1) cur = idleNextWeek(cur);
     }
     shown ??= first;
     const gain = gainIn(shown).wow;
@@ -3126,6 +3255,236 @@ export function createRules(content: Content): Rules {
       });
     }
     return value;
+  }
+
+  /**
+   * D-193: a piece's spots scored exactly when it's valued: the best few by the rules' estimate,
+   * as the shop bot's bestPlacement takes (sim/policies/shop.ts)...
+   */
+  const VALUE_TOP = 8;
+  /** ...and the next few the estimate flags as its blind spots, as greedy's shortlist adds. */
+  const VALUE_HINTS = 8;
+  const VIEW_ESTIMATE = { touching: true, earnNothing: true } as const;
+
+  const pieceValues = new WeakMap<RunState, Map<PieceId, PieceValue | null>>();
+
+  function pieceValue(state: RunState, id: PieceId): PieceValue | null {
+    return kept(pieceValues, state, id, valuePiece);
+  }
+
+  /**
+   * D-193: reserve piece `i`'s play that adds the most to the week: its legal spots ranked by
+   * the estimate, the best few and the few it flags as blind spots (a set, a fenced yard, a
+   * link, a pair line, the sun) scored exactly, and every Renovation and extension it could
+   * make, which are few. Ties go to the first: the estimate's order, then the lot's.
+   *
+   * A rhythm piece (the Pool) is ranked by the weeks it pays as well (`pay`): the estimate reads
+   * it as paying, and each play's exact gain this week and in its first paying week count by
+   * how many of the run's weeks are like each.
+   */
+  function bestPlayOf(
+    s: RunState,
+    i: number,
+    pay: { def: PieceDef; at: RunState; weeks: number; rest: number } | null,
+  ): { play: PlaceAction | RenovateAction | ExtendAction; gain: number } | null {
+    const def = content.pieces[s.reserve[i]!.id];
+    const estDef = pay?.def ?? def;
+    const pass = tallyOf(s, s.house, false);
+    const layout = layoutFor(s);
+    const mods = modsOf(s).active;
+    const checklist = { specs: clientOf(s).specs, phase: s.phase };
+    const ranked: { play: PlaceAction; est: Estimate }[] = [];
+    eachLegalSpot(s, 'reserve', i, (play) => {
+      const cells = placedCells(play.shape ?? def.shape, play.x, play.y, play.rot);
+      // What it would touch counts here (Creekside's creek), and a modifier that has it earn
+      // nothing, though the bots' estimate skips both.
+      const est = estimatePlay(
+        content,
+        layout,
+        pass,
+        estDef,
+        cells,
+        mods,
+        checklist,
+        VIEW_ESTIMATE,
+      );
+      ranked.push({ play, est });
+    });
+    // A stable sort: equal estimates keep the lot's order.
+    ranked.sort((p, q) => q.est.delta - p.est.delta);
+    const exact: (PlaceAction | RenovateAction | ExtendAction)[] = [];
+    let hints = 0;
+    ranked.forEach(({ play, est }, k) => {
+      if (k < VALUE_TOP) exact.push(play);
+      else if (
+        hints < VALUE_HINTS &&
+        (est.setHint || est.yardHint || est.linkHint || est.specHint || est.sunHint)
+      ) {
+        hints++;
+        exact.push(play);
+      }
+    });
+    for (const uid of renovateTargets(s, 'reserve', i)) {
+      exact.push({ t: 'renovate', from: 'reserve', i, uid });
+    }
+    exact.push(...extendSpots(s, 'reserve', i));
+    let best: { play: PlaceAction | RenovateAction | ExtendAction; gain: number } | null = null;
+    let bestScore = -Infinity;
+    for (const play of exact) {
+      const house = applyPlay(s, play).house;
+      const gain = tallyOf(s, house, false).total - pass.total;
+      // The paying week's base is the same for every play, so it's left out of the ranking.
+      const score = pay ? gain * pay.rest + tallyOf(pay.at, house, false).total * pay.weeks : gain;
+      if (score > bestScore) [best, bestScore] = [{ play, gain }, score];
+    }
+    return best;
+  }
+
+  function valuePiece(state: RunState, id: PieceId): PieceValue | null {
+    if (!Object.hasOwn(content.pieces, id)) return null;
+    const run = idleRun(state);
+    if (!run) return null;
+    const first = run[0]!;
+    // As if bought: one more piece in Your goods, which goes down without using the week.
+    const s: RunState = { ...first, reserve: [...first.reserve, { id }] };
+    // Built in the week valued, a rhythm first pays in its `every`th week (onCadence).
+    const every = rhythmOf(content.pieces[id]);
+    const paying = every === null ? null : Math.floor(run.length / every);
+    const pay =
+      every !== null && paying
+        ? {
+            def: payingDef(content.pieces[id])!,
+            at: run[every - 1]!,
+            weeks: paying,
+            rest: run.length - paying,
+          }
+        : null;
+    const best = bestPlayOf(s, s.reserve.length - 1, pay);
+    if (!best) return null;
+    const { play } = best;
+    // The house with it, through each week left: its own timers run on with the rest.
+    const base = idleTotals(state, run);
+    let cur: RunState = { ...first, house: applyPlay(s, play).house };
+    const gains: number[] = [];
+    let overRun = 0;
+    let budget = 0;
+    for (let k = 0; k < run.length; k++) {
+      const tally = tallyOf(cur, cur.house, false);
+      const g = tally.total - base.wow[k]!;
+      gains.push(g);
+      overRun += g;
+      budget += tally.budget - base.budget[k]!;
+      if (k < run.length - 1) cur = idleNextWeek(cur);
+    }
+    const value: PieceValue = {
+      how: play.t,
+      gain: gains[0]!,
+      weeksLeft: run.length,
+      overRun,
+      budget,
+    };
+    if (overRun === 0 && budget === 0 && gains.every((g) => g === 0)) {
+      // Nothing at its best spot: say so if something has it earn nothing there.
+      const placed: RunState = { ...first, house: applyPlay(s, play).house };
+      const uid =
+        play.t === 'place'
+          ? placed.house.pieces.find((p) => !first.house.pieces.some((q) => q.uid === p.uid))?.uid
+          : play.uid;
+      const why = uid === undefined ? null : zeroedBy(placed, uid);
+      if (why) value.nothing = why;
+    }
+    if (play.t === 'place') {
+      value.spot = play.shape
+        ? { x: play.x, y: play.y, rot: play.rot, shape: play.shape }
+        : { x: play.x, y: play.y, rot: play.rot };
+      const pays = every === null ? undefined : gains[every - 1];
+      if (every !== null && pays !== undefined && pays > value.gain) {
+        value.rhythm = { every, gain: pays };
+      }
+    } else {
+      if (play.t === 'extend') value.spot = { x: play.x, y: play.y, rot: play.rot };
+      const room = first.house.pieces.find((p) => p.uid === play.uid)!;
+      value.room = { uid: room.uid, defId: room.defId };
+    }
+    return value;
+  }
+
+  /** What has a placed piece earn nothing (a change order's puppies on Flower Beds), if any. */
+  function zeroedBy(state: RunState, uid: number): string | null {
+    const layout = layoutFor(state);
+    for (const m of modsOf(state).active) {
+      if (
+        m.mod.kind === 'earnNothing' &&
+        matchesPiece(content, layout, m.mod.target, uid, m.host)
+      ) {
+        return sourceName(content, m.source);
+      }
+    }
+    return null;
+  }
+
+  const toolValues = new WeakMap<RunState, Map<ToolId, ToolValue | null>>();
+
+  function toolValue(state: RunState, id: ToolId): ToolValue | null {
+    return kept(toolValues, state, id, valueTool);
+  }
+
+  function valueTool(state: RunState, id: ToolId): ToolValue | null {
+    if (!Object.hasOwn(content.tools, id)) return null;
+    const run = idleRun(state);
+    if (!run) return null;
+    const first = run[0]!;
+    const use = content.tools[id].use;
+    // As if bought and used in the week valued, as tools.ts uses it.
+    const s: RunState = { ...first, supplies: [...first.supplies, { kind: 'tool', id }] };
+    const used = (): RunState =>
+      useTool(toolCtx, s, { t: 'useTool', i: s.supplies.length - 1 }, []);
+    const before = tallyOf(first, first.house, false);
+    switch (use.kind) {
+      case 'weekModifiers': {
+        const after = used();
+        const tally = tallyOf(after, after.house, false);
+        const gain = tally.total - before.total;
+        if (gain !== 0) return { kind: 'week', gain };
+        const stats = { milestonesEarly: after.milestonesEarly };
+        const needs = modifiersNeeds(content, use.modifiers, layoutFor(after), tally, stats);
+        return { kind: 'needs', needs };
+      }
+      case 'levelSet': {
+        // The level lasts the run: each week left, with it and without.
+        const setLevels = used().setLevels;
+        const base = idleTotals(state, run);
+        let gain = 0;
+        let overRun = 0;
+        run.forEach((cur, k) => {
+          const g = tallyOf({ ...cur, setLevels }, cur.house, false).total - base.wow[k]!;
+          if (k === 0) gain = g;
+          overRun += g;
+        });
+        if (gain === 0 && overRun === 0) {
+          const progress = setProgressOf(content, layoutFor(first), use.set);
+          return { kind: 'needs', needs: setNeeds(content, use.set, progress), set: use.set };
+        }
+        const level = setLevels[use.set]!;
+        return { kind: 'level', set: use.set, level, gain, weeksLeft: run.length, overRun };
+      }
+      case 'advanceTimers': {
+        const after = used();
+        const grows = tallyOf(after, after.house, false).total > before.total;
+        const note = timersNote(content, first.house, first.week, use.weeks, grows);
+        return { kind: 'note', note };
+      }
+      case 'copy':
+        return { kind: 'note', note: copyNote(content, before, first.house) };
+      case 'reward':
+        return use.reward.demolitions
+          ? { kind: 'note', note: clearNote(content, first.house) }
+          : null;
+      case 'extraPlay':
+      case 'specialHand':
+      case 'move':
+        return { kind: 'note', note: NO_NUMBER[use.kind] };
+    }
   }
 
   function legalPlacements(state: RunState): PlaceAction[] {
@@ -3724,7 +4083,9 @@ export function createRules(content: Content): Rules {
     installGains,
     fixtureValue,
     blueprintValue,
-    estimatePlay: (state, play) => {
+    pieceValue,
+    toolValue,
+    estimatePlay: (state, play, opts) => {
       const def = placeDef(state, play);
       if (!def) throw new IllegalAction('There is no card there.');
       return estimatePlay(
@@ -3735,6 +4096,7 @@ export function createRules(content: Content): Rules {
         placedCells(play.shape ?? def.shape, play.x, play.y, play.rot),
         modsOf(state).active,
         { specs: clientOf(state).specs, phase: state.phase },
+        opts,
       );
     },
     fencedYards: (state) => layoutFor(state).fencedSizes,
