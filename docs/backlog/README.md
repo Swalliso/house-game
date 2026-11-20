@@ -1,4 +1,4 @@
-# Backlog: stories from the 2026-11-16 idea review and the 2026-11-20 shop review
+# Backlog: stories from the 2026-11-16 idea review and the 2026-11-20 shop and piece reviews
 
 On 2026-11-15 and 16 a review asked "what else might we add?". It brainstormed 89 additions,
 checked each one against `docs/decisions.md` and the code, and had a skeptical reviewer score
@@ -8,6 +8,11 @@ that would show whether the idea is fun, written so an agent can pick it up cold
 On 2026-11-20 a review of the goods, rooms and fixtures people rarely use
 (https://claude.ai/artifact/VF9nL6jQ4sVpgYri86rm1X) added S22 to S30, at the user's ask: a
 shop that's more exciting, and fixes for the pieces and fixtures that rarely pay.
+
+Later that day a review of how pieces interact
+(https://claude.ai/artifact/Egt1U8BQdXuqdacCpCueXE) added S31 to S33, the three the user
+picked from its ranked options: pieces whose effects reach 2 tiles, the shop's special pieces
+in the hand, and pieces that read a kind of piece instead of one name.
 
 A story isn't decided until it's built and played. Building one adds a Proposed entry, and the
 user's playtest decides whether it stays.
@@ -129,6 +134,9 @@ reading the code, not from building anything.
 | [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
 | [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Not started; the user OK'd it 2026-11-20 |
 | [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Built 2026-11-20 (D-198); waiting on the user's playtest |
+| [S31](s31-landmarks-with-reach.md) | A Pool, a Library, a Henhouse and a new Fountain pay what's within 2 tiles, shaded while you place them | M | Rules, content, UI and one sprite | | Not started; the user picked it 2026-11-20 |
+| [S32](s32-specials-in-the-hand.md) | The shop's special pieces turn up in the hand from Framing, once each pays its way | S per stage | Content and a little rules | Stage 2: S31 and S25 played | Not started; the user picked it 2026-11-20 |
+| [S33](s33-categories-not-names.md) | The Patio, Dining Room and Doghouse read a kind of piece, not one name | S | Content | | Not started; the user picked it 2026-11-20 |
 
 ## The groups
 
@@ -176,6 +184,21 @@ feels flat for the same reason. Its order: the shop first (S22, S23), then the b
   trial, and once the user has chosen which to keep, one fit by D-169's method follows.
 - S15 is replaced by S26: the user keeps the Storage Unit and the Tool Belt (2026-11-20), and
   S26 makes them deliver instead.
+
+**S31 to S33: deeper piece interactions (2026-11-20).** The review found that almost every piece
+reads only the pieces it touches, so 53% of placements change nothing else on the board. Its
+order: reach first (S31), then the special pieces in the hand (S32), with categories (S33)
+alongside.
+
+- S32 has two stages. The first (the Henhouse and the Library) can go at any time. The second
+  waits for the user's playtest of S31 and S25, whose changes are what make the Pool, the
+  Playroom and the Hot Tub worth dealing, and deals only the pieces its trial shows are played.
+- S31 and S33 leave alone the pieces S25 changes, so they can go beside it.
+- As with S15 to S30, none of them changes the milestone targets. Each reports a paired-seed
+  trial, and once the user has chosen which to keep, one fit by D-169's method follows.
+- The review ranked four more options lower, and they aren't stories yet: views at range
+  (D-166's follow-up, which changes D-035), pieces that count the whole house, garden paths
+  that link yard pieces, and chains (D-094, Parked).
 
 ## Not in this backlog
 
