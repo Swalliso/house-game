@@ -1,12 +1,16 @@
-# Backlog: 21 stories from the 2026-11-16 idea review
+# Backlog: stories from the 2026-11-16 idea review and the 2026-11-20 shop review
 
 On 2026-11-15 and 16 a review asked "what else might we add?". It brainstormed 89 additions,
 checked each one against `docs/decisions.md` and the code, and had a skeptical reviewer score
-it. These are the 21 it rated worth trying. Each story is the smallest version of its idea that
-would show whether the idea is fun, written so an agent can pick it up cold.
+it. S01 to S21 are the 21 it rated worth trying. Each story is the smallest version of its idea
+that would show whether the idea is fun, written so an agent can pick it up cold.
 
-None of this is decided. No story has an entry in the decision log yet. Building one adds a
-Proposed entry, and the user's playtest decides whether it stays.
+On 2026-11-20 a review of the goods, rooms and fixtures people rarely use
+(https://claude.ai/artifact/VF9nL6jQ4sVpgYri86rm1X) added S22 to S30, at the user's ask: a
+shop that's more exciting, and fixes for the pieces and fixtures that rarely pay.
+
+A story isn't decided until it's built and played. Building one adds a Proposed entry, and the
+user's playtest decides whether it stays.
 
 ## How to pick up a story
 
@@ -79,7 +83,8 @@ These are on top of CLAUDE.md's rules.
 ## Logging it and opening the pull request
 
 - Add a decision-log entry, Proposed, with the next free number (D-175 when this was written;
-  D-175 to D-183 went to S01 to S09 on 2026-11-16, so D-184 next; check develop), in the same
+  D-175 to D-183 went to S01 to S09 on 2026-11-16. On 2026-11-20 D-192 to D-198 were held for
+  S22, S23, S24, S25, S27, S29 and S30; check develop and the open pull requests), in the same
   pull request as the change. Put a dated note on each entry the story lists under **Decision
   log**.
 - Branch `phase/<slug>`, a phase pull request into develop, the PR monitor on, auto-merge
@@ -108,13 +113,22 @@ reading the code, not from building anything.
 | [S12](s12-dusk-when-you-win.md) | Evening falls and the rooms light up after a win | S, then M | UI only | S01 played; a mockup the user likes | Not started; S01 played 2026-11-18 |
 | [S13](s13-listing-on-the-end-screen.md) | The end screen writes a short listing for the house | S | UI only | The user's OK on the tone | Not started |
 | [S14](s14-pin-one-card.md) | Keep one card for next week | M | Rules and UI, no re-fit | | Accepted 2026-11-20: #111 (D-186) |
-| [S15](s15-trim-the-upgrade-shelf.md) | The upgrade slot stops offering two dead cards | S | Content | The user's answer | Not started |
+| [S15](s15-trim-the-upgrade-shelf.md) | The upgrade slot stops offering two dead cards | S | Content | The user's answer | Replaced by S26 on 2026-11-20: the user keeps both upgrades |
 | [S16](s16-wrong-delivery.md) | A free yard showpiece arrives once a run | M | Rules and content | D-171's verdict | Built 2026-11-20 (D-188, #110); waiting on their playtest on /dev/ |
 | [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Not started |
 | [S18](s18-neighbors-ask.md) | A neighbor asks for Fence along their side | L | Rules and content | The batch | Not started |
 | [S19](s19-one-scored-visitor.md) | One visitor's wish, shown in the last shop | L | Rules and content | S01 landed | Not started |
 | [S20](s20-the-bigsbys.md) | A client whose family keeps arriving | L | Content and a little rules | A played spike | Not started |
 | [S21](s21-house-already-on-the-lot.md) | Some lots start with a tired cottage | L | Rules, content and art | D-174's and D-145's verdicts | Not started; D-174 Accepted 2026-11-18, D-145 still Proposed |
+| [S22](s22-shop-for-your-house.md) | The shelf leans toward goods that can pay in your house | M | Rules and content | Before S27 | Not started |
+| [S23](s23-every-good-shows-its-worth.md) | Every piece and tool on the shelf says what it's worth | M to L | Rules views and UI | | Not started |
+| [S24](s24-fixtures-always-pay.md) | Five fixtures pay something wherever they fit | S | Content | | Built 2026-11-20 (D-194, `phase/fixtures-always-pay`); waiting on the user's playtest |
+| [S25](s25-pieces-that-pay-off.md) | A Sapling plants up to three; the Garage, Fire Pit, Playroom and Hot Tub pay more often | M | Content | | Not started |
+| [S26](s26-upgrades-that-deliver.md) | Storage Unit, Tool Belt and Drafting Table bring something you can see | M | Rules and content | The user's playtest of S16 | Not started |
+| [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Not started |
+| [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
+| [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Not started; the user OK'd it 2026-11-20 |
+| [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Not started; the user OK'd it 2026-11-20 |
 
 ## The groups
 
@@ -144,6 +158,24 @@ still Proposed when this was written. *2026-11-18: all four are Accepted (playte
 - When the user has chosen which ones to keep, merge those into one batch branch and fit
   once, by D-169's method (2,000 runs each of `sim-*`, `check-*` and `hold-*`, the clients'
   factors, and `firstTargetPct`).
+
+**S22 to S30: the shop and content review (2026-11-20).** The review found that the goods
+people skip are the ones whose payoff is late, conditional or invisible, and that the shop
+feels flat for the same reason. Its order: the shop first (S22, S23), then the blank cards
+(S24, S25), then the rest.
+
+- S22, S23 and S27 all change the shop (`shop.ts`, `ShopScreen.tsx`). Merge one before
+  building on the next, and S27 after S22.
+- S24 and S25 are content passes that each measure their own effect, so they can go side by
+  side.
+- S26 waits for the user's playtest of S16, so they judge one new source of free cards at a
+  time. S28 waits for the playtest of S22 to S25, then the user's pick.
+- S29 and S30 change Accepted decisions (D-160 and D-121; D-101). The user OK'd both on
+  2026-11-20.
+- As with S15 to S21, none of them changes the milestone targets. Each reports a paired-seed
+  trial, and once the user has chosen which to keep, one fit by D-169's method follows.
+- S15 is replaced by S26: the user keeps the Storage Unit and the Tool Belt (2026-11-20), and
+  S26 makes them deliver instead.
 
 ## Not in this backlog
 

@@ -9,6 +9,7 @@ import type {
   SpecDef,
 } from './index.ts';
 import { followedLines } from './estimate.ts';
+import { withFixture } from './fixtures.ts';
 import { computeLayout } from './layout.ts';
 import { lotFromRows } from './lot.ts';
 import { createRules, type Rules } from './run.ts';
@@ -123,6 +124,25 @@ describe('the greedy bot’s cheap estimate', () => {
     );
     expect(est(paid, two, place(0, 2, 3))).toBe(exactPaid(two, place(0, 2, 3)));
     expect(est(paid, two, place(0, 2, 3))).toBe(est(rules, two, place(0, 2, 3)));
+  });
+
+  it('sees a fixture’s grant to its own room (D-194: the Kitchen Island)', () => {
+    // TEST_CONTENT's Island, giving its Kitchen a second +2 per touching Dining Room.
+    const grant = {
+      kind: 'grantEffect',
+      target: { host: true },
+      effect: { kind: 'neighbor', match: { piece: 'diningRoom' }, amount: 2 },
+    } as const;
+    const island = { ...C.fixtures.kitchenIsland, modifiers: [grant] };
+    const granted = createRules({ ...C, fixtures: { ...C.fixtures, kitchenIsland: island } });
+    const bare = built([['kitchen', 2, 2]], 'diningRoom');
+    const s = { ...bare, house: withFixture(bare.house, 1, 'kitchenIsland', 1) };
+    // A Dining Room beside it: the Kitchen's +2, and the Island's +2, at its aura's +50%: 6.
+    const est = granted.estimatePlay(s, place(0, 4, 2)).delta;
+    expect(est).toBe(granted.scoreOnly(s, place(0, 4, 2)) - granted.scoreOnly(s, null));
+    expect(est).toBe(6);
+    // The Kitchen without it: 3.
+    expect(granted.estimatePlay(bare, place(0, 4, 2)).delta).toBe(3);
   });
 
   it('sees rooms linked through a Hallway', () => {

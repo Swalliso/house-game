@@ -5,6 +5,8 @@
 // a pond ends; outside.ts draws the creek flowing on. The water has its own small canvas over its
 // bounding box, redrawn only to change frames; its shore's grass is keyed out, so the terrain
 // canvas's grass shows around it, and the blades at the water's edge take that grass's colors.
+// D-190: lily pads in a lake's shallows too (its cells beside the lot's open ground), and logs
+// adrift on a lake and on a big pond.
 
 import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
@@ -18,13 +20,29 @@ import {
   type Inside,
   type QuarterPiece,
 } from '../autotile.ts';
-import { drawSprite, drawSubtile } from './atlas.ts';
+import { drawSprite, drawSubtile, sheetRect } from './atlas.ts';
 import { inLook, lotLook, type Look } from './biome.ts';
 import type { SubtileSprite } from './grass.ts';
 import { tileHash } from './hash.ts';
 
 /** About one open-water subtile of a pond in this many gets lily pads. */
 export const LILY_EVERY = 4;
+/**
+ * D-190: about one open-water subtile of a lake's shallows (its cells beside open ground) in
+ * this many gets them.
+ */
+export const LAKE_LILY_EVERY = 5;
+/**
+ * D-190: the logs adrift, longest first: two on a lake, and one on a pond of LOG_POND_CELLS
+ * cells or more.
+ */
+export const LOGS = [
+  'drift-log-2',
+  'drift-log-0',
+  'drift-log-1',
+] as const satisfies readonly SpriteId[];
+export const LOG_POND_CELLS = 12;
+const LOG_SALT = 0x0a11;
 const LILIES = ['lily-0', 'lily-1', 'lily-2'] as const satisfies readonly SpriteId[];
 const SIDES = [
   [0, -1],
@@ -55,6 +73,8 @@ export interface WaterPlan {
   /** A piece of the shore set on every subtile of water, in lot subtiles. */
   readonly tiles: readonly WaterTile[];
   readonly lilies: readonly SubtileSprite[];
+  /** D-190: logs adrift, each with its top-left on a subtile and its box over open water. */
+  readonly logs: readonly SubtileSprite[];
 }
 
 /**
@@ -87,6 +107,18 @@ export function waterCells(lot: Lot): Inside {
 export function waterPlan(lot: Lot, salt = 0): WaterPlan {
   const { width: w, height: h } = lot;
   const pond = (x: number, y: number) => terrainAt(lot, x, y) === 'pond';
+  // A lake's shallows: a cell of it beside open ground of the lot, sides or corners.
+  const shallows = (x: number, y: number) => {
+    if (terrainAt(lot, x, y) !== 'lake') return false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && terrainAt(lot, nx, ny) === null) return true;
+      }
+    }
+    return false;
+  };
   const water = bySubtile(waterCells(lot));
   const tiles: WaterTile[] = [];
   const lilies: SubtileSprite[] = [];
@@ -107,13 +139,86 @@ export function waterPlan(lot: Lot, salt = 0): WaterPlan {
       const piece = quarterPiece(mask, sx % SUB === SUB - 1, sy % SUB === SUB - 1);
       tiles.push({ sx, sy, piece });
       const hash = tileHash(sx, sy, salt);
-      if (mask === 255 && pond(x, y) && hash % LILY_EVERY === 0) {
+      if (
+        mask === 255 &&
+        ((pond(x, y) && hash % LILY_EVERY === 0) ||
+          (shallows(x, y) && hash % LAKE_LILY_EVERY === 0))
+      ) {
         lilies.push({ sx, sy, id: LILIES[(hash >>> 3) % LILIES.length]! });
       }
     }
   }
   const box = x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
-  return { box, look: lotLook(lot), tiles, lilies };
+  return { box, look: lotLook(lot), tiles, lilies, logs: driftLogs(lot, tiles, lilies, salt) };
+}
+
+/**
+ * D-190: two logs adrift on a lake and one on a pond of LOG_POND_CELLS or more, longest first,
+ * each where its box and a subtile round it lie on the lot's open water, a cell in from the lot's
+ * edge and clear of the lilies and the other log. Their places are the water's subtiles in an
+ * order hashed from the run's salt.
+ */
+function driftLogs(
+  lot: Lot,
+  tiles: readonly WaterTile[],
+  lilies: readonly SubtileSprite[],
+  salt: number,
+): SubtileSprite[] {
+  const sw = lot.width * SUB;
+  const sh = lot.height * SUB;
+  const open = new Set<number>();
+  for (const t of tiles)
+    if (t.piece.block === 'outer' && t.piece.col === 1 && t.piece.row === 1)
+      open.add(t.sy * sw + t.sx);
+  for (const l of lilies) open.delete(l.sy * sw + l.sx);
+  const logs: SubtileSprite[] = [];
+  for (const body of waterBodies(lot)) {
+    const want =
+      body.kind === 'lake'
+        ? 2
+        : body.kind === 'pond' && body.cells.length >= LOG_POND_CELLS
+          ? 1
+          : 0;
+    if (want === 0) continue;
+    const cells = new Set(body.cells);
+    const places = tiles
+      .filter((t) => cells.has(Math.floor(t.sy / SUB) * lot.width + Math.floor(t.sx / SUB)))
+      .map((t) => ({ sx: t.sx, sy: t.sy, h: tileHash(t.sx, t.sy, salt ^ LOG_SALT) }))
+      .sort((a, b) => a.h - b.h || a.sy - b.sy || a.sx - b.sx);
+    let placed = 0;
+    for (const p of places) {
+      if (placed === want) break;
+      const id = LOGS[placed % LOGS.length]!;
+      const r = sheetRect(id);
+      // The log's box and a subtile round it, a cell in from the lot's edge.
+      const left = p.sx - 1;
+      const top = p.sy - 1;
+      const right = p.sx + Math.ceil(r.w / SUBTILE);
+      const bottom = p.sy + Math.ceil(r.h / SUBTILE);
+      if (left < SUB - 1 || top < SUB - 1 || right > sw - SUB || bottom > sh - SUB) continue;
+      let clear = true;
+      for (let y = top; y <= bottom && clear; y++) {
+        for (let x = left; x <= right && clear; x++) clear = open.has(y * sw + x);
+      }
+      if (!clear) continue;
+      for (let y = top; y <= bottom; y++)
+        for (let x = left; x <= right; x++) open.delete(y * sw + x);
+      logs.push({ sx: p.sx, sy: p.sy, id });
+      placed++;
+    }
+  }
+  return logs;
+}
+
+/** The subtiles a log's box covers, as indices on the lot's subtile grid. */
+function logSubtiles(log: SubtileSprite, subtilesWide: number): number[] {
+  const r = sheetRect(log.id);
+  const out: number[] = [];
+  for (let j = 0; j < Math.ceil(r.h / SUBTILE); j++) {
+    for (let i = 0; i < Math.ceil(r.w / SUBTILE); i++)
+      out.push((log.sy + j) * subtilesWide + log.sx + i);
+  }
+  return out;
 }
 
 /**
@@ -144,6 +249,7 @@ export function paintWater(
     );
   }
   for (const l of plan.lilies) drawSprite(ctx, img, l.id, l.sx * SUBTILE - ox, l.sy * SUBTILE - oy);
+  for (const l of plan.logs) drawSprite(ctx, img, l.id, l.sx * SUBTILE - ox, l.sy * SUBTILE - oy);
 }
 
 /** The shore set a piece comes from: the 3 × 3 block or the inner corners. */
@@ -317,6 +423,8 @@ export function waterLife(
   const sw = w * SUB;
   const pieces = new Map(plan.tiles.map((t) => [t.sy * sw + t.sx, t.piece]));
   const lilies = new Map(plan.lilies.map((l) => [l.sy * sw + l.sx, l.id]));
+  // D-190: no fish shows over a log adrift.
+  const logged = new Set(plan.logs.flatMap((l) => logSubtiles(l, sw)));
   const under = new Set(covered);
   const frogs: WaterCritter[] = [];
   const fish: WaterCritter[] = [];
@@ -340,7 +448,13 @@ export function waterLife(
         const sy = cy * SUB + Math.floor(k / SUB);
         const lily = lilies.get(sy * sw + sx);
         if (lily === FROG_PAD.id) pads.push({ sx, sy, h: tileHash(sx, sy, salt ^ FROG_SALT) });
-        if (lily || under.has(i) || !isPiece(pieces.get(sy * sw + sx), 1, 1)) continue;
+        if (
+          lily ||
+          logged.has(sy * sw + sx) ||
+          under.has(i) ||
+          !isPiece(pieces.get(sy * sw + sx), 1, 1)
+        )
+          continue;
         const x = sx * SUBTILE;
         const y = sy * SUBTILE;
         const h = tileHash(x, y, salt ^ FISH_SALT);

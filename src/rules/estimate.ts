@@ -39,7 +39,9 @@
 // piece and its neighbors as their own effects do (Cozy's rooms touched; a room reaching a
 // "touching 2+" threshold), and A Bathroom nearby from the house's matching as it stands: a new
 // Bedroom is served if a Bathroom in reach has room, a new Bathroom serves unserved Bedrooms in
-// reach up to its capacity. Other grants (Good Bones) stay out, as before.
+// reach up to its capacity. A fixture's grant to its own piece counts as that piece's own
+// effects do (D-194: the Kitchen Island's second +2 per Dining Room or Herb Garden). Other grants
+// (Good Bones) stay out, as before.
 
 import type {
   Cell,
@@ -365,9 +367,11 @@ export function estimatePlay(
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
   const near = opts.touching ? matchN : undefined;
   const grants = houseGrants(mods);
-  /** The room rules' effects on a placed piece (D-165). */
-  const grantedOn = (uid: number): Effect[] =>
-    grants.filter((g) => matchesPiece(content, layout, g.target, uid)).map((g) => g.effect);
+  /** The room rules' effects on a placed piece (D-165), and its fixture's grants (D-194). */
+  const grantedOn = (uid: number): Effect[] => [
+    ...grants.filter((g) => matchesPiece(content, layout, g.target, uid)).map((g) => g.effect),
+    ...fixtureGrants(content, layout, uid),
+  ];
   /** Takers the new piece would serve, per served effect's key (its capacity runs out). */
   const newServes = new Map<string, number>();
   /** What a placed piece's effect gains from the new piece as a neighbor, under its cap. */
@@ -619,6 +623,15 @@ type Served = Extract<Effect, { kind: 'served' }>;
 function houseGrants(mods: readonly ActiveMod[]): Grant[] {
   return mods.flatMap((m) =>
     m.source.kind === 'house' && m.mod.kind === 'grantEffect' ? [m.mod] : [],
+  );
+}
+
+/** D-194: what a placed piece's fixture grants it (the Kitchen Island's line). */
+function fixtureGrants(content: Content, layout: Layout, uid: number): Effect[] {
+  const id = layout.byUid.get(uid)?.fixture?.id;
+  if (!id) return [];
+  return content.fixtures[id].modifiers.flatMap((m) =>
+    m.kind === 'grantEffect' && matchesPiece(content, layout, m.target, uid, uid) ? [m.effect] : [],
   );
 }
 
