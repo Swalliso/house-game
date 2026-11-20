@@ -21,6 +21,7 @@ import type {
   Tally,
   ToolUse,
 } from './index.ts';
+import { shapeCells } from './grid.ts';
 import { protectedTerrain } from './lot.ts';
 import { ageOf } from './scoring.ts';
 import { article, countedNames, plural } from './text.ts';
@@ -70,8 +71,9 @@ export function setNeeds(content: Content, set: SetId, progress: SetProgress | n
 
 /**
  * What a Fertilizer used in week `week` would bring forward: the piece it changes soonest,
- * "Your Sapling becomes a Tree the week after you use it", or "Your 2 Saplings become Trees 2
- * weeks sooner". A piece changes at a week's start, so the soonest is the week after it's used.
+ * "Your Sapling becomes a Tree the week after you use it", "Your Sapling becomes 3 Trees 2 weeks
+ * sooner" (a pack's tiles each become one, D-195), or "Your 2 Saplings become Trees 2 weeks
+ * sooner". A piece changes at a week's start, so the soonest is the week after it's used.
  * `grows` says the week's tally would rise with it (a granted growth timer): then that's the
  * line. Otherwise there's nothing on the lot for it yet.
  */
@@ -82,10 +84,18 @@ export function timersNote(
   weeks: number,
   grows: boolean,
 ): string {
-  let best: { defId: PieceId; into: string; at: number; sooner: number } | null = null;
+  let best: {
+    defId: PieceId;
+    into: string;
+    /** Tiles that each become a feature: a Sapling pack's 1 to 3 Trees (D-195). */
+    tiles: number;
+    at: number;
+    sooner: number;
+  } | null = null;
   let count = 0;
   for (const piece of house.pieces) {
-    const t = content.pieces[piece.defId].effects.find((e) => e.kind === 'transform');
+    const def = content.pieces[piece.defId];
+    const t = def.effects.find((e) => e.kind === 'transform');
     if (t?.kind !== 'transform') continue;
     const age = ageOf(piece, week);
     const now = week + Math.max(1, t.afterWeeks - age);
@@ -93,10 +103,11 @@ export function timersNote(
     if (at >= now) continue;
     const into =
       'piece' in t.into ? content.pieces[t.into.piece].name : content.features[t.into.feature].name;
+    const tiles = 'feature' in t.into ? shapeCells(piece.shape ?? def.shape, 0).length : 1;
     if (best && best.defId === piece.defId && best.at === at) {
       count++;
     } else if (!best || at < best.at) {
-      best = { defId: piece.defId, into, at, sooner: now - at };
+      best = { defId: piece.defId, into, tiles, at, sooner: now - at };
       count = 1;
     }
   }
@@ -108,9 +119,9 @@ export function timersNote(
         : best.sooner === 1
           ? 'a week sooner'
           : `${best.sooner} weeks sooner`;
-    return count > 1
-      ? `Your ${count} ${plural(name)} become ${plural(best.into)} ${when}`
-      : `Your ${name} becomes ${article(best.into)} ${when}`;
+    if (count > 1) return `Your ${count} ${plural(name)} become ${plural(best.into)} ${when}`;
+    const what = best.tiles > 1 ? `${best.tiles} ${plural(best.into)}` : article(best.into);
+    return `Your ${name} becomes ${what} ${when}`;
   }
   if (grows) return `Every growing piece here jumps ${weeks} weeks ahead`;
   return 'Nothing here grows or changes yet';

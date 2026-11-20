@@ -1,9 +1,10 @@
-// Packs (D-106): the Fence and the Driveway place 1 to `maxTiles` connected tiles from one card,
-// as one piece with its own shape. A pack's play carries its tiles (PlaceAction.shape: (x, y) is
-// their top-left corner, at rot 0), and the placed piece keeps them (PlacedPiece.shape, turned by
-// rot like any shape). Here: a pack play's legality and its reasons; one piece in the house, the
-// layout, the events, and describePiece; the Fence's one enclosure payout; the Driveway's street
-// rule, the creek, and the Garage; demolition and the Moving Truck; preview against the tally;
+// Packs (D-106): the Fence and the Driveway (and since D-195 the Sapling) place 1 to `maxTiles`
+// connected tiles from one card, as one piece with its own shape. A pack's play carries its
+// tiles (PlaceAction.shape: (x, y) is their top-left corner, at rot 0), and the placed piece
+// keeps them (PlacedPiece.shape, turned by rot like any shape). Here: a pack play's legality and
+// its reasons; one piece in the house, the layout, the events, and describePiece; the Fence's
+// one enclosure payout; the Driveway's street rule, the creek, and the Garage; the content's
+// Sapling and its Trees; demolition and the Moving Truck; preview against the tally;
 // legalPlacements and cardFits; Weekend Crew; run codes and replay.
 //
 // Rules tests use TEST_CONTENT (src/rules/testing.ts): the Fence takes up to 8 tiles and
@@ -33,7 +34,15 @@ import { computeLayout } from './layout.ts';
 import { REASONS } from './placement.ts';
 import { createRules, IllegalAction } from './run.ts';
 import { base64urlEncode, contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
-import { emptyRows, houseFrom, setup, TEST_CONTENT as C, type Placement } from './testing.ts';
+import { CONTENT } from '../content/index.ts';
+import {
+  emptyRows,
+  houseFrom,
+  setup,
+  TEST_CONTENT as C,
+  withPieces,
+  type Placement,
+} from './testing.ts';
 
 /** TEST_CONTENT with targets far out of reach and 4-week phases, so no tally ends a phase. */
 const BIG: Content = {
@@ -356,6 +365,62 @@ describe('the Driveway pack', () => {
     const garage = R.currentTally(after).pieces.find((p) => p.defId === 'garage')!;
     expect(garage.unmet).toBeUndefined();
     expect(garage.earned).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+
+// D-195: the content's Sapling is a pack of one to three, one piece earning +1, and each of its
+// tiles becomes a Tree.
+describe('the Sapling pack', () => {
+  const SAP = withPieces({ sapling: CONTENT.pieces.sapling }, BIG);
+  const RS = createRules(SAP);
+
+  it('plants three tiles as one piece, and each becomes a Tree at its timer', () => {
+    const s0: RunState = {
+      ...RS.newRun(setup('packs')),
+      house: houseFrom(SAP, emptyRows(12, 12)),
+      hand: [pc('sapling'), pc('bedroom'), pc('fence')],
+      reserve: [],
+    };
+    // An L of three is a pack too; four tiles are one too many.
+    expect(RS.checkPlay(s0, pack(0, 4, 4, ['##', '#.'])).legal).toBe(true);
+    expect(RS.checkPlay(s0, pack(0, 4, 4, ['####'])).legal).toBe(false);
+    const placed = RS.apply(s0, pack(0, 4, 4, ['###']));
+    let s = placed.state;
+    expect(s.house.pieces).toHaveLength(1);
+    expect(s.house.pieces[0]).toMatchObject({ defId: 'sapling', shape: ['###'] });
+    // One piece, so one +1, however many tiles.
+    const week1 = placed.events.find((e) => e.t === 'tally')!.tally;
+    expect(week1.pieces.map((p) => [p.defId, p.earned])).toEqual([['sapling', 1]]);
+    expect(RS.pieceTimers(s, 1)).toEqual([`Becomes 3 Trees at the start of week 5`]);
+    // Pass to week 5: at its start, each of the three tiles becomes a Tree.
+    const transformed: Extract<GameEvent, { t: 'transformed' }>[] = [];
+    while (s.week < 5) {
+      const { state, events } = RS.apply(s, { t: 'pass' });
+      transformed.push(...eventsOf(events, 'transformed'));
+      s = state;
+    }
+    expect(transformed).toHaveLength(1);
+    expect(sortCells(transformed[0]!.cells)).toEqual(tilesOf(['###'], 4, 4));
+    expect(s.house.pieces).toEqual([]);
+    for (const x of [4, 5, 6]) expect(s.house.lot.terrain[4 * 12 + x]).toBe('tree');
+    expect(s.house.lot.terrain[4 * 12 + 7]).not.toBe('tree');
+  });
+
+  it('lists a lone tile, a pair and a row of three, in each rotation', () => {
+    const s: RunState = {
+      ...RS.newRun(setup('packs')),
+      house: houseFrom(SAP, emptyRows(12, 12)),
+      hand: [pc('sapling')],
+      reserve: [],
+    };
+    const shapes = new Set(
+      RS.legalPlacements(s)
+        .filter((p) => p.from === 'hand' && p.i === 0)
+        .map((p) => p.shape!.join('/')),
+    );
+    expect([...shapes].sort()).toEqual(['#', '##', '###', '#/#', '#/#/#']);
   });
 });
 

@@ -13,6 +13,7 @@ import type {
   Card,
   Content,
   Effect,
+  FeatureId,
   PieceCondition,
   PieceDef,
   PieceId,
@@ -61,11 +62,18 @@ export function matchesNeighbor(
   if (n.kind === 'piece') return matchesPiece(content, layout, sel, n.uid, host);
   // A window's view (a Bay Window) counts only where a view is asked for by name.
   if (n.kind === 'view') return matchesView(sel);
+  return matchesFeature(content, sel, neighborFeature(n)!);
+}
+
+/**
+ * Does a lot feature, as a neighbor (a Tree, the street, the Old Shed), match the selector? The
+ * board's neighbors go through matchesNeighbor; the glossary asks this of a feature on its own.
+ */
+export function matchesFeature(content: Content, sel: Selector, feature: FeatureId): boolean {
   if (sel === 'all') return true;
-  if ('any' in sel) return sel.any.some((s) => matchesNeighbor(content, layout, s, n, host));
-  if ('all' in sel) return sel.all.every((s) => matchesNeighbor(content, layout, s, n, host));
-  if ('not' in sel) return !matchesNeighbor(content, layout, sel.not, n, host);
-  const feature = neighborFeature(n)!;
+  if ('any' in sel) return sel.any.some((s) => matchesFeature(content, s, feature));
+  if ('all' in sel) return sel.all.every((s) => matchesFeature(content, s, feature));
+  if ('not' in sel) return !matchesFeature(content, sel.not, feature);
   const def = content.features[feature];
   if ('piece' in sel || 'host' in sel || 'hasFixture' in sel) return false;
   if ('feature' in sel) {

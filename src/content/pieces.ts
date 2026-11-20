@@ -9,7 +9,7 @@
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
 // playtests to tune.
 
-import type { PieceDef, PieceId } from '../rules/index.ts';
+import type { Effect, PieceDef, PieceId } from '../rules/index.ts';
 
 /** The sun's payoff (D-120): the rooms people live in by day want a sunny wall. */
 const WHILE_SUNNY = (amount: number) =>
@@ -25,6 +25,14 @@ const WHILE_SUNNY = (amount: number) =>
  */
 const SHED = (amount: number) =>
   ({ kind: 'neighbor', match: { feature: 'oldShed' }, amount, max: 1 }) as const;
+
+/**
+ * The Garage's drive (D-140): the street or a Driveway touching it. Since D-195 it earns part of
+ * its keep without one, and the rest (+3, the garage sales, the workshop) once its drive comes.
+ */
+const BY_THE_DRIVE = { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } } as const;
+const ON_THE_DRIVE = <E extends Effect>(effect: E) =>
+  ({ kind: 'conditional', when: BY_THE_DRIVE, effect }) as const;
 
 /**
  * A yard piece's side (D-166): what goes out back (a Patio, a Lawn, a Pool, a Treehouse) earns
@@ -205,10 +213,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { property: 'room' }, amount: 2, max: 4 },
     ],
   },
-  // The Garage is built like any room (D-140): it earns only while the street or a Driveway
-  // touches it, as a Patio earns only beside a room (D-105). Until D-140 it couldn't be built
-  // anywhere else, and with houses a median 10 rows back from the street the card had no legal
-  // spot in 82% of the weeks it was offered. Unreached, it still counts for Full House.
+  // The Garage is built like any room (D-140). Until D-140 it couldn't be built anywhere else,
+  // and with houses a median 10 rows back from the street the card had no legal spot in 82% of
+  // the weeks it was offered. Unreached, it still counts for Full House. D-195: it earns +2 of
+  // its own wherever it stands, and the rest of its keep once the street or a Driveway reaches
+  // it: a placed Garage had earned nothing in 63% of its weeks, waiting for a drive that starts
+  // at the street. Reached, it earns what it did.
   garage: {
     id: 'garage',
     name: 'Garage',
@@ -223,14 +233,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     perHouse: 1, // D-165: one Garage a house
     effects: [
-      {
-        kind: 'requires',
-        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
-        blocksPlacement: false,
-      },
-      { kind: 'steady', amount: 5 },
-      { kind: 'economy', budget: 1, every: 2 }, // garage sales
-      SHED(3), // a workshop (D-145)
+      { kind: 'steady', amount: 2 },
+      ON_THE_DRIVE({ kind: 'steady', amount: 3 }),
+      ON_THE_DRIVE({ kind: 'economy', budget: 1, every: 2 }), // garage sales
+      ON_THE_DRIVE(SHED(3)), // a workshop (D-145)
     ],
   },
   homeOffice: {
@@ -272,19 +278,24 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       BACK_YARD,
     ],
   },
+  // A pack (D-195), as the Fence and the Driveway are (D-106): one card plants 1–3 Saplings that
+  // touch, one piece earning +1, and each of its tiles becomes a Tree. A single Sapling was the
+  // piece placed least for what it earned (200 Wow a copy; a Lawn's was 1,929). Its card shows
+  // three, as the Fence's shows four tiles.
   sapling: {
     id: 'sapling',
     name: 'Sapling',
     tier: 'core',
     category: 'yard',
-    shape: ['#'],
+    shape: ['###'],
+    pack: { maxTiles: 3, shapes: [['#'], ['##'], ['###']] },
     tags: ['Green'],
     drawWeight: 10,
     complexity: 2,
     fromPhase: 0,
     effects: [
       { kind: 'steady', amount: 1 },
-      // At the start of a week, 4 weeks after planting, it becomes a mature Tree: a lot
+      // At the start of a week, 4 weeks after planting, each tile becomes a mature Tree: a lot
       // feature (Quiet, Green, a view), so it no longer counts as a piece.
       { kind: 'transform', into: { feature: 'tree' }, afterWeeks: 4 },
     ],
@@ -369,13 +380,13 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   },
   // The Driveway is a pack (D-106): one card places 1–8 connected tiles that reach the street
   // or a Driveway, as one piece. Its job is the Garage (D-140): it pays for touching one, and
-  // the Garage earns only once the drive (or the street) reaches it. 8 tiles, as the Fence: a
-  // Garage on the street side of a median house is 8 rows back. The only piece that can be
-  // built over the creek (a culvert), so a house on the far bank can still have a Garage. It
-  // replaced the 1×3 and 1×5 cards, at their combined weight. D-166: it's a front-yard piece,
-  // +2 while every tile is in the front yard (D-140 had +1 anywhere), and the board shades the
-  // front yard while the card is picked, the answer to D-080's misread. Paid per tile, greedy
-  // laid 8-tile drives as carpets (placed 0.14 → 0.95 a run).
+  // the Garage earns most of its keep once the drive (or the street) reaches it (D-195). 8
+  // tiles, as the Fence: a Garage on the street side of a median house is 8 rows back. The
+  // only piece that can be built over the creek (a culvert), so a house on the far bank can
+  // still have a Garage. It replaced the 1×3 and 1×5 cards, at their combined weight. D-166:
+  // it's a front-yard piece, +2 while every tile is in the front yard (D-140 had +1 anywhere),
+  // and the board shades the front yard while the card is picked, the answer to D-080's
+  // misread. Paid per tile, greedy laid 8-tile drives as carpets (placed 0.14 → 0.95 a run).
   driveway: {
     id: 'driveway',
     name: 'Driveway',
@@ -482,11 +493,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 2,
     fromPhase: 0,
     perHouse: 1, // D-165: one of each special room
-    effects: [
-      { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 },
-      // Noisy: the Quiet rooms around it lose a little.
-      { kind: 'aura', match: { tag: 'Quiet' }, scope: 'adjacent', amount: -2 },
-    ],
+    // Loud, so a Bedroom beside it loses 2, and that's all (D-195): its aura on Quiet rooms took 2
+    // more, so each Bedroom it paid for netted −2.
+    effects: [{ kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 }],
   },
   library: {
     id: 'library',
@@ -566,13 +575,16 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
       // doesn't block placement, and touching only a Hallway doesn't count.
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
-      { kind: 'neighbor', match: { piece: 'patio' }, amount: 3 },
+      // D-195: a Pool or a Fire Pit is as good company as a Patio, which the bot builds about
+      // once a run.
+      { kind: 'neighbor', match: { piece: ['patio', 'pool', 'firePit'] }, amount: 3 },
       BACK_YARD,
     ],
   },
   // In the weekly draw from Drywall (D-145), at half a card's weight: something to place late
-  // that reads the finished house (its Patio) and the lot (Boulders to sit on). It was a special
-  // piece, sold in the shop.
+  // that reads the finished house and the lot (Boulders to sit on). It was a special piece, sold
+  // in the shop. D-195: it warms any Social piece beside it (a Living Room, a Kitchen, a Patio, a
+  // Hot Tub), not only a Patio, which the bot builds about once a run.
   firePit: {
     id: 'firePit',
     name: 'Fire Pit',
@@ -587,7 +599,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
       // doesn't block placement, and touching only a Hallway doesn't count.
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
-      { kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 },
+      { kind: 'aura', match: { tag: 'Social' }, scope: 'adjacent', pct: 50 },
       { kind: 'neighbor', match: { feature: 'boulder' }, amount: 2, max: 2 },
       BACK_YARD,
     ],
