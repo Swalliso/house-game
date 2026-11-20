@@ -699,10 +699,11 @@ describe('natural water (D-191)', () => {
     expect(lakes).toBeGreaterThan(40);
   });
 
-  it('bends a creek gently: across the lot a row at a time, from the back down and round', () => {
+  it('bends a creek: across the lot two rows at a time at most, from the back down and round', () => {
     let across = 0;
     let fromBack = 0;
     let straight = 0;
+    let drops = 0;
     for (let i = 0; i < 600; i++) {
       const lot = generateLot(`creek-${i}`, i % 2 ? B : real);
       const cells = creekCells(lot);
@@ -743,11 +744,20 @@ describe('natural water (D-191)', () => {
           expect(xs.length, `creek-${i} row ${y}`).toBeGreaterThan(0);
           expect(Math.max(...xs) - Math.min(...xs) + 1).toBe(xs.length);
         }
+        // It bends round, never a square turn: three corners or more.
+        const corners = cells.filter(
+          (c) =>
+            (creek(c.x - 1, c.y) || creek(c.x + 1, c.y)) &&
+            (creek(c.x, c.y - 1) || creek(c.x, c.y + 1)),
+        ).length;
+        expect(corners, `creek-${i}`).toBeGreaterThanOrEqual(3);
       } else {
         across++;
         const rows = acrossRows(lot);
         for (let x = 1; x < rows.length; x++) {
-          expect(Math.abs(rows[x]! - rows[x - 1]!), `creek-${i}`).toBeLessThanOrEqual(1);
+          const step = Math.abs(rows[x]! - rows[x - 1]!);
+          expect(step, `creek-${i}`).toBeLessThanOrEqual(2);
+          if (step === 2) drops++;
         }
         for (const n of turnWidths(rows)) expect(n, `creek-${i}`).toBeGreaterThanOrEqual(3);
       }
@@ -755,6 +765,8 @@ describe('natural water (D-191)', () => {
     expect(across).toBeGreaterThan(50);
     expect(fromBack).toBeGreaterThan(50);
     expect(straight).toBeGreaterThan(200);
+    // Where it turns steeply it drops two rows in a column, which keeps its banks long.
+    expect(drops).toBeGreaterThan(across);
     // A split lot's creek bends the same way.
     for (let i = 0; i < 400; i++) {
       const lot = generateLot(`seed-${i}`, real);

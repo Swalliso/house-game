@@ -366,7 +366,7 @@ function carveLake(lot: Lot, rng: Rng, b: LotBalance): Lot {
   );
   const [lo, hi] = b.lakeRows;
   const step = rng.range(b.bendEvery[0], b.bendEvery[1]);
-  easeThrough(wanderMarks(rng, w, step, lo, hi), step, w).forEach((d, x) => {
+  easeThrough(wanderMarks(rng, w, step, lo, hi, MAX_TURN), step, w).forEach((d, x) => {
     for (let y = 0; y < d; y++) terrain[cellIndex(w, x, y)] = 'lake';
   });
   return { ...lot, terrain };
@@ -643,7 +643,9 @@ function creekPath(rng: Rng, w: number, h: number, streetGap: number, bend: Rang
     const toRight = rng.chance(50);
     const x0 = rng.range(4, w - 5);
     const ye = rng.range(Math.min(maxY, BEND_FROM_ROW), maxY);
-    return bendPath(x0, toRight ? w - 1 : 0, ye, rng.int(BEND_LEAN + 1), rng.int(BEND_LEAN + 1));
+    const rx = rng.range(BEND_RADIUS[0], BEND_RADIUS[1]);
+    const ry = rng.range(BEND_RADIUS[0], BEND_RADIUS[1]);
+    return bendPath(x0, toRight ? w - 1 : 0, ye, rx, ry);
   }
   // Side edge → side edge, in the back part of the lot.
   const top = 1;
@@ -655,11 +657,13 @@ function creekPath(rng: Rng, w: number, h: number, streetGap: number, bend: Rang
 // Natural water (D-191): a pond rounds off, a lake's shore curves, and a creek bends gently.
 
 /** A creek from the back edge reaches its side this many rows down or more (to the street gap). */
-const BEND_FROM_ROW = 6;
-/** How far a creek's bend may lean toward the straight diagonal, in hundredths (bendPath). */
-const BEND_LEAN = 40;
-/** A shore or a creek's turns: each this many rows from the last, or fewer (one at least). */
+const BEND_FROM_ROW = 9;
+/** A creek's bend from the back edge round to its side: a quarter ellipse this many cells across and down (bendPath). */
+const BEND_RADIUS: Range = [3, 6];
+/** A lake shore's turns: each this many rows from the last, or fewer (one at least). */
 const MAX_TURN = 3;
+/** A creek's turns as it runs across the lot: each this many rows from the last, or fewer. */
+const CREEK_TURN = 4;
 
 /**
  * Heights for `length` columns that ease through `marks`, one every `step` columns from the
@@ -675,7 +679,7 @@ export function easeThrough(marks: readonly number[], step: number, length: numb
     const a = marks[k]!;
     const b = marks[Math.min(k + 1, marks.length - 1)]!;
     const t = (x - k * step) / step;
-    out.push(Math.floor(a + (b - a) * t * t * (3 - 2 * t) + 0.5));
+    out.push(Math.floor(a + (b - a) * t * t * t * (10 + t * (6 * t - 15)) + 0.5));
   }
   return out;
 }
@@ -685,11 +689,18 @@ export function easeThrough(marks: readonly number[], step: number, length: numb
  * anywhere in lo..hi, and each after it 1 to MAX_TURN rows up or down from the last, turning
  * back at lo or hi.
  */
-function wanderMarks(rng: Rng, length: number, step: number, lo: number, hi: number): number[] {
+function wanderMarks(
+  rng: Rng,
+  length: number,
+  step: number,
+  lo: number,
+  hi: number,
+  turn: number,
+): number[] {
   const marks = [rng.range(lo, hi)];
   while ((marks.length - 1) * step < length) {
     const last = marks[marks.length - 1]!;
-    const d = Math.min(rng.range(1, MAX_TURN), hi - lo);
+    const d = Math.min(rng.range(1, turn), hi - lo);
     const up = rng.chance(50);
     let next = up ? last - d : last + d;
     if (next < lo || next > hi) next = up ? last + d : last - d;
@@ -707,11 +718,20 @@ function wanderMarks(rng: Rng, length: number, step: number, lo: number, hi: num
 function acrossPath(rng: Rng, w: number, top: number, bottom: number, bend: Range): Cell[] {
   const fromLeft = rng.chance(50);
   const step = rng.range(bend[0], bend[1]);
-  const rows = easeThrough(wanderMarks(rng, w, step, top, bottom), step, w);
+  const rows = easeThrough(wanderMarks(rng, w, step, top, bottom, CREEK_TURN), step, w);
+  rows[w - 1] = rows[w - 2]!;
+  // Two steps the same way a column apart drop together: the creek falls two rows in one column.
+  for (let i = 1; i + 1 < w; i++) {
+    const a = rows[i]! - rows[i - 1]!;
+    if (Math.abs(a) === 1 && rows[i + 1]! - rows[i]! === a) {
+      rows[i] = rows[i + 1]!;
+      i++;
+    }
+  }
   const path: Cell[] = [];
   for (let i = 0; i < w; i++) {
     const x = fromLeft ? i : w - 1 - i;
-    const y = rows[Math.min(i, w - 2)]!;
+    const y = rows[i]!;
     const last = path[path.length - 1];
     if (last) for (let yy = last.y; yy !== y; yy += Math.sign(y - last.y)) path.push({ x, y: yy });
     path.push({ x, y });
@@ -720,34 +740,36 @@ function acrossPath(rng: Rng, w: number, top: number, bottom: number, bend: Rang
 }
 
 /**
- * A creek a cell wide from (x0, 0) on the back edge to the side at column `xs`, a quarter bend:
- * it heads straight down, then eases round toward the side, and reaches it by row `ye`. `leanX`
- * and `leanY` (0 to BEND_LEAN hundredths) straighten it toward the diagonal. Where both its
- * column and row change, it steps the way the bend runs there: down while it's steep, across
- * once it's shallow, and always down before its last step onto the side. It ends at the first
- * cell on the side, so it leaves the lot straight at both ends (outside.ts).
+ * A creek a cell wide from (x0, 0) on the back edge to the side at column `xs`, reaching it at
+ * row `ye`: it runs straight down, bends round a quarter ellipse `rx` cells across and `ry` down
+ * (each kept inside the lot's course), and runs straight on to the side. Its reaches meet the
+ * back edge and the side straight on (outside.ts), and its bend steps a cell at a time, down or
+ * across, whichever keeps it nearer the ellipse (whole numbers, so every browser draws it alike).
  */
-function bendPath(x0: number, xs: number, ye: number, leanX: number, leanY: number): Cell[] {
-  const a = leanX / 100;
-  const c = leanY / 100;
-  const dx = xs - x0;
-  const steps = 8 * (Math.abs(dx) + ye) + 8;
-  const path: Cell[] = [{ x: x0, y: 0 }];
-  for (let k = 1; k <= steps; k++) {
-    const t = k / steps;
-    const x = Math.floor(x0 + dx * ((1 - a) * t * t + a * t) + 0.5);
-    const y = Math.floor(ye * ((1 - c) * (2 * t - t * t) + c * t) + 0.5);
-    const last = path[path.length - 1]!;
-    if (x === last.x && y === last.y) continue;
-    if (x !== last.x && y !== last.y) {
-      // Its slope here: down while it's steep, across once it's shallow.
-      const across = Math.abs(dx * (2 * (1 - a) * t + a));
-      const down = ye * ((1 - c) * (2 - 2 * t) + c);
-      path.push(down >= across || x === xs ? { x: last.x, y } : { x, y: last.y });
-    }
+function bendPath(x0: number, xs: number, ye: number, rx0: number, ry0: number): Cell[] {
+  const s = Math.sign(xs - x0);
+  const rx = Math.max(1, Math.min(rx0, Math.abs(xs - x0) - 1));
+  const ry = Math.max(1, Math.min(ry0, ye));
+  // The ellipse's middle: the bend starts level with it, on the down reach, and ends below it.
+  const ox = x0 + s * rx;
+  const oy = ye - ry;
+  const off = (x: number, y: number) =>
+    Math.abs((x - ox) * (x - ox) * ry * ry + (y - oy) * (y - oy) * rx * rx - rx * rx * ry * ry);
+  const path: Cell[] = [];
+  for (let y = 0; y <= oy; y++) path.push({ x: x0, y });
+  let x = x0;
+  let y = oy;
+  while (x !== ox || y !== ye) {
+    const down =
+      y < ye &&
+      (x === ox ||
+        off(x, y + 1) < off(x + s, y) ||
+        (off(x, y + 1) === off(x + s, y) && Math.abs(x - ox) * ry >= (y - oy) * rx));
+    if (down) y++;
+    else x += s;
     path.push({ x, y });
-    if (x === xs) break;
   }
+  for (x += s; s > 0 ? x <= xs : x >= xs; x += s) path.push({ x, y });
   return path;
 }
 
@@ -780,20 +802,20 @@ export function cutBox(
  * tiles, so no side runs straight for long and no tile sticks out alone. The 3 × 6 ones lean.
  */
 export const ROUND_PONDS: readonly { w: number; h: number; cuts: readonly number[] }[] = [
-  { w: 4, h: 5, cuts: [1, 1, 1, 1] },
-  { w: 5, h: 4, cuts: [1, 1, 1, 1] },
-  { w: 5, h: 5, cuts: [2, 1, 1, 1] },
-  { w: 5, h: 5, cuts: [1, 2, 1, 1] },
-  { w: 5, h: 5, cuts: [1, 1, 2, 1] },
-  { w: 5, h: 5, cuts: [1, 1, 1, 2] },
-  { w: 5, h: 5, cuts: [2, 1, 2, 1] },
-  { w: 5, h: 5, cuts: [1, 2, 1, 2] },
-  { w: 4, h: 6, cuts: [1, 1, 1, 1] },
-  { w: 6, h: 4, cuts: [1, 1, 1, 1] },
+  { w: 4, h: 5, cuts: [1, 0, 1, 0] },
+  { w: 4, h: 5, cuts: [0, 1, 0, 1] },
+  { w: 5, h: 4, cuts: [1, 0, 1, 0] },
+  { w: 5, h: 4, cuts: [0, 1, 0, 1] },
   { w: 3, h: 6, cuts: [1, 0, 1, 0] },
   { w: 3, h: 6, cuts: [0, 1, 0, 1] },
   { w: 6, h: 3, cuts: [1, 0, 1, 0] },
   { w: 6, h: 3, cuts: [0, 1, 0, 1] },
+  { w: 3, h: 7, cuts: [1, 0, 1, 0] },
+  { w: 3, h: 7, cuts: [0, 1, 0, 1] },
+  { w: 7, h: 3, cuts: [1, 0, 1, 0] },
+  { w: 7, h: 3, cuts: [0, 1, 0, 1] },
+  { w: 4, h: 6, cuts: [1, 1, 1, 1] },
+  { w: 6, h: 4, cuts: [1, 1, 1, 1] },
 ];
 
 /**
