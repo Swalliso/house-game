@@ -1243,6 +1243,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-12 (D-159, Proposed):** Fences share a line and reach the wall. Two that meet end to end in one line draw no post between them, and a one-tile pack joins every Fence beside it. An end beside the house runs into its wall, a stretch alongside the house is tied to the wall at each end, and a corner touch gets a corner post, so a yard looks closed exactly where the rules count it fenced. Each pack is still its own piece, with its own payout.
 *2026-11-20 (D-195, Proposed):* the Sapling is a pack too: one card plants 1 to 3 tiles in a line, clicked out as a Fence is (`pack { maxTiles 3, shapes [#, ##, ###] }`, the card's own shape being three in a row). It's one piece earning +1 a week, and at its transform every tile becomes a Tree. The painters draw a sapling on each tile: the ghost, the board and the card's thumbnail.
 
+*Changed by D-197 (Proposed 2026-11-20):* the Fence pack draws at 5, since the standing stock keeps one in Your goods (D-160), and the Driveway at 10.
+
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
 **Decision:**
@@ -1384,6 +1386,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-20 (D-186, Accepted 2026-11-20):** the chaos test pins: a `pin` kind in its policy and in `ACTION_KINDS`, and its step check rebuilds the next week's hand from the pin-less draw with the kept card in it. A property in `properties.test.ts` does the same over random runs with pins. No bot pins, so the targets stand (D-186's Checked).
 
 **2026-11-20 (D-188, Proposed):** the reserve plays count the wrong delivery's piece (`surprise`), and the report's line names it ("the wrong delivery’s"). It comes once, at Framing, so its number is the share of runs that build it. The chaos test's coverage adds the delivery landing and a build from it. No bot changed.
+
+**2026-11-20 (D-197, Proposed; the user's pick):** "fences pay their way" counts the Fences the standing stock (D-160) brought to Your goods by milestone 4 beside the hand's (`stockWallOffers` in the run record), since D-197 draws the Fence at half weight. The probe and the 50% are unchanged, and the report's Fence lines say so.
 
 ### D-071 · M2 content defaults
 **Status:** Accepted · 2026-11-06 (proposed with the M2 pull request; the team settled the Treehouse in D-105 and asked for this to be Accepted unless the sim showed the Hendersons' Kid taste making Treehouse clusters dominant. It doesn't: see below).
@@ -1719,6 +1723,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 *D-160 (Proposed 2026-11-12):* the rows, swaps and rerolls are as here. The standing stock's Hallway and Fence wait in the reserve's extra slots, outside the rows, and both types stay in the Layout row's pool at their weights.
 
 *Changed by D-186 (2026-11-20; Accepted 2026-11-20, the user's playtest):* a row can hold one card kept by last week's pin, at the slot it was pinned from, on the draw's own keys. The swaps skip it, with a play or without one, and a reroll and the Catalog's redraw leave it where it is. It can't be pinned again the week after, so no card stands in the hand for good.
+
+*Changed by D-197 (Proposed 2026-11-20):* the Fence pack draws at 5 and the Driveway at 10, so the two packs no longer draw alike: the standing stock keeps a Fence in Your goods (D-160). The Hallway draws at 5 too, and the Long Hallway at 10.
 
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
@@ -3282,6 +3288,7 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 *Changed by D-169 (2026-11-12; Accepted 2026-11-13, playtest 8):* with D-162 and D-163 in one build, the stock comes in week 1 (a first job's in Foundation's third week), and building it is free.
 *2026-11-12 (D-169):* the user chose the top-ups: asked "With free builds from Your goods, how should the Hallway and Fence stock arrive?", they answered "Every milestone". So the stock is still topped up at each milestone's start, only what's missing, as this entry has it (`refill: true`), and D-163's "comes once" doesn't stand.
 *Changed by D-188 (Proposed 2026-11-20):* one more kind of delivery to the extra slots, the wrong delivery: once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse nobody ordered, after the stock's top-up and the crew's card (`balance.surpriseDelivery`). It's marked `surprise`, tagged "Mix-up", and free to build. Run codes keep their format, since the piece comes from the seed alone. An old one replays up to its first reserve play from Framing on, the gap this entry noted for its own cards: the piece sits ahead of later buys, so an old index can name another card.
+*Changed by D-197 (Proposed 2026-11-20):* the stock's two types draw at half weight: the Hallway and the Fence pack at 5, not 10, since Your goods always holds one of each. The Long Hallway, which the stock never brings, stays at 10, and the stock itself is as here.
 
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
@@ -4857,6 +4864,65 @@ What the columns mean:
 - **Not looked at:** touch, Firefox, Safari, other zoom levels, and the build screen's Inspect on a good with a long text.
 
 *2026-11-20 (D-195, Proposed):* a Sapling is a pack of 1 to 3 tiles now, so the Fertilizer's line counts a pack's Trees: "Your Sapling becomes 3 Trees 2 weeks sooner". One tile still "becomes a Tree", and two Saplings at once "become Trees".
+
+### D-197 · Fewer repeat Hallways and Fences: the hand draws them at half weight, since Your goods always holds one of each
+**Status:** Proposed · 2026-11-20, a phase pull request (`phase/fewer-repeat-halls`) for the user's playtest: the backlog's S29 (`docs/backlog/s29-fewer-repeat-halls.md`), from the 2026-11-20 review of rarely used goods. It changes Accepted D-160 and D-121, which the user OK'd on 2026-11-20 on a card in the review thread ("Also change the two settled rules: hand Hallways and Fences, and Bunk Beds?": "Yes, build both"), with a dated note on each and on D-106. It also changes D-089's Fence check, as the user chose when the trial failed it (below). Built side by side with S30 (D-198) and five shop stories (D-192 to D-196). Part of the rules batch: it reports its own paired-seed trial and leaves the targets alone; the batch is fitted once, by D-169's method, when the user has picked its stories. A content change: `contentHash(CONTENT)` goes from develop's `4fc924f8` (with D-195) to `77b091aa` (`bf0c1515` to `133f5645` before D-195, and `4c677dcf` to `3486719f` before D-194), so runs in progress drop when it merges.
+**Decision:**
+- **The Hallway and the Fence pack draw at 5** (`drawWeight` in `pieces.ts`; both were 10). Since D-160 and D-169, Your goods holds a Hallway and a Fence pack from week 1, topped up at each milestone, and placing one doesn't use the week (D-163). A Hallway or a Fence in the hand repeats a card you already hold, and playing it from the hand costs the week, so the hand shows something else in its place more often.
+- **Nothing else moves.** The Long Hallway stays at 10: the stock never brings it. The Driveway stays at 10, so the two packs no longer draw alike (D-121). The ramp (D-055: both are complexity 3, so a twentieth of their weight in the first milestone, a quarter in the second and 60% in the third; D-166's lot cards skip it, but not these two), strikes and the strike floor (D-157), and the clients' pools stand: the Hendersons' and the Barkers' +100% on the Fence make it 10 on their jobs, where it was 20. `validateContent`'s check that the stock's pieces are in the weekly draw passes at 5.
+- **The sim's Fence check counts the stock.** §8's "fences pay their way" asks that half of greedy runs see their enclosure probe's count of Fence cards by milestone 4, and it counted only the weeks' first hands (`wallOffers`), where the Fence now shows half as often. It now counts the Fences the standing stock brought to Your goods by then too: `stockWallOffers` in the run record, per milestone, from what a run starts with and each of the stock's `delivered` events. The probe and its 50% are unchanged. The user's pick (2026-11-20), on a card in this story's thread once the trial failed the check: "Count Your goods' Fences in the sim's 'fences pay their way' check?": "Count the stock's Fences".
+
+**The sim** (greedy, a paired-seed trial as D-188's was: 600 runs an arm on `check-0` to `check-599`, every client and crew in turn, on develop's targets; off is develop at `bbccfb3`, the code of `c92de7b`, and on is this branch; run in the cloud container, about 24 minutes an arm side by side. Develop has since taken D-193, each good's value line; D-194, five fixtures' pay; D-195, five pieces' pay and a Sapling card that plants up to three; and D-198, what Bunk Beds count toward the top of a range. None changes a draw weight):
+
+| | Off | On | Paired |
+|---|---|---|---|
+| **Wins** | 49.5% [45.5–53.5] | 50.7% [46.7–54.7] | +1.2 points [−1.8, 4.1]: 45 runs won only with it, 38 only without (p = 0.51) |
+| Milestones 3 to 7 met | 95.3, 86.2, 75.0, 64.0, 49.5% | 95.7, 87.7, 76.8, 64.2, 50.7% | The first two are the same in both |
+| Builds a run | 35.1 | 35.4 | |
+| Weeks a run | 26.1 | 26.2 | |
+| Wow at the end, median | 75,685 | 76,850 | A pair's ratio, median: 1.000 |
+
+| A run's | Off | On | Paired |
+|---|---|---|---|
+| Hallways in the weeks' first hands (a swapped-out card counts) | 2.46 | **1.36** | −1.10 [−1.19, −1.01] |
+| Fences in them | 3.52 | **1.94** | −1.59 [−1.71, −1.47] |
+| Long Hallways in them | 2.56 | 2.70 | +0.15 [0.03, 0.27] |
+| Driveways in them | 4.15 | 4.37 | +0.21 [0.08, 0.35] |
+| Hallways placed from the hand · from the stock | 0.15 · 5.39 | 0.06 · 5.41 | −0.09 [−0.12, −0.06] · +0.01 [−0.07, 0.09] |
+| Fences placed from the hand · from the stock | 0.40 · 3.43 | 0.19 · 3.50 | −0.21 [−0.26, −0.16] · +0.07 [−0.01, 0.16] |
+| Long Hallways placed | 0.16 | 0.18 | +0.01 [−0.02, 0.05] |
+
+| Runs | Off | On | Paired |
+|---|---|---|---|
+| Ending with a fenced yard | 78.3% | 77.2% | −1.2 points [−3.8, 1.5] (p = 0.46) |
+| The Hendersons' A fenced yard, at the end (120 runs) | 85.8% | 81.7% | −4.2 [−9.5, 1.2] (p = 0.23) |
+| The Barkers' A big fenced yard, at the end (120 runs) | 61.7% | 60.8% | −0.8 [−8.0, 6.3] |
+| A compact outline (D-169's H1g) | 37.2% | 36.3% | −0.8 [−4.1, 2.5] |
+| The glance test (D-169) | 18.7% | 19.0% | +0.3 [−2.7, 3.3] |
+
+- **The hand shows 2.7 fewer repeats of the stock a run:** 3.30 Hallways and Fences in the weeks' first hands, from 5.98. Their slots go to the Layout row's other cards; the Long Hallway and the Driveway take a little more of them.
+- **What's built barely moves.** The bot already took its Hallways and Fences from the stock (5.39 of 5.54 Hallways, 3.43 of 3.83 Fences), and still does. It places 0.21 fewer Fences a run from the hand and 0.07 more from the stock, 0.14 fewer in all [0.03, 0.24]. Fenced yards, the compact outline and the glance test hold within noise; the Hendersons' fenced yard dips most, −4.2 points on 120 runs, inside its interval.
+- **Wins** move +1.2 points, noise. By client, Count Vladislav −5.0 [−10.1, 0.1] is the largest move; by crew, the Handyman +8.0 [1.5, 14.5] (p = 0.03), about what chance gives one of nine groups. The trial's spread of clients widens from 7.5 points to 13.3 (Count Vladislav 40.8% to the Hendersons' and Dale's 54.2%), and the crews' narrows from 12.0 to 10.7.
+- **§8's "fences pay their way" fails, as the story warned.** The enclosure probe's p50 stays 2 Fence cards, but 36.9% [32.9–41.0] of the runs the probe measures (542) are offered that many in the hand by milestone 4, against the 50% it asks (develop 62.1%, PASS). It counts only the hand's Fences (`wallOffers`). With the stock's Fences delivered by then counted too (2.43 a run), as the check now counts them (above), 93.9% [91.6–95.6] are (develop 97.8%), and it passes.
+- **The rest of §8 on these runs:** greedy clears milestones 1 to 3 in 95.7% (PASS) and wins 50.7%, just over 40–50% (FAIL, unsure; develop 49.5%, PASS, unsure). The clients' and crews' spread passes, unsure.
+
+**Why:** the 2026-11-20 review of rarely used goods (400 greedy runs logging each week's first hand) found the Hallway, the Long Hallway and the Fence were 8 of the 111 cards a run's hands show, while the bot placed 5.8 Hallways and 3.8 Fences a run, nearly all from the stock. A card in the hand that's already waiting in Your goods offers nothing new, and D-169 found the free Hallways already make houses sprawl, so fewer in the hand doesn't cost a house its halls.
+
+**Considered:**
+- *Taking the Hallway out of the draw:* `validateContent` keeps the stock's pieces in it, and a strike already does that for a player who wants it (D-157).
+- *The Long Hallway at 5 too:* the stock never brings one, so in the hand it isn't a repeat.
+- *The Driveway at 5 with the Fence, as D-121 paired them:* nothing brings a free Driveway.
+- *D-169's brake on the sprawl* (topping up the Fence alone): the user decides that after playing.
+
+**Changes:** D-160 (Accepted): the stock's two types draw at half weight. D-121 (Accepted): the Fence pack draws at 5 and the Driveway at 10. D-106 (Accepted): the packs' weights. D-089 (Accepted): the Fence check counts the stock's Fences. Dated notes on each. `implementation-plan.md` (the draw weights, and §8's Fence criterion).
+
+**Checked:** `npm test` (158 files; 2,666 tests pass and 1 is skipped, and 2,721 in 160 files with develop's D-193 to D-195 and D-198 merged in), `npm run typecheck`, `npm run format:check`. The new test in `households.test.ts` holds the four weights at milestone 4, the Fence on the Hendersons', the Barkers' and Count Vladislav's jobs, and the stock in Your goods in week 1; `pieces.test.ts` lists the Hallway and the Fence at half weight. No seeded test changed its expectation: the rules tests draw from their own test content, and the real content's seeded tests pass as they were. `validateContent` passes (`content.test.ts`). The Fence check's tests (`sim/report.test.ts`): too few Fences in the hand and one from the stock pass it, and a run's record holds the stock's Fence from its first week and at most one a milestone. On 12 of the trial's runs, the record's new count of the stock's Fences by milestone 4 matched the trial's own count, and the hand's matched `wallOffers`. Not looked at in the browser: no screen changed.
+
+**Known gaps:**
+- **The Fence check is easy to pass now:** the stock alone brings 2.43 Fences a run by milestone 4, at or above the probe's p50 of 2, so the check no longer tells how often the hand shows them. The trial's hand counts (above) do.
+- **Not played by a person.**
+- **First jobs weren't in the trial.** Their stock comes at Foundation's third week (D-162), so until then the hand is their only Hallway or Fence, and it shows them half as often. The ramp already keeps them rare that early (a twentieth and then a quarter of their weight).
+- **Runs in progress drop** when this merges, and an old run code replays only up to the first week its seed would have drawn one of these.
 
 ### D-198 · Bunk Beds count twice only up to the top of a range, so they never break Room for everyone
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/bunk-beds-cap`) for the user's playtest: the backlog's S30 (`docs/backlog/s30-bunk-beds-cap.md`), from the 2026-11-20 review of rarely used goods. It changes Accepted D-101, which the user OK'd on 2026-11-20 on a card in the review thread ("Also change the two settled rules: hand Hallways and Fences, and Bunk Beds?": "Yes, build both"), with dated notes on it, D-082 and D-107. Built side by side with S29 (D-197) and five shop stories (D-192 to D-196). Part of the rules batch: it reports its own paired-seed trial and leaves the targets alone; the batch is fitted once, by D-169's method, when the user has picked its stories. A rules change with no content change: `contentHash(CONTENT)` stays develop's (`bf0c1515`, with D-194), so saves and run codes carry over, but a replayed run that put Bunk Beds in a house at the top of its range scores more than it did.

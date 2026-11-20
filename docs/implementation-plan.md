@@ -1342,7 +1342,7 @@ npm run sim -- --ban blueprint:fengShui
 - Milestone 1 teaches: `novice` passes it in at least 90% of runs.
 - `greedy` clears milestones 1–3 in 92–98% of runs, and wins 40–50%.
 - Early completion: `--early always` and `--early never` win within 10 points of each other, paired by seed, and the report prints the median ratio of their final scores. `early:smart`'s 25% waits for M6.
-- Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4.
+- Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4, in the weeks' first hands or by the standing stock (D-197).
 - `planner` and no must-buy print as NOT MEASURED until M6. Until then, `--ban` on paired seeds stands in for no must-buy. Since M4 the client and crew spread is measured on runs that cover more than one client or crew (`--client all`, the default, and `--crew all`).
 
 ### Determinism
@@ -1728,7 +1728,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Building over Trees:** allowed and free; the Tree is gone.
 - **Lawn:** a 2×2 piece (was 1×1, so a big lot fills in; D-049), +1 per adjacent Lawn, at most 4. This replaces "per connected Lawn tile", which grows quadratically.
 - **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3).
-- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160).
+- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160). The Hallway and the Fence draw at 5 (D-197), since the standing stock keeps one of each in Your goods; the Long Hallway and the Driveway stay at 10.
 
 ### M2
 
