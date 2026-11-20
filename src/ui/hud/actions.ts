@@ -28,6 +28,7 @@ import {
   openJobBoard,
   notice,
   onRunReset,
+  pinCard,
   run,
   runCode,
   selected,
@@ -273,6 +274,45 @@ export function strikeClick(i: number): void {
   strikeArmed.value = i;
   inspected.value = { kind: 'card', i };
   audio.play('select', { rate: 0.7 });
+}
+
+/**
+ * The hand slot whose card waits for End week (or for Build), or null. D-186: that card is
+ * played, so a pin on it would keep nothing, and it shows none (Hand.tsx).
+ */
+export function placingSlot(): number | null {
+  const play = tentative.value;
+  return play?.from === 'hand' ? play.i : null;
+}
+
+/**
+ * D-186: a hand card's pushpin clicked, or P: pins card i for next week, moves the pin to it, or
+ * takes its pin out. The card last week's pin kept can't be pinned again (its tag says so), and
+ * the card waiting to be placed has no pin to set.
+ */
+export function pinAt(i: number): void {
+  if (i === placingSlot() || !rules.canPin(run.value, i).ok || !pinCard(i)) {
+    audio.play('illegal');
+  }
+}
+
+/**
+ * P (D-186): pins the hand card picked, or with none picked, the one the keyboard is on (Tab),
+ * or the one under the pointer. Not in strike mode, whose targets the cards are.
+ */
+export function pinKey(): void {
+  if (run.value.screen !== 'build' || tool.value === 'strike') return;
+  const picked = source.value === 'hand' ? selected.value : null;
+  const i = picked ?? focusedSlot() ?? hoveredSlot();
+  if (i === null) audio.play('illegal');
+  else pinAt(i);
+}
+
+/** The hand slot whose card is under the pointer, or null. */
+function hoveredSlot(): number | null {
+  if (typeof document === 'undefined') return null;
+  const at = document.querySelector('.hand [data-card]:hover')?.getAttribute('data-card');
+  return at == null ? null : Number(at);
 }
 
 export function cancelPlacement(): void {

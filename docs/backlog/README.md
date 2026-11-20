@@ -107,7 +107,7 @@ reading the code, not from building anything.
 | [S11](s11-walkthrough-tour.md) | The camera tours the rooms after a win | M | UI only | S01 played | Not started; S01 played 2026-11-18 |
 | [S12](s12-dusk-when-you-win.md) | Evening falls and the rooms light up after a win | S, then M | UI only | S01 played; a mockup the user likes | Not started; S01 played 2026-11-18 |
 | [S13](s13-listing-on-the-end-screen.md) | The end screen writes a short listing for the house | S | UI only | The user's OK on the tone | Not started |
-| [S14](s14-pin-one-card.md) | Keep one card for next week | M | Rules and UI, no re-fit | | Not started |
+| [S14](s14-pin-one-card.md) | Keep one card for next week | M | Rules and UI, no re-fit | | Built 2026-11-20: `phase/pin-a-card` (D-186), waiting for the user's playtest |
 | [S15](s15-trim-the-upgrade-shelf.md) | The upgrade slot stops offering two dead cards | S | Content | The user's answer | Not started |
 | [S16](s16-wrong-delivery.md) | A free yard showpiece arrives once a run | M | Rules and content | D-171's verdict | Not started; D-171 Accepted 2026-11-18 |
 | [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Not started |

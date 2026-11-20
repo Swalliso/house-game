@@ -516,6 +516,23 @@ export const FEEL = {
   },
 
   /**
+   * A pin (D-186), in real time, outside the tally (it never sets busy). Pinned, the pushpin
+   * stabs into the card's edge from `stickPx` UI px above over `stickMs`. A hand dealt around a
+   * kept card (the week after a pin, or a reroll or the Catalog's redraw with one in the hand):
+   * the kept card stays put, its Kept tag stamping in over `keptInMs`, and each other card slides
+   * in from `dealFromPx` UI px to the right over `dealMs`, `staggerMs` after the one before it.
+   * A hand of four takes 340 ms; the next action finishes the deal at once.
+   */
+  pin: {
+    stickMs: 160,
+    stickPx: 3,
+    dealMs: 220,
+    staggerMs: 60,
+    dealFromPx: 8,
+    keptInMs: 280,
+  },
+
+  /**
    * A household member arriving (M4b, D-103; D-126): the doorbell rings at the front door, their
    * card slides in (`cardInMs`) and stays up `cardMs` in real time, and their cards pop into the
    * reserve once it has rung, with a shimmer.

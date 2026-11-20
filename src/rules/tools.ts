@@ -6,7 +6,8 @@
 //   member's room (M4b)
 // - weekModifiers (Rush Order, Open House Party): modifiers for this week's tally only
 // - specialHand (Catalog): this hand redrawn from special pieces and fixtures, both rows, as a
-//   draw (n + 1) that doesn't use a reroll; it has no swaps (D-121)
+//   draw (n + 1) that doesn't use a reroll; it has no swaps (D-121), and the card a pin kept
+//   stays where it is (D-186)
 // - advanceTimers (Fertilizer): every piece's ageBonus goes up
 // - reward (Dumpster), levelSet (Remodel Plans: +1 level for a set type, for the run)
 // - extraPlay (Weekend Crew, D-075/D-083): this week's next card from the hand doesn't end the
@@ -33,7 +34,8 @@ export interface ToolCtx {
   content: Content;
   layoutFor(state: RunState, house?: HouseState): Layout;
   checkMove(state: RunState, action: UseToolAction): PlacementCheck;
-  drawSpecial(state: RunState): Card[];
+  /** The Catalog's hand, and where the card a pin kept stays in it (D-186). */
+  drawSpecial(state: RunState): { hand: Card[]; kept?: number };
   payReward(state: RunState, reward: Reward, key: string, events: GameEvent[]): RunState;
   /** `lot` is the lot before the play, which still has the finds on it. */
   payFinds(
@@ -135,7 +137,8 @@ export function useTool(
       };
     case 'specialHand': {
       events.push(used);
-      const hand = ctx.drawSpecial(s);
+      const { hand, kept } = ctx.drawSpecial(s);
+      const keptAt = kept === undefined ? {} : { kept };
       events.push({
         t: 'handDrawn',
         phase: s.phase,
@@ -145,9 +148,12 @@ export function useTool(
         free: false,
         reroll: false,
         special: true,
+        ...keptAt,
       });
-      // The old hand's swap notes go with it.
-      return { ...s, hand, draws: s.draws + 1, swapped: [] };
+      // The old hand's swap notes go with it, and a pin with its card; the card a pin kept
+      // stays (D-186).
+      const { pinned: _pinned, kept: _kept, ...rest } = s;
+      return { ...rest, hand, draws: s.draws + 1, swapped: [], ...keptAt };
     }
     case 'advanceTimers': {
       events.push(used);

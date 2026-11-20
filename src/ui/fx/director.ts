@@ -2017,14 +2017,61 @@ function strikeBeat(e: Extract<GameEvent, { t: 'cardStruck' }>): void {
   });
 }
 
+// ---------------------------------------------------------------------------------------
+// Pins (D-186). Like a strike's, their beats play on the hand, outside the chain, and the next
+// action finishes them at once.
+
+/**
+ * A hand dealt around a kept card (FEEL.pin): the card last week's pin kept stays put while the
+ * hand's other cards slide in, one after another. `kept` is its slot.
+ */
+export const dealView = signal<{ id: number; kept: number } | null>(null);
+
+let dealTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Ends a deal at once: every card in its slot. */
+export function finishDeal(): void {
+  clearTimeout(dealTimer);
+  dealTimer = undefined;
+  dealView.value = null;
+}
+
+/** A pushpin going in, or coming out (higher and lighter). Its stab is the hand's (hand.css). */
+function pinBeat(e: Extract<GameEvent, { t: 'cardPinned' }>): void {
+  audio.play('pin', e.pinned ? undefined : { rate: 1.35, gain: 0.8 });
+}
+
+/**
+ * A hand drawn with a kept card in it: a new week's after a pin, or a reroll's or the Catalog's
+ * (D-186). It deals in around the kept card, with motion on; the hand renders it from here, so
+ * the beat starts before this action's render and no card shows at rest first.
+ */
+function dealBeat(e: Extract<GameEvent, { t: 'handDrawn' }>): void {
+  if (e.kept === undefined || !motion() || instantTally.value) return;
+  const f = FEEL.pin;
+  const id = nextId++;
+  dealView.value = { id, kept: e.kept };
+  const others = Math.max(0, e.hand.length - 1);
+  dealTimer = setTimeout(
+    () => {
+      if (dealView.value?.id === id) dealView.value = null;
+    },
+    f.dealMs + f.staggerMs * Math.max(0, others - 1),
+  );
+}
+
 onEvents((events, before, after) => {
   // D-157: a strike's beat starts now, before this action's render, so its slot never shows the
   // new card first; any action finishes the last one's at once; and one that strikes nothing
   // clears the strike's words, so the hand's status line never reads them out again (with a
   // count of strikes left that may be stale by then).
   finishStrike();
+  // D-186: so does a deal, and a hand drawn around a kept card deals in.
+  finishDeal();
   let struck = false;
   for (const e of events) {
+    if (e.t === 'cardPinned') pinBeat(e);
+    if (e.t === 'handDrawn') dealBeat(e);
     if (e.t !== 'cardStruck') continue;
     struck = true;
     strikeBeat(e);
@@ -2048,8 +2095,9 @@ onEvents((events, before, after) => {
 onRunReset(() => {
   generation++;
   skipping = true;
-  // D-157: a strike's beat and its words go with the run.
+  // D-157: a strike's beat and its words go with the run, and D-186's deal.
   finishStrike();
+  finishDeal();
   struckSaid.value = '';
   batch(() => {
     popups.value = [];

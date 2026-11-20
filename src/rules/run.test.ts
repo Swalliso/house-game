@@ -278,9 +278,16 @@ describe('legal actions', () => {
     const s = withHand(onEmptyLot(), 'bedroom', 'bathroom', 'lKitchen');
     const actions = rules.legalActions(s);
     const free = actions.filter((a) => a.t !== 'place');
-    // A new run: two rerolls (the General Contractor's extra), each for both rows (D-132),
-    // nothing to demolish yet, and the target isn't met, so no early completion.
-    expect(free).toEqual([PASS, { t: 'reroll' }]);
+    // A new run: two rerolls (the General Contractor's extra), each for both rows (D-132), a
+    // pin on any card (D-186), nothing to demolish yet, and the target isn't met, so no early
+    // completion.
+    expect(free).toEqual([
+      PASS,
+      { t: 'reroll' },
+      { t: 'pin', i: 0 },
+      { t: 'pin', i: 1 },
+      { t: 'pin', i: 2 },
+    ]);
     const per = (i: number) =>
       actions.filter((a): a is PlaceAction => a.t === 'place' && a.i === i).length;
     expect(per(0)).toBe(11 * 11); // a 2×2 has one rotation
