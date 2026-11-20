@@ -296,4 +296,12 @@ export const BALANCE: Balance = {
     firstJobSlot: 3,
     refill: true,
   },
+
+  // D-188: the wrong delivery. Once a run, at the start of Framing, a yard showpiece nobody
+  // ordered turns up free in Your goods: which one depends on the run's seed. All three are
+  // shop-only (draw weight 0), so a run sees one it would seldom buy. A first job gets none.
+  surpriseDelivery: {
+    phase: 2,
+    pieces: ['pool', 'hotTub', 'henhouse'],
+  },
 };

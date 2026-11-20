@@ -109,7 +109,7 @@ reading the code, not from building anything.
 | [S13](s13-listing-on-the-end-screen.md) | The end screen writes a short listing for the house | S | UI only | The user's OK on the tone | Not started |
 | [S14](s14-pin-one-card.md) | Keep one card for next week | M | Rules and UI, no re-fit | | Built 2026-11-20 (D-186, #111); waiting on their playtest on /dev/ |
 | [S15](s15-trim-the-upgrade-shelf.md) | The upgrade slot stops offering two dead cards | S | Content | The user's answer | Not started |
-| [S16](s16-wrong-delivery.md) | A free yard showpiece arrives once a run | M | Rules and content | D-171's verdict | Not started; D-171 Accepted 2026-11-18 |
+| [S16](s16-wrong-delivery.md) | A free yard showpiece arrives once a run | M | Rules and content | D-171's verdict | Built 2026-11-20 (D-188, #110); waiting on their playtest on /dev/ |
 | [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Not started |
 | [S18](s18-neighbors-ask.md) | A neighbor asks for Fence along their side | L | Rules and content | The batch | Not started |
 | [S19](s19-one-scored-visitor.md) | One visitor's wish, shown in the last shop | L | Rules and content | S01 landed | Not started |

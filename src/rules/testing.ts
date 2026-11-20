@@ -1093,6 +1093,8 @@ export const TEST_BALANCE: Balance = {
   // D-160: no standing stock, so the test content's reserves are as before; stock.test.ts
   // turns it on.
   standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1, refill: false },
+  // D-188: no wrong delivery either; surprise.test.ts turns it on.
+  surpriseDelivery: { phase: 1, pieces: [] },
 };
 
 const testTool = (

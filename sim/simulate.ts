@@ -5,7 +5,8 @@
 // probe after milestone 3, and the economy; and for §8's M3 and M4 reports, per-piece offers,
 // picks and earnings, the score layers, flat points by source, house siting, early
 // completions, strikes used from the hand (D-157), and reserve cards played by where they came
-// from (D-160: the standing stock and what the client brought among them).
+// from (D-160: the standing stock and what the client brought among them; D-188: the wrong
+// delivery).
 //
 // A bot that loops or breaks must not hang CI or sink a sweep without a trace (§9): each run
 // caps its steps per week and in all, and any throw from the policy or from apply() comes back
@@ -40,13 +41,14 @@ import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
 
 /** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
-export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock';
+export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise';
 
 export function reserveSource(r: ReservePiece): ReserveSource {
   if (r.crew) return 'crew';
   if (r.arrival !== undefined) return 'arrival';
   if (r.client) return 'client';
   if (r.stock) return 'stock';
+  if (r.surprise) return 'surprise';
   return 'own';
 }
 
@@ -103,7 +105,8 @@ export interface RunRecord {
   struck: { type: string; week: number; phase: number }[];
   /**
    * D-160: reserve cards played (placed or renovated with), by where they came from: bought,
-   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's.
+   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's, and
+   * (D-188) the wrong delivery's.
    */
   reservePlays: Record<ReserveSource, number>;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
@@ -464,6 +467,7 @@ export function simulateRun(
     arrival: 0,
     client: 0,
     stock: 0,
+    surprise: 0,
   };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
   let firstRow = NaN;
