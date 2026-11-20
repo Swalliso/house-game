@@ -1726,7 +1726,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Building over Trees:** allowed and free; the Tree is gone.
 - **Lawn:** a 2×2 piece (was 1×1, so a big lot fills in; D-049), +1 per adjacent Lawn, at most 4. This replaces "per connected Lawn tile", which grows quadratically.
 - **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3).
-- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160).
+- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160). The Hallway and the Fence draw at 5 (D-197), since the standing stock keeps one of each in Your goods; the Long Hallway and the Driveway stay at 10.
 
 ### M2
 
