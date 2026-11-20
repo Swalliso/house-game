@@ -40,7 +40,7 @@ import {
 } from '../board/house-model.ts';
 import { people, roomPeople, withPeople } from '../board/people.ts';
 import { paintHouse } from '../screens/photo-paint.ts';
-import { CELL, spritePos, type SpriteId } from '../sprites.ts';
+import { CELL, spriteFrames, spritePos, type SpriteId } from '../sprites.ts';
 import { artSize } from './drawings.ts';
 import {
   Canvas,
@@ -54,6 +54,7 @@ import {
   pendantPixels,
   wallMask,
   type AtlasPixels,
+  type Figure,
   type Pixels,
 } from './house-paint.ts';
 import {
@@ -642,15 +643,42 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
         : [],
     );
 
-  /** The lot pixels an item draws. */
-  function drawn(it: Item): Set<string> {
-    const out = new Set<string>();
-    const { w, h } = artSize(it.sprite);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        if (spritePixel(it.sprite as SpriteId, x, y)[3]! > 0) out.add(`${it.x + x},${it.y + y}`);
+  /** Each figure's pixels, in its own box, by its looks (or its sprite). */
+  const shapes = new Map<string, (readonly [number, number])[]>();
+  const drawnCache = new WeakMap<Figure, Set<string>>();
+
+  /**
+   * The lot pixels a member draws standing (D-185): in any frame of any strip they show (a breath
+   * raises a head a pixel, a book or a phone is held out), so what keeps off them keeps off every
+   * frame. An item without strips, its first frame.
+   */
+  function drawn(it: Figure): Set<string> {
+    let out = drawnCache.get(it);
+    if (out) return out;
+    const key = it.looks ? it.looks.join(',') : `${it.sprite}#0`;
+    let shape = shapes.get(key);
+    if (!shape) {
+      const on = new Set<string>();
+      shape = [];
+      const { w, h } = artSize(it.sprite);
+      for (const id of (it.looks ?? [it.sprite]) as SpriteId[]) {
+        const anim = it.looks ? spriteFrames(id) : null;
+        for (let k = 0; k < (anim?.frames ?? 1); k++) {
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const at = x + k * (anim?.stride ?? 0);
+              if (spritePixel(id, at, y)[3]! > 0 && !on.has(`${x},${y}`)) {
+                on.add(`${x},${y}`);
+                shape.push([x, y]);
+              }
+            }
+          }
+        }
       }
+      shapes.set(key, shape);
     }
+    out = new Set(shape.map(([x, y]) => `${it.x + x},${it.y + y}`));
+    drawnCache.set(it, out);
     return out;
   }
 
@@ -702,6 +730,12 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     expect([...withHer].filter((k) => her.has(k))).toEqual([]);
     expect([...alone].filter((k) => !her.has(k) && !withHer.has(k))).toEqual([]);
     expect([...withHer].every((k) => alone.has(k))).toBe(true);
+    // D-185: round every frame of hers, not just the first: her breath's raised head, her book
+    // and her phone, where the glow would fall on them.
+    const still = drawn({ sprite: mine[0]!.sprite, x: mine[0]!.x, y: mine[0]!.y });
+    const more = [...her].filter((k) => !still.has(k));
+    expect(more.filter((k) => alone.has(k)).length).toBeGreaterThan(5);
+    expect(more.filter((k) => withHer.has(k))).toEqual([]);
   });
 
   it('in every member’s room, turn and boxed-in way: one in front of it covers its shade', () => {

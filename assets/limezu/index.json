@@ -174,6 +174,34 @@
     "h": 41,
     "spec": "24153a418bea6e94"
   },
+  "butterfly-0": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 130,
+    "spec": "b9b55a782dde5a2a"
+  },
+  "butterfly-1": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 120,
+    "spec": "2a3bff490f0a3e95"
+  },
+  "butterfly-2": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 140,
+    "spec": "d84ce25ce7dec647"
+  },
+  "butterfly-3": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 150,
+    "spec": "5756a0de75706bd9"
+  },
   "candles": {
     "w": 13,
     "h": 14,
@@ -250,6 +278,20 @@
     "w": 61,
     "h": 37,
     "spec": "0bbd9b7a4769ff04"
+  },
+  "cat": {
+    "w": 28,
+    "h": 15,
+    "frames": 35,
+    "ms": 160,
+    "spec": "b95d691a27d2078c"
+  },
+  "cat-black": {
+    "w": 28,
+    "h": 15,
+    "frames": 35,
+    "ms": 160,
+    "spec": "ac4a13359d2a046e"
   },
   "chair-east-0": {
     "w": 13,
@@ -951,6 +993,34 @@
     "ms": 200,
     "spec": "19e44f8c3cb17c19"
   },
+  "life-fish-1": {
+    "w": 16,
+    "h": 16,
+    "frames": 11,
+    "ms": 110,
+    "spec": "8288a4cc1073b04b"
+  },
+  "life-fish-2": {
+    "w": 16,
+    "h": 16,
+    "frames": 14,
+    "ms": 110,
+    "spec": "d580af47a8973c6c"
+  },
+  "life-fish-3": {
+    "w": 16,
+    "h": 16,
+    "frames": 14,
+    "ms": 110,
+    "spec": "4d2e60ddf1313496"
+  },
+  "life-frog": {
+    "w": 16,
+    "h": 16,
+    "frames": 6,
+    "ms": 120,
+    "spec": "e6d63405f22311a9"
+  },
   "life-walker-1": {
     "w": 16,
     "h": 32,
@@ -1167,7 +1237,23 @@
   "people-grandma": {
     "w": 16,
     "h": 26,
-    "spec": "0f7f5d3c919aa128"
+    "frames": 6,
+    "ms": 450,
+    "spec": "fc368d845c17ea8d"
+  },
+  "people-grandma-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "78a84ed2ae6a034f"
+  },
+  "people-grandma-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "98fa269d190b497f"
   },
   "people-grandma-walk": {
     "w": 16,
@@ -1179,7 +1265,9 @@
   "people-ivy": {
     "w": 16,
     "h": 26,
-    "spec": "572f55086ee1e057"
+    "frames": 6,
+    "ms": 450,
+    "spec": "2271a18896f3eca6"
   },
   "people-ivy-walk": {
     "w": 16,
@@ -1191,7 +1279,23 @@
   "people-nana": {
     "w": 16,
     "h": 26,
-    "spec": "8c3737db14986b2e"
+    "frames": 6,
+    "ms": 450,
+    "spec": "7a8fffffe0ecf132"
+  },
+  "people-nana-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "5ca08753d9ac86da"
+  },
+  "people-nana-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "eff9330453cedb69"
   },
   "people-nana-walk": {
     "w": 16,
@@ -1203,7 +1307,23 @@
   "people-renfield": {
     "w": 16,
     "h": 26,
-    "spec": "a52e40db20536027"
+    "frames": 6,
+    "ms": 450,
+    "spec": "68fdc6d4c0caeda0"
+  },
+  "people-renfield-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "ab36947a363ab56d"
+  },
+  "people-renfield-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "c27550515cf61055"
   },
   "people-renfield-walk": {
     "w": 16,
@@ -1215,7 +1335,23 @@
   "people-rowan": {
     "w": 16,
     "h": 26,
-    "spec": "f69f38a8cbe38554"
+    "frames": 6,
+    "ms": 450,
+    "spec": "77b1b96976d577fe"
+  },
+  "people-rowan-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "64f1708aff1a3ce1"
+  },
+  "people-rowan-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "df23a127946a96a8"
   },
   "people-rowan-walk": {
     "w": 16,
@@ -1257,7 +1393,9 @@
   "piano": {
     "w": 31,
     "h": 32,
-    "spec": "adada3369340140e"
+    "frames": 37,
+    "ms": 200,
+    "spec": "1e447584f39938f6"
   },
   "picket-post": {
     "w": 5,
@@ -1342,7 +1480,9 @@
   "pool-float-0": {
     "w": 32,
     "h": 22,
-    "spec": "7024326f13cbd810"
+    "frames": 2,
+    "ms": 1000,
+    "spec": "c57a6ab5ff9e9b75"
   },
   "pool-ladder": {
     "w": 15,
@@ -1721,7 +1861,9 @@
   "toy-box": {
     "w": 15,
     "h": 15,
-    "spec": "f92c6d8287526c1c"
+    "frames": 35,
+    "ms": 200,
+    "spec": "509e4dcbb143044b"
   },
   "toy-train": {
     "w": 55,

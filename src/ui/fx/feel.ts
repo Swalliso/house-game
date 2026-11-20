@@ -286,6 +286,17 @@ export const FEEL = {
    */
   dog: { wakeDelayMs: 220, barkGain: 0.9, hopMs: 140, roofMs: 2380, grassMs: 1680 },
   /**
+   * The hens by a Henhouse peck now and then (D-185, drawings.ts): each holds its head up for
+   * `restMs`, then pecks twice (down, up, down), every frame `peckMs`, on its own phase.
+   */
+  hen: { peckMs: 200, restMs: 3800 },
+  /**
+   * The dog asleep in the dogs' bed (Nana's Room, the Barkers' first Living Room) breathes once
+   * every `breathMs`, its flank 1 px higher for `inMs` of it, in frames of `stepMs` (D-185).
+   * Under 2 s a breath reads as a twitch.
+   */
+  dogBed: { breathMs: 2500, inMs: 1000, stepMs: 500 },
+  /**
    * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
    * and walls are drawn with the whole house, so the flash shows which room is reacting.
    */
@@ -543,6 +554,22 @@ export const FEEL = {
   },
 
   /**
+   * D-185: the household standing, at the front door or in their room (board/people.ts pace,
+   * PeopleLayer.tsx Standing): decoration only. Each member breathes, each frame of their idle
+   * shown `idleFrameMs`. Now and then an adult reads, and a turn later takes a call, each frame
+   * of the book or the phone shown `busyFrameMs`: a turn every `turnMs` (between the two, by hash
+   * of the run's seed and who they are), and the book or the phone shows for its first 16%, a
+   * few seconds (people.css's member-*-turn keyframes: 8% of the two turns). Held still under a
+   * sheet over the board; with Reduce motion they stand on their first frame, and never read or
+   * call.
+   */
+  household: {
+    idleFrameMs: 450,
+    busyFrameMs: 350,
+    turnMs: [20000, 40000] as const,
+  },
+
+  /**
    * D-160: the standing stock topping up, or a client's cards landing, after week 1: they pop
    * into the reserve's extra slots with a soft shimmer, and no banner. With a member arriving the
    * same week, they wait for the doorbell (`arrival.landDelayMs`) and pop with the member's.
@@ -681,6 +708,17 @@ export const FEEL = {
       /** How far a crow flies, in cells: up, and away sideways; each one after the first, one more. */
       flyUpCells: 4,
       flyAwayCells: 3,
+    },
+    /**
+     * D-185: life at the water (TerrainLayer.tsx WaterLife, terrain/water.ts). A frog on a lily
+     * pad breathes (its frames, at the cut's pace) once every `frogEveryMs`, sitting still
+     * between; under the surface of each pond, creek and lake, fish come by once every
+     * `fishEveryMs`. Each takes its own time in the range, and its own phase, by hash, so no two
+     * move together.
+     */
+    water: {
+      frogEveryMs: [5000, 9000],
+      fishEveryMs: [10000, 20000],
     },
     /**
      * The street's regulars: each lane's next car or walker comes by this long after the last

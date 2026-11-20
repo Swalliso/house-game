@@ -17,6 +17,9 @@
   display: block;
   image-rendering: pixelated;
 }
+.people .person {
+  overflow: hidden;
+}
 .people .stand-in {
   left: 0;
   top: 0;
@@ -62,4 +65,80 @@
   to {
     transform: translateX(var(--walker-frames));
   }
+}
+
+/* D-185: a member standing, at the door or in their room (PeopleLayer.tsx Standing). Each strip
+   steps behind the figure's box a frame at a time, transform only: the idle, a breath a loop; and
+   an adult's book and phone, which show only in their turns, the idle hidden then. Every strip
+   and turn starts --member-delay in, so they step together. */
+.member-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  animation:
+    member-frames var(--member-loop-ms) steps(var(--member-steps)) var(--member-delay) infinite,
+    var(--member-turn) var(--member-turns-ms) linear var(--member-delay) infinite;
+}
+.member-busy {
+  visibility: hidden;
+}
+@keyframes member-frames {
+  to {
+    transform: translateX(var(--member-frames));
+  }
+}
+/* An adult's two turns (people.ts pace, FEEL.household): the book for the first 16% of the first,
+   the phone for the first 16% of the second; the idle the rest of the time. */
+@keyframes member-idle-turn {
+  0%,
+  7.999% {
+    visibility: hidden;
+  }
+  8%,
+  49.999% {
+    visibility: visible;
+  }
+  50%,
+  57.999% {
+    visibility: hidden;
+  }
+  58%,
+  100% {
+    visibility: visible;
+  }
+}
+@keyframes member-read-turn {
+  0%,
+  7.999% {
+    visibility: visible;
+  }
+  8%,
+  100% {
+    visibility: hidden;
+  }
+}
+@keyframes member-phone-turn {
+  0%,
+  49.999% {
+    visibility: hidden;
+  }
+  50%,
+  57.999% {
+    visibility: visible;
+  }
+  58%,
+  100% {
+    visibility: hidden;
+  }
+}
+/* With Reduce motion they stand on the idle's first frame, the figure still, and never read or
+   call; under the shop's sheet or a change order's they hold still, as the furniture does. */
+.reduce-motion .member-strip {
+  animation: none;
+}
+.board.covered .member-strip {
+  animation-play-state: paused;
 }

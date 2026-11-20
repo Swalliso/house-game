@@ -6,11 +6,27 @@ import { BALANCE } from '../../../content/balance.ts';
 import { generateLot, lotFromRows, terrainAt } from '../../../rules/lot.ts';
 import { rules, type Lot } from '../../../rules/index.ts';
 import { BLOB47_MASKS, blobTile, E, N, NE, NW, S, SE, SUB, SW, W } from '../autotile.ts';
+import { FEEL } from '../../fx/feel.ts';
 import { grassDecor, TUFT_EVERY, WILDFLOWERS_EVERY } from './grass.ts';
-import { seedSalt } from './hash.ts';
+import { seedSalt, tileHash } from './hash.ts';
 import { treeKind } from './objects.ts';
 import { lotShade } from './shade.ts';
-import { shoreSet, waterPlan } from './water.ts';
+import {
+  FISH_CELLS,
+  FISH_MAX,
+  FISH_NARROW,
+  FISH_OPEN,
+  FROG_EVERY,
+  FROG_PAD,
+  lifeBeat,
+  lifeStrip,
+  RUNS,
+  shoreSet,
+  waterBodies,
+  waterLife,
+  waterPlan,
+  type WaterCritter,
+} from './water.ts';
 
 const cell = (s: number) => Math.floor(s / SUB);
 
@@ -216,6 +232,176 @@ describe('the water', () => {
   });
 });
 
+describe('life at the water (D-185)', () => {
+  const SEEDS = Array.from({ length: 120 }, (_, i) => `water-${i}`);
+  const LOTS = SEEDS.map((seed) => {
+    const lot = generateLot(seed, BALANCE.lot);
+    const salt = seedSalt(seed);
+    const plan = waterPlan(lot, salt);
+    return { seed, lot, salt, plan, life: waterLife(lot, plan, salt) };
+  });
+  /** The cell the middle of what shows of a critter's frame is over. */
+  const cellOf = (lot: Lot, c: WaterCritter) =>
+    Math.floor((c.y + c.clip.y + c.clip.h / 2) / 32) * lot.width +
+    Math.floor((c.x + c.clip.x + c.clip.w / 2) / 32);
+  /** Whether a critter is over this body of water. */
+  const over = (lot: Lot, body: { cells: readonly number[] }) => (c: WaterCritter) =>
+    body.cells.includes(cellOf(lot, c));
+
+  it('sits a frog on some of each pond’s big lily pads, and on nothing else', () => {
+    let ponds = 0;
+    for (const { lot, plan, life } of LOTS) {
+      const pads = plan.lilies.filter((l) => l.id === FROG_PAD.id);
+      for (const f of life.frogs) {
+        const at = f.flip ? FROG_PAD.mirrored : FROG_PAD.at;
+        const pad = pads.find((l) => l.sx * 16 + at.x === f.x && l.sy * 16 + at.y === f.y);
+        expect(pad, `frog at ${f.x},${f.y}`).toBeDefined();
+        expect(f.clip).toEqual({ x: 0, y: 0, w: 16, h: 16 });
+      }
+      for (const body of waterBodies(lot).filter((b) => b.kind === 'pond')) {
+        const mine = pads.filter((l) => body.cells.includes(cell(l.sy) * lot.width + cell(l.sx)));
+        const frogs = life.frogs.filter(over(lot, body));
+        if (mine.length > 0) ponds++;
+        // One for about every FROG_EVERY big pads, and one at least where there are any.
+        const want = mine.length === 0 ? 0 : Math.max(1, Math.round(mine.length / FROG_EVERY));
+        expect(frogs).toHaveLength(want);
+      }
+    }
+    expect(ponds).toBeGreaterThan(20);
+  });
+
+  it('brings fish to every pond, creek and lake, on open water or across the creek', () => {
+    const kinds = new Set<string>();
+    for (const { lot, plan, life } of LOTS) {
+      const pieces = new Map(plan.tiles.map((t) => [`${t.sx},${t.sy}`, t.piece]));
+      const lilies = new Set(plan.lilies.map((l) => `${l.sx},${l.sy}`));
+      for (const body of waterBodies(lot)) {
+        kinds.add(body.kind);
+        const fish = life.fish.filter(over(lot, body));
+        const want = Math.min(FISH_MAX, Math.max(1, Math.round(body.cells.length / FISH_CELLS)));
+        expect(fish.length, `${body.kind} of ${body.cells.length}`).toBeGreaterThan(0);
+        expect(fish.length).toBeLessThanOrEqual(want);
+        for (const f of fish) {
+          if (f.clip.w === 16 && f.clip.h === 16) {
+            // A whole subtile of open water, with no lily pad on it.
+            expect(f.x % 16 === 0 && f.y % 16 === 0).toBe(true);
+            const at = `${f.x / 16},${f.y / 16}`;
+            expect(pieces.get(at)).toEqual({ block: 'outer', col: 1, row: 1 });
+            expect(lilies.has(at)).toBe(false);
+            expect(FISH_OPEN).toContain(f.id);
+          } else {
+            // Across a straight run of the creek, showing only between its banks.
+            expect(body.kind).toBe('creek');
+            expect(f.id).toBe(FISH_NARROW);
+            const run = Object.values(RUNS).find(
+              (r) =>
+                r.clip === f.clip && (f.x - r.frame.x) % 32 === 0 && (f.y - r.frame.y) % 32 === 0,
+            );
+            expect(run).toBeDefined();
+          }
+        }
+        // Two in the same water keep apart.
+        for (const a of fish) {
+          for (const b of fish) {
+            if (a === b) continue;
+            const far = Math.abs(a.x - b.x) >= 3 * 32 || Math.abs(a.y - b.y) >= 3 * 32;
+            expect(far).toBe(true);
+          }
+        }
+      }
+    }
+    expect([...kinds].sort()).toEqual(['creek', 'lake', 'pond']);
+  });
+
+  it('shows a creek’s fish only on its open water, between the banks’ shadows', () => {
+    const shore = png('shore');
+    // The shore's open water: its light colors, in every frame.
+    const LIGHT = ['3ca3b2', '369ab0', '3690ae', '3fabb7'];
+    const light = (x: number, y: number) => {
+      const i = (y * shore.width + x) * 4;
+      const hex = [0, 1, 2].map((c) => shore.rgba[i + c]!.toString(16).padStart(2, '0')).join('');
+      return shore.rgba[i + 3] === 255 && LIGHT.includes(hex);
+    };
+    // A cell's art px, in the 3 × 3 block's tiles for an east–west run (top edge over bottom
+    // edge) or a north–south one (left edge beside right edge).
+    const eastWest = (x: number, y: number, k: number) =>
+      light(k * 48 + 16 + (x % 16), y < 16 ? y : 32 + (y - 16));
+    const northSouth = (x: number, y: number, k: number) =>
+      light(k * 48 + (x < 16 ? x : 32 + (x - 16)), 16 + (y % 16));
+    for (const [run, at] of [
+      [RUNS.eastWest, eastWest],
+      [RUNS.northSouth, northSouth],
+    ] as const) {
+      for (let k = 0; k < 8; k++) {
+        for (let y = 0; y < run.clip.h; y++) {
+          for (let x = 0; x < run.clip.w; x++) {
+            expect(at(run.frame.x + run.clip.x + x, run.frame.y + run.clip.y + y, k)).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps fish off a cell of creek a Driveway bridges', () => {
+    const creek = LOTS.find(({ life }) => life.fish.some((f) => f.clip.h < 16));
+    expect(creek).toBeDefined();
+    const { lot, plan, salt, life } = creek!;
+    const covered = life.fish.map((f) => cellOf(lot, f));
+    const moved = waterLife(lot, plan, salt, covered);
+    expect(moved.fish.length).toBeGreaterThan(0);
+    for (const f of moved.fish) expect(covered).not.toContain(cellOf(lot, f));
+  });
+
+  it('is the same for the same lot every time, and its own for each run', () => {
+    for (const { lot, plan, salt, life } of LOTS.slice(0, 20)) {
+      expect(waterLife(lot, plan, salt)).toEqual(life);
+    }
+    const lot = lotFromRows(
+      Array.from({ length: 12 }, (_, y) => (y >= 2 && y < 10 ? '..PPPPPPPP..' : '............')),
+    );
+    const spots = new Set(
+      ['a', 'b', 'c', 'd', 'e', 'f'].map((s) => {
+        const salt = seedSalt(s);
+        const life = waterLife(lot, waterPlan(lot, salt), salt);
+        return JSON.stringify(life.fish.map((f) => [f.x, f.y, f.id]));
+      }),
+    );
+    expect(spots.size).toBeGreaterThan(3);
+  });
+
+  it('times each critter its own way: every so often, from its own phase', () => {
+    const f = FEEL.life.water;
+    for (const [every, frames, ms] of [
+      [f.frogEveryMs, 6, 120],
+      [f.fishEveryMs, 14, 110],
+    ] as const) {
+      const delays = new Set<number>();
+      for (let beat = 0; beat < 4000; beat += 37) {
+        const b = tileHash(beat, 7, 1);
+        const { positions, delayMs } = lifeBeat(b, frames, ms, every);
+        expect(positions).toBeGreaterThan(frames);
+        expect(positions * ms).toBeGreaterThanOrEqual(every[0] - ms);
+        expect(positions * ms).toBeLessThanOrEqual(every[1] + ms);
+        expect(delayMs % ms).toBe(0);
+        expect(delayMs).toBeLessThan(positions * ms);
+        delays.add(delayMs);
+      }
+      expect(delays.size).toBeGreaterThan(50);
+    }
+    // Rare and calm: a fish now and then, a frog's breath every few seconds.
+    expect(f.fishEveryMs[0]).toBeGreaterThanOrEqual(10000);
+    expect(f.frogEveryMs[0]).toBeGreaterThanOrEqual(4000);
+  });
+
+  it('breathes a frog then sits it still; brings fish in after open water', () => {
+    expect(lifeStrip('frog', 6, 10)).toEqual([0, 1, 2, 3, 4, 5, 0, 0, 0, 0]);
+    expect(lifeStrip('fish', 3, 7)).toEqual([-1, -1, -1, -1, 0, 1, 2]);
+    // Held on its first position (Reduce motion): the frog sits, and no fish shows.
+    expect(lifeStrip('frog', 6, 60)[0]).toBe(0);
+    expect(lifeStrip('fish', 14, 150)[0]).toBe(-1);
+  });
+});
+
 // The committed cuts, checked against the tables that pick their tiles.
 const root = resolve(import.meta.dirname, '../../../..');
 const png = (id: string): RgbaImage =>
@@ -260,5 +446,44 @@ describe('the committed terrain cuts', () => {
         expect(alpha(img, x0 + x, y), `frame ${frame} at ${x},${y}`).toBe(255);
       }
     }
+  });
+
+  it('the fish (D-185): only their shadows, the open water behind them keyed out', () => {
+    for (const id of FISH_OPEN) {
+      const img = png(id);
+      let shadow = 0;
+      for (let i = 0; i < img.rgba.length; i += 4) {
+        if (img.rgba[i + 3] === 0) continue;
+        shadow++;
+        const hex = [0, 1, 2].map((c) => img.rgba[i + c]!.toString(16).padStart(2, '0')).join('');
+        expect(hex, id).not.toBe('3ca3b2');
+      }
+      // Fish, but nowhere near a frame's worth of water.
+      expect(shadow).toBeGreaterThan(100);
+      expect(shadow / (img.width * img.height)).toBeLessThan(0.3);
+    }
+  });
+});
+
+describe('the water’s life on the board (D-185)', () => {
+  const css = readFileSync(resolve(import.meta.dirname, 'terrain.css'), 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+  const rule = (selector: string) => {
+    const at = css.indexOf(`${selector} {`);
+    return at < 0 ? '' : css.slice(at, css.indexOf('}', at));
+  };
+
+  it('pauses under a sheet over the board, as the water does', () => {
+    expect(rule('.water-life > .life-strip')).toMatch(/animation-name:\s*water-life/);
+    expect(rule('.board.covered .water-life > .life-strip')).toMatch(
+      /animation-play-state:\s*paused/,
+    );
+  });
+
+  it('holds a frog still and hides the fish with Reduce motion', () => {
+    expect(rule('.reduce-motion .water-life > .life-strip')).toMatch(/animation:\s*none/);
+    expect(rule('.reduce-motion .ground > .water-life.fish')).toMatch(/display:\s*none/);
   });
 });

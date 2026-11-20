@@ -204,7 +204,13 @@
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
     "rect": [288, 178, 32, 22],
-    "note": "A float on the Pool: the pink donut ring."
+    "frames": {
+      "count": 2,
+      "dx": 0,
+      "dy": -1,
+      "ms": 1000
+    },
+    "note": "A float on the Pool: the pink donut ring, bobbing (D-185). Its first frame is the still float it always was; in the second the sheet is read a row higher, so the ring sits 1 px lower, sunk to the same waterline. LimeZu's Floating_Donut_1 bobs the same way (down for half its frames), but draws its own ripples where this one has its shadow and the hole's inner rim, so its frames can't start from this one."
   },
   "hot-tub-bubbles": {
     "pack": "me",
@@ -314,6 +320,106 @@
       }
     ],
     "note": "A Herb Garden's planter: the flower planters' terracotta box (its bottom 7 rows) with three garden herbs standing in it, so it reads as greens, not flowers."
+  },
+  "butterfly-0": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_butterfly_2.png",
+    "rect": [4, 0, 7, 1],
+    "frames": {
+      "count": 4,
+      "dx": 16,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [7, 26],
+        "layers": [
+          {
+            "rect": [4, 7, 7, 8],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "A butterfly over a Flower Bed or a Herb Garden (D-185): LimeZu's white one in flight, its 4 frames (the 7 × 8 px it flaps and bobs in, of each 16 px frame) at the top of a clear canvas 26 px tall, so the item's foot is at the planter's front and it sorts in front of the plants (yard.ts). The cut reads a clear row of the sheet and lays the butterfly in, following the frames."
+  },
+  "butterfly-1": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_butterfly.png",
+    "rect": [4, 0, 7, 1],
+    "frames": {
+      "count": 4,
+      "dx": 16,
+      "dy": 0,
+      "ms": 120
+    },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [7, 26],
+        "layers": [
+          {
+            "rect": [4, 7, 7, 8],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "The blue butterfly, cut as butterfly-0. Each color flaps at its own pace, so two side by side drift apart."
+  },
+  "butterfly-2": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_butterfly_3.png",
+    "rect": [4, 0, 7, 1],
+    "frames": {
+      "count": 4,
+      "dx": 16,
+      "dy": 0,
+      "ms": 140
+    },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [7, 26],
+        "layers": [
+          {
+            "rect": [4, 7, 7, 8],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "The red and yellow butterfly, cut as butterfly-0."
+  },
+  "butterfly-3": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_butterfly_6.png",
+    "rect": [4, 0, 7, 1],
+    "frames": {
+      "count": 4,
+      "dx": 16,
+      "dy": 0,
+      "ms": 150
+    },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [7, 26],
+        "layers": [
+          {
+            "rect": [4, 7, 7, 8],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "The yellow and brown butterfly, cut as butterfly-0."
   },
   "sapling-0": {
     "pack": "me",

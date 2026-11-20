@@ -10,6 +10,9 @@
 // furniture, and under the tree tops, the labels, the ghost and the popups. The walk moves a whole
 // art px a step, transform only, as the street's walkers do (fx/Drive.tsx); with Reduce motion
 // there's no walk, and the figure stands there all the same, since it says someone is waiting.
+//
+// D-185: standing, at the door or in their room, a member breathes, and an adult reads or takes a
+// call now and then (Standing, which HouseLayers.tsx uses for the members in their rooms too).
 
 import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -19,7 +22,16 @@ import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
 import { spriteFrames, spritePos, spriteStyle, type SpriteId } from '../sprites.ts';
 import type { HouseModel, Rect } from './house-model.ts';
-import { FIGURE, PULLED, suitcaseAt, walkPlan, walkStart, type Person } from './people.ts';
+import {
+  FIGURE,
+  PULLED,
+  suitcaseAt,
+  walkPlan,
+  walkStart,
+  type Cast,
+  type Pace,
+  type Person,
+} from './people.ts';
 import './people.css';
 
 /** The last walk played: a board mounted again (Menu, then Continue) doesn't play it twice. */
@@ -37,15 +49,82 @@ function boxAt(id: SpriteId, x: number, y: number, scale: number): JSX.CSSProper
   };
 }
 
+/** The keyframes of each strip's turn (people.css), by its place in Standing's strips. */
+const TURNS = ['member-idle-turn', 'member-read-turn', 'member-phone-turn'] as const;
+
+/**
+ * D-185: a member standing, facing south, in a box at `scale` CSS px per art px that shows their
+ * figure's rows from `from` down (all of them at the door; those under or over the walls in a
+ * room: HouseLayers.tsx ItemPart). Each strip of theirs steps behind the box a frame at a time,
+ * transform only, as an animated item's do: their idle, a breath a loop, its first frame the
+ * figure standing still; and an adult's book and phone, each shown only in its turn (people.css),
+ * with the idle hidden then. Everything is `pace.delayMs` in (people.ts pace), so the turns and the
+ * loops step together, and the box's two parts in a room (mounted together) as one. Held still
+ * under a sheet over the board; with Reduce motion, the figure standing still, as it always has.
+ */
+export function Standing({
+  cast,
+  pace,
+  scale,
+  from = 0,
+}: {
+  cast: Cast;
+  pace: Pace;
+  scale: number;
+  from?: number;
+}) {
+  const strips =
+    pace.turnsMs > 0 && cast.read && cast.phone
+      ? [cast.stand, cast.read, cast.phone]
+      : [cast.stand];
+  const turns = strips.length > 1;
+  return (
+    <>
+      {strips.map((id, k) => {
+        const { x, y, w } = spritePos(id);
+        const anim = spriteFrames(id);
+        const frames = anim?.frames ?? 1;
+        const stride = anim?.stride ?? w;
+        const ms = (k === 0 ? pace.idleMs : pace.busyMs) * frames;
+        return (
+          <span
+            key={id}
+            class={k === 0 ? 'member-strip' : 'member-strip member-busy'}
+            style={{
+              ...spriteStyle(id, scale),
+              backgroundPosition: `${-x * scale}px ${-(y + from) * scale}px`,
+              width: `${stride * frames * scale}px`,
+              '--member-frames': `${-stride * frames * scale}px`,
+              '--member-steps': String(frames),
+              '--member-loop-ms': `${ms}ms`,
+              '--member-turn': turns ? TURNS[k]! : 'none',
+              '--member-turns-ms': `${pace.turnsMs}ms`,
+              '--member-delay': `${pace.delayMs}ms`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 /** A member waiting, facing south, with their suitcase to their right, a pixel in front. */
 function Waiting({ p, scale, cls = '' }: { p: Person; scale: number; cls?: string }) {
   const bag = suitcaseAt(p, p.cast.suitcase);
+  const { w, h } = spritePos(p.cast.stand);
   return (
     <>
       <span
         class={`person ${cls}`}
-        style={boxAt(p.cast.stand, p.x - FIGURE.w / 2, p.y - FIGURE.h, scale)}
-      />
+        style={{
+          left: `${(p.x - FIGURE.w / 2) * scale}px`,
+          top: `${(p.y - FIGURE.h) * scale}px`,
+          width: `${w * scale}px`,
+          height: `${h * scale}px`,
+        }}
+      >
+        <Standing cast={p.cast} pace={p.pace} scale={scale} />
+      </span>
       <span class={`suitcase ${cls}`} style={boxAt(p.cast.suitcase, bag.x, bag.y, scale)} />
     </>
   );

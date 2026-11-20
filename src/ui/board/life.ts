@@ -1,11 +1,12 @@
 // Life on the lot (D-155), the part that decides, kept pure so tests can check it: which open
-// grass a week's flock of crows lands on, where each crow stands, what sends the flock up and
-// which way it flies, and the street's regulars. LifeLayer.tsx draws it. None of it is the
-// rules: it reads the house and changes nothing.
+// ground a week's flock of crows lands on (grass, or since D-185 a Lawn with nothing installed,
+// which it likes best), where each crow stands, what sends the flock up and which way it flies,
+// and the street's regulars. LifeLayer.tsx draws it. None of it is the rules: it reads the
+// house and changes nothing.
 
 import type { Cell, HouseState } from '../../rules/index.ts';
 import type { SpriteId } from '../sprites.ts';
-import { occupancy, uidAt, type Occupancy } from './geometry.ts';
+import { digitCell, occupancy, uidAt, type Occupancy } from './geometry.ts';
 import { seedSalt, tileHash } from './terrain/hash.ts';
 
 /** A crow: its cell, where in it (art px from the cell's corner), and which way it faces. */
@@ -17,11 +18,54 @@ export interface Crow {
   readonly west: boolean;
 }
 
-/** Nothing on it: no piece, and none of the lot's own (a Tree, water, a Boulder, a find). */
+/**
+ * D-185: a Lawn with nothing installed, whose mown grass is as open as the lot's: a Sprinkler
+ * (and its spray) or Garden Lights' bollards stand on one that has.
+ */
+function openLawn(occ: Occupancy, uid: number): boolean {
+  const p = occ.byUid.get(uid);
+  return p !== undefined && p.defId === 'lawn' && !p.fixture;
+}
+
+/**
+ * Open ground: none of the lot's own on it (a Tree, water, a Boulder, a find), and no piece, or
+ * only a Lawn with nothing installed (D-185).
+ */
 function clear(house: HouseState, occ: Occupancy, x: number, y: number): boolean {
   const { lot } = house;
   if (x < 0 || y < 0 || x >= lot.width || y >= lot.height) return false;
-  return lot.terrain[y * lot.width + x] == null && uidAt(occ, x, y) === 0;
+  if (lot.terrain[y * lot.width + x] != null) return false;
+  const uid = uidAt(occ, x, y);
+  return uid === 0 || openLawn(occ, uid);
+}
+
+/** D-185: every cell of the 2 × 2 block at (x, y) is on a Lawn with nothing installed. */
+function onLawn(occ: Occupancy, x: number, y: number): boolean {
+  for (let j = y; j <= y + 1; j++) {
+    for (let i = x; i <= x + 1; i++) if (!openLawn(occ, uidAt(occ, i, j))) return false;
+  }
+  return true;
+}
+
+/** A 2 × 2 block's cells, from its corner, in the order a flock counts them. */
+const BLOCK: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [1, 0],
+  [1, 1],
+  [0, 1],
+];
+
+/**
+ * D-185: which of the block at (x, y)'s cells (an index into BLOCK) holds a Lawn's weekly score
+ * digit, its bottom-right cell (§12, Numbers), or -1 if none does. A Lawn is 2 × 2, so a block
+ * holds one at most.
+ */
+function digitIn(occ: Occupancy, x: number, y: number): number {
+  return BLOCK.findIndex(([ox, oy]) => {
+    const cells = occ.cells.get(uidAt(occ, x + ox, y + oy));
+    const d = cells && digitCell(cells);
+    return d !== undefined && d.x === x + ox && d.y === y + oy;
+  });
 }
 
 /** Whether two cells are within `d` of each other, either way (a square around each). */
@@ -30,12 +74,14 @@ export function within(a: Cell, b: Cell, d: number): boolean {
 }
 
 /**
- * The week's flock: two or three crows on a 2 × 2 block of open grass. Every cell within one of
- * the block is open too, so no tree's crown, outbuilding's roof or tall prop from next door
- * stands over a crow, and none of `avoid` (the pointer, the piece being placed) is within
- * `startle` cells of a crow, so the flock doesn't take off as it lands. Of the blocks that
+ * The week's flock: two or three crows on a 2 × 2 block of open ground (clear: grass, or a Lawn
+ * with nothing installed, D-185). Every cell within one of the block is open too (on a Lawn, the
+ * row in front of it: openAround), so no tree's crown, outbuilding's roof, parasol or tall prop
+ * from next door stands over a crow, and none of `avoid` (the pointer, the piece being placed) is
+ * within `startle` cells of a crow, so the flock doesn't take off as it lands. Of the blocks that
  * qualify, the run's seed and the week pick one by hash, never by chance: the same week of the
- * same run gets the same flock. No block, no flock.
+ * same run gets the same flock. A block all on Lawns wins over the bare grass (D-185): the birds
+ * come to the house's Lawns, and keep off the cell with a Lawn's digit. No block, no flock.
  */
 export function flock(
   house: HouseState,
@@ -48,31 +94,38 @@ export function flock(
   const salt = seedSalt(seed) ^ Math.imul(week + 1, 0x9e3779b1);
   const { width, height } = house.lot;
   let best: { x: number; y: number; h: number } | null = null;
-  for (let y = 1; y + 2 < height; y++) {
-    for (let x = 1; x + 2 < width; x++) {
+  let lawn: { x: number; y: number; h: number } | null = null;
+  // Every block with a row in front of it on the lot: one on the grass at the lot's edge has no
+  // room around it, but a Lawn there can still have a flock.
+  for (let y = 0; y + 2 < height; y++) {
+    for (let x = 0; x + 1 < width; x++) {
+      const isLawn = onLawn(occ, x, y);
+      // Once a Lawn has a flock, the bare grass can't win.
+      if (lawn && !isLawn) continue;
       const h = tileHash(x, y, salt);
-      if (best && h >= best.h) continue;
-      if (!openAround(house, occ, x, y)) continue;
+      const mine = isLawn ? lawn : best;
+      if (mine && h >= mine.h) continue;
+      if (!openAround(house, occ, x, y, isLawn)) continue;
       if (avoid.some((a) => a.x >= x - startle && a.x <= x + 1 + startle && near(a, y, startle))) {
         continue;
       }
-      best = { x, y, h };
+      if (isLawn) lawn = { x, y, h };
+      else best = { x, y, h };
     }
   }
-  if (!best) return [];
-  const { x, y, h } = best;
-  // Three crows leave one cell of the block out; one block in four gets two, on a diagonal.
-  const cells: [number, number][] = [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [0, 1],
-  ];
-  const skip = h % 4;
+  const pick = lawn ?? best;
+  if (!pick) return [];
+  const { x, y, h } = pick;
+  // Three crows leave one cell of the block out; one block in four gets two, on a diagonal. On a
+  // Lawn, the cell they leave out is the one with its score's digit, and two take the other
+  // diagonal (D-185): the labels are drawn over the flock, so a crow there would stand under it.
+  const digit = pick === lawn ? digitIn(occ, x, y) : -1;
+  const skip = digit >= 0 ? digit : h % 4;
+  const diagonal = digit >= 0 ? (digit + 1) % 2 : h % 2;
   const spots =
     (h >>> 2) % 4 === 0
-      ? [cells[skip % 2]!, cells[(skip % 2) + 2]!]
-      : cells.filter((_, i) => i !== skip);
+      ? [BLOCK[diagonal]!, BLOCK[diagonal + 2]!]
+      : BLOCK.filter((_, i) => i !== skip);
   return spots.map(([ox, oy], i) => {
     const r = tileHash(x + ox, y + oy, salt ^ (i + 7));
     return {
@@ -90,8 +143,43 @@ function near(a: Cell, y: number, d: number): boolean {
   return a.y >= y - d && a.y <= y + 1 + d;
 }
 
-/** The 2 × 2 block at (x, y) and every cell within one of it are clear. */
-function openAround(house: HouseState, occ: Occupancy, x: number, y: number): boolean {
+/**
+ * D-185: low ground, which nothing on it rises above: open ground, water, a Boulder's rocks, a
+ * Fence (its pickets and posts keep to its cell), any Lawn (a Sprinkler or Garden Lights stand
+ * inside it), or the garden beside the lot. On the lot's own rows only.
+ */
+function low(house: HouseState, occ: Occupancy, x: number, y: number): boolean {
+  const { lot } = house;
+  if (y < 0 || y >= lot.height) return false;
+  if (x < 0 || x >= lot.width) return true;
+  const uid = uidAt(occ, x, y);
+  if (uid !== 0) {
+    const id = occ.byUid.get(uid)?.defId;
+    return id === 'lawn' || id === 'fence';
+  }
+  const t = lot.terrain[y * lot.width + x];
+  return t == null || t === 'pond' || t === 'creek' || t === 'lake' || t === 'boulder';
+}
+
+/**
+ * Room for a flock on the 2 × 2 block at (x, y): on the grass, the block and every cell within
+ * one of it are clear. D-185: a block on a Lawn (`lawn`, open ground itself) needs only the row
+ * in front of it low, corners and all. A Lawn stands in the yard, among the house and its other
+ * pieces, and only what's in front of a crow can reach over it: whatever reaches past its own
+ * cells rises north, by less than a cell (a tree's crown 21 art px at most, the Treehouse 25),
+ * and nothing reaches sideways.
+ */
+function openAround(
+  house: HouseState,
+  occ: Occupancy,
+  x: number,
+  y: number,
+  lawn: boolean,
+): boolean {
+  if (lawn) {
+    for (let i = x - 1; i <= x + 2; i++) if (!low(house, occ, i, y + 2)) return false;
+    return true;
+  }
   for (let j = y - 1; j <= y + 2; j++) {
     for (let i = x - 1; i <= x + 2; i++) if (!clear(house, occ, i, j)) return false;
   }
@@ -109,19 +197,22 @@ export function startledBy(
 }
 
 /**
- * What stands within `d` of the flock, as a key: the piece on each cell there, in reading order.
- * A piece built, moved or torn down beside the flock changes it, and the flock takes off.
+ * What stands within `d` of the flock, as a key: the piece on each cell there, in reading order,
+ * and what's installed in it (D-185). A piece built, moved or torn down beside the flock changes
+ * it, or a fixture installed there (a Sprinkler on the Lawn it's on), and the flock takes off.
  */
 export function groundKey(house: HouseState, crows: readonly Crow[], d: number): string {
   if (crows.length === 0) return '';
   const occ = occupancy(house);
   const xs = crows.map((c) => c.x);
   const ys = crows.map((c) => c.y);
-  const out: number[] = [];
+  const out: string[] = [];
   for (let y = Math.min(...ys) - d; y <= Math.max(...ys) + d; y++) {
     for (let x = Math.min(...xs) - d; x <= Math.max(...xs) + d; x++) {
       const inside = x >= 0 && y >= 0 && x < house.lot.width && y < house.lot.height;
-      out.push(inside ? uidAt(occ, x, y) : 0);
+      const uid = inside ? uidAt(occ, x, y) : 0;
+      const fixture = occ.byUid.get(uid)?.fixture?.id;
+      out.push(fixture ? `${uid}:${fixture}` : String(uid));
     }
   }
   return out.join(',');

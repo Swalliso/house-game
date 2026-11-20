@@ -2,46 +2,185 @@
   "people-grandma": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png",
-    "rect": [48, 6, 16, 26],
+    "rect": [288, 38, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 450
+    },
     "ops": [
       {
+        "op": "compose",
+        "size": [16, 26],
+        "layers": [
+          {
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      },
+      {
         "op": "recolor",
-        "map": { "#724a40": "#898887", "#805449": "#969695", "#866150": "#a2a2a0" }
+        "map": {
+          "#724a40": "#898887",
+          "#805449": "#969695",
+          "#866150": "#a2a2a0"
+        }
       }
     ],
-    "note": "The household walks in (D-177): Grandma standing, facing south, her hair grayed with the grays of LimeZu's own gray-haired premade character (14)."
+    "note": "The household walks in (D-177): Grandma standing, facing south, her hair grayed with the grays of LimeZu's own gray-haired premade character (14). D-185: breathing as they stand, the sheet's idle facing south (row 1, frames 18 to 23); its first frame is the standing figure itself (row 0's), laid over the idle's first, and the rest read row 0's empty cells, so it's the same picture it always was."
   },
   "people-grandma-walk": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png",
     "rect": [96, 70, 16, 26],
-    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 100
+    },
     "ops": [
       {
         "op": "recolor",
-        "map": { "#724a40": "#898887", "#805449": "#969695", "#866150": "#a2a2a0" }
+        "map": {
+          "#724a40": "#898887",
+          "#805449": "#969695",
+          "#866150": "#a2a2a0"
+        }
       }
     ],
     "note": "The household walks in (D-177): Grandma walking north, up from the street to the front door (the sheet's walk cycle, seen from behind)."
   },
+  "people-grandma-read": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png",
+    "rect": [0, 230, 16, 26],
+    "frames": {
+      "count": 12,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#724a40": "#898887",
+          "#805449": "#969695",
+          "#866150": "#a2a2a0"
+        }
+      }
+    ],
+    "note": "D-185: Grandma reading now and then, facing south: the sheet's book row (row 7), its loop of a breath and a page turned."
+  },
+  "people-grandma-phone": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png",
+    "rect": [48, 198, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#724a40": "#898887",
+          "#805449": "#969695",
+          "#866150": "#a2a2a0"
+        }
+      }
+    ],
+    "note": "D-185: Grandma on the phone now and then, facing south: the sheet's phone row (row 6), its loop with the phone at the ear (frames 3 to 8)."
+  },
   "people-renfield": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png",
-    "rect": [48, 6, 16, 26],
-    "note": "The household walks in (D-177): Renfield, the Count's man, standing: the premade character with the monocle and the long coat."
+    "rect": [288, 38, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 450
+    },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 26],
+        "layers": [
+          {
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "The household walks in (D-177): Renfield, the Count's man, standing: the premade character with the monocle and the long coat. D-185: breathing as they stand, the sheet's idle facing south (row 1, frames 18 to 23); its first frame is the standing figure itself (row 0's), laid over the idle's first, and the rest read row 0's empty cells, so it's the same picture it always was."
   },
   "people-renfield-walk": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png",
     "rect": [96, 70, 16, 26],
-    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 100
+    },
     "note": "The household walks in (D-177): Renfield walking north."
+  },
+  "people-renfield-read": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png",
+    "rect": [0, 230, 16, 26],
+    "frames": {
+      "count": 12,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "note": "D-185: Renfield reading now and then, facing south: the sheet's book row (row 7), its loop of a breath and a page turned."
+  },
+  "people-renfield-phone": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png",
+    "rect": [48, 198, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "note": "D-185: Renfield on the phone now and then, facing south: the sheet's phone row (row 6), its loop with the phone at the ear (frames 3 to 8)."
   },
   "people-nana": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png",
-    "rect": [48, 6, 16, 26],
+    "rect": [288, 38, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 450
+    },
     "ops": [
+      {
+        "op": "compose",
+        "size": [16, 26],
+        "layers": [
+          {
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      },
       {
         "op": "recolor",
         "map": {
@@ -52,13 +191,18 @@
         }
       }
     ],
-    "note": "The household walks in (D-177): Nana standing, in her white frock, her hair grayed as Grandma's is."
+    "note": "The household walks in (D-177): Nana standing, in her white frock, her hair grayed as Grandma's is. D-185: breathing as they stand, the sheet's idle facing south (row 1, frames 18 to 23); its first frame is the standing figure itself (row 0's), laid over the idle's first, and the rest read row 0's empty cells, so it's the same picture it always was."
   },
   "people-nana-walk": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png",
     "rect": [96, 70, 16, 26],
-    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 100
+    },
     "ops": [
       {
         "op": "recolor",
@@ -72,23 +216,123 @@
     ],
     "note": "The household walks in (D-177): Nana walking north."
   },
+  "people-nana-read": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png",
+    "rect": [0, 230, 16, 26],
+    "frames": {
+      "count": 12,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#8a6552": "#898887",
+          "#957350": "#969695",
+          "#ba8d5e": "#a2a2a0",
+          "#956020": "#898887"
+        }
+      }
+    ],
+    "note": "D-185: Nana reading now and then, facing south: the sheet's book row (row 7), its loop of a breath and a page turned."
+  },
+  "people-nana-phone": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png",
+    "rect": [48, 198, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#8a6552": "#898887",
+          "#957350": "#969695",
+          "#ba8d5e": "#a2a2a0",
+          "#956020": "#898887"
+        }
+      }
+    ],
+    "note": "D-185: Nana on the phone now and then, facing south: the sheet's phone row (row 6), its loop with the phone at the ear (frames 3 to 8)."
+  },
   "people-rowan": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png",
-    "rect": [48, 6, 16, 26],
-    "note": "The household walks in (D-177): Rowan, who paints, standing: the premade character in the red beanie and striped trousers."
+    "rect": [288, 38, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 450
+    },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 26],
+        "layers": [
+          {
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "The household walks in (D-177): Rowan, who paints, standing: the premade character in the red beanie and striped trousers. D-185: breathing as they stand, the sheet's idle facing south (row 1, frames 18 to 23); its first frame is the standing figure itself (row 0's), laid over the idle's first, and the rest read row 0's empty cells, so it's the same picture it always was."
   },
   "people-rowan-walk": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png",
     "rect": [96, 70, 16, 26],
-    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 100
+    },
     "note": "The household walks in (D-177): Rowan walking north."
+  },
+  "people-rowan-read": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png",
+    "rect": [0, 230, 16, 26],
+    "frames": {
+      "count": 12,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "note": "D-185: Rowan reading now and then, facing south: the sheet's book row (row 7), its loop of a breath and a page turned."
+  },
+  "people-rowan-phone": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png",
+    "rect": [48, 198, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 350
+    },
+    "note": "D-185: Rowan on the phone now and then, facing south: the sheet's phone row (row 6), its loop with the phone at the ear (frames 3 to 8)."
   },
   "people-ivy": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png",
-    "rect": [48, 6, 16, 26],
+    "rect": [288, 38, 16, 26],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 450
+    },
     "ops": [
       {
         "op": "compose",
@@ -96,29 +340,60 @@
         "layers": [
           {
             "file": "2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png",
+            "rect": [288, 38, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          },
+          {
+            "file": "2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png",
+            "rect": [288, 38, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          },
+          {
+            "file": "2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png",
+            "rect": [288, 38, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          },
+          {
             "rect": [48, 6, 16, 26],
-            "at": [0, 0]
+            "at": [0, 0],
+            "follow": true
+          },
+          {
+            "file": "2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png",
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0],
+            "follow": true
           },
           {
             "file": "2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png",
             "rect": [48, 6, 16, 26],
-            "at": [0, 0]
+            "at": [0, 0],
+            "follow": true
           },
           {
             "file": "2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png",
             "rect": [48, 6, 16, 26],
-            "at": [0, 0]
+            "at": [0, 0],
+            "follow": true
           }
         ]
       }
     ],
-    "note": "The household walks in (D-177): Dale's daughter Ivy standing, composed from the character generator's kids' parts (a body, a blue top, eyes, brown hair in buns): the packs have no ready-made child."
+    "note": "The household walks in (D-177): Dale's daughter Ivy standing, composed from the character generator's kids' parts (a body, a blue top, eyes, brown hair in buns): the packs have no ready-made child. D-185: breathing as she stands, the kids' parts' idle facing south (row 1, frames 18 to 23), each frame composed from the same frame of each part; her standing figure (row 0's) is laid over the first, so it's the same picture it always was. The kids' parts have no book or phone rows."
   },
   "people-ivy-walk": {
     "pack": "mi",
     "file": "2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png",
     "rect": [96, 70, 16, 26],
-    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 100
+    },
     "ops": [
       {
         "op": "compose",

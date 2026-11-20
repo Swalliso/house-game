@@ -42,7 +42,7 @@ import {
 } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import type { Cell, PieceId } from '../../rules/index.ts';
-import { artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
+import { artFrames, artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
 import { byType, itemRows, roomLayout, type Item } from './rooms.ts';
 import type { Ground, YardLayout, YardModel } from './yard.ts';
 
@@ -807,15 +807,18 @@ export function lampSpot(m: HouseModel, uid: number): { x: number; y: number } |
 /** LimeZu's outline inks, which a lit shade keeps. */
 const LAMP_INKS: readonly Rgb[] = [INK, [0x46, 0x46, 0x5e], [0x56, 0x59, 0x72]];
 
-/** Pixel (x, y) of a sprite or drawing (an animation's first frame): its RGBA. */
-function artPixel(atlas: AtlasPixels, id: ArtId, x: number, y: number): readonly number[] {
+/**
+ * Pixel (x, y) of a sprite or drawing, in frame `k` of an animation (the first by default): its
+ * RGBA.
+ */
+function artPixel(atlas: AtlasPixels, id: ArtId, x: number, y: number, k = 0): readonly number[] {
   if (isDrawing(id)) {
     const d = drawingPixels(id);
-    const i = (y * d.w * d.frames + x) * 4;
+    const i = (y * d.w * d.frames + k * d.w + x) * 4;
     return [d.data[i]!, d.data[i + 1]!, d.data[i + 2]!, d.data[i + 3]!];
   }
   const s = spritePos(id);
-  const i = ((s.y + y) * atlas.width + s.x + x) * 4;
+  const i = ((s.y + y) * atlas.width + s.x + k * (artFrames(id)?.stride ?? 0) + x) * 4;
   return [atlas.data[i]!, atlas.data[i + 1]!, atlas.data[i + 2]!, atlas.data[i + 3]!];
 }
 
@@ -828,30 +831,83 @@ function drawnAt(atlas: AtlasPixels, it: Item, px: number, py: number): boolean 
 }
 
 /**
+ * D-177: a member of the household standing in their room, as an item of it (board/people.ts
+ * personItem), its first frame `sprite`'s. D-185: they breathe, and an adult reads or takes a call
+ * now and then: `looks` are every strip the board shows them in, each the size of `sprite`, at the
+ * item's place. What keeps off a member (a lamp's light) keeps off every frame of them all
+ * (figureDraws); without `looks`, the sprite's first frame, as any item's.
+ */
+export interface Figure extends Item {
+  readonly looks?: readonly ArtId[];
+}
+
+/** Each figure's union of frames (figureDraws), by its looks, per atlas: a house repaints often. */
+const unions = new WeakMap<AtlasPixels, Map<string, Uint8Array>>();
+
+/**
+ * D-185: whether figure `f` draws lot pixel (px, py) in any frame of any of its looks: the union of
+ * them all, so a lamp's light never falls on a frame the board shows (a breath raises a head a
+ * pixel; a book or a phone is held out), at the price of a pixel or two left unlit beside them on
+ * the others. Without `looks`, its sprite's first frame (drawnAt).
+ */
+export function figureDraws(atlas: AtlasPixels, f: Figure): (px: number, py: number) => boolean {
+  const looks = f.looks;
+  if (!looks) return (px, py) => drawnAt(atlas, f, px, py);
+  const { w, h } = artSize(f.sprite);
+  let byLooks = unions.get(atlas);
+  if (!byLooks) unions.set(atlas, (byLooks = new Map()));
+  const key = `${w}x${h}:${looks.join(',')}`;
+  let on = byLooks.get(key);
+  if (!on) {
+    on = new Uint8Array(w * h);
+    for (const id of looks) {
+      const s = artSize(id);
+      const n = artFrames(id)?.frames ?? 1;
+      for (let k = 0; k < n; k++) {
+        for (let y = 0; y < Math.min(h, s.h); y++) {
+          for (let x = 0; x < Math.min(w, s.w); x++) {
+            if (artPixel(atlas, id, x, y, k)[3]! > 0) on[y * w + x] = 1;
+          }
+        }
+      }
+    }
+    byLooks.set(key, on);
+  }
+  const mask = on;
+  return (px, py) => {
+    const ix = px - f.x;
+    const iy = py - f.y;
+    return ix >= 0 && iy >= 0 && ix < w && iy < h && mask[iy * w + ix] === 1;
+  };
+}
+
+/**
  * D-177: the household's members standing in their rooms as the board draws them, each one an
  * item of their room, by room uid (board/people.ts roomPeople), and the atlas their pixels are
  * in. The photos and the ghosts draw nobody.
  */
 export interface Household {
-  readonly people: ReadonlyMap<number, readonly Item[]>;
+  readonly people: ReadonlyMap<number, readonly Figure[]>;
   readonly atlas: AtlasPixels;
 }
 
 /**
  * D-177 × D-181: whether a member of the room, of `people` (board/people.ts roomPeople: each one
  * an item of their room, as the board draws them), who stands in front of its lamp (the lamp's
- * bottom edge at `bottom`: a hanging lamp's is its bulb's) is drawn at (px, py). The board sorts
- * a member in with the room's furniture by bottom edge, in front of whatever's is no lower than
- * their feet (people.ts withPeople), and so with its lamp, standing or hanging: there they cover
- * it.
+ * bottom edge at `bottom`: a hanging lamp's is its bulb's) is drawn at (px, py), in any of their
+ * frames (figureDraws, D-185). The board sorts a member in with the room's furniture by bottom
+ * edge, in front of whatever's is no lower than their feet (people.ts withPeople), and so with
+ * its lamp, standing or hanging: there they cover it.
  */
 function inFrontOfLamp(
-  people: readonly Item[],
+  people: readonly Figure[],
   bottom: number,
   atlas: AtlasPixels,
 ): (px: number, py: number) => boolean {
-  const front = people.filter((p) => p.y + artSize(p.sprite).h >= bottom);
-  return (px, py) => front.some((p) => drawnAt(atlas, p, px, py));
+  const front = people
+    .filter((p) => p.y + artSize(p.sprite).h >= bottom)
+    .map((p) => figureDraws(atlas, p));
+  return (px, py) => front.some((draws) => draws(px, py));
 }
 
 /** Pixel light in an oval, in three steps, where `on` lets it fall. */
@@ -890,14 +946,15 @@ export type LightPart = 'glow' | 'shade';
  *
  * D-177: on the board, `people` are the room's members as items (people.ts roomPeople): one
  * standing in front of its lamp covers it, so its shade, or the hanging lamp, isn't lit over them
- * there; and the pool and the halo fall round a member, wherever they stand, not on them.
+ * there; and the pool and the halo fall round a member, wherever they stand, not on them. D-185:
+ * round every frame of theirs, their breath's, their book's and their phone's (figureDraws).
  */
 export function paintLight(
   m: HouseModel,
   uid: number,
   atlas: AtlasPixels,
   part?: LightPart,
-  people: readonly Item[] = [],
+  people: readonly Figure[] = [],
 ): Pixels | null {
   const r = m.rooms.get(uid);
   const layout = r ? roomLayout(m, uid) : null;
@@ -929,7 +986,8 @@ export function paintLight(
   // D-177: the pool and the halo fall round a member of the household standing in the room, not
   // on them, wherever they stand: at the lamp's foot its light, at half strength or more, would
   // wash them out (Grandma's grey hair and purple trousers read as one amber).
-  const someone = (px: number, py: number) => people.some((p) => drawnAt(atlas, p, px, py));
+  const figures = people.map((p) => figureDraws(atlas, p));
+  const someone = (px: number, py: number) => figures.some((draws) => draws(px, py));
   const onFloor = (px: number, py: number) => floor(px, py) && !someone(px, py);
   const onInside = (px: number, py: number) => inside(px, py) && !someone(px, py);
   const lit = (c: Rgb): Rgb => {
