@@ -1302,7 +1302,7 @@ npm run sim -- --ban blueprint:fengShui
 - **Reports** (all exist: most since D-089, and the per-client, per-crew and house reports since M4a, D-089's M4a note):
   - per-piece pick rate, score share, and dead-card rate
   - per-client and per-crew piece mixes and win rates, and change orders by client (M4)
-  - the house report: room counts, repeats, Bedrooms per Bathroom, research.md's plausibility check, the glance measures, and each checklist line's hold rate by client (D-093; `house-systems-review.md` Appendix)
+  - the house report: room counts, repeats, Bedrooms per Bathroom, research.md's plausibility check, the glance measures, and each checklist line's hold rate by client (D-093; `house-systems-review.md` Appendix); since D-189, extra Bathrooms (more than the Bathroom ratio's floor and a spare) and a Garage nothing reaches
   - early-completion choices and their payoff, per phase
   - shop: how often each good is offered, bought, and in winning runs; budget left unspent
   - fixtures and tools: how often each is used, and the weekly gain it brought
