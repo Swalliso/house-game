@@ -147,8 +147,9 @@ describe('strike mode', () => {
   });
 
   it('stays out of the mode when no card in the hand can be struck', () => {
-    // Special pieces the General Contractor and the Hendersons never draw.
-    const ids = ['playroom', 'library', 'hotTub', 'henhouse'] as const;
+    // Special pieces the General Contractor and the Hendersons never draw (the draw deals the
+    // Library and the Henhouse from Framing, D-200).
+    const ids = ['playroom', 'mudroom', 'pool', 'hotTub'] as const;
     run.value = { ...run.value, hand: ids.map((id): Card => ({ kind: 'piece', id })) };
     expect(rules.canStrikeAny(run.value).reason).toBe('No card in your hand can be struck.');
     toggleStrike();

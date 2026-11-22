@@ -296,7 +296,8 @@ describe('validateContent', () => {
         ...CONTENT.balance,
         standingStock: {
           fromPhase: 9,
-          pieces: ['fence', 'library', 'fence'],
+          // D-200 deals the Library from Framing, so a special piece the draw never deals.
+          pieces: ['fence', 'playroom', 'fence'],
           firstJobPhase: -1,
           firstJobSlot: 5,
           refill: false,
@@ -315,7 +316,7 @@ describe('validateContent', () => {
     expect(problems).toMatch(/client dale delivery 0: needs text/);
     expect(problems).toMatch(/client dale delivery 0: ivysRoom is a member's room/);
     expect(problems).toMatch(/client dale delivery 0: the checklist never names lawn/);
-    expect(problems).toMatch(/standingStock: library isn't in the weekly draw/);
+    expect(problems).toMatch(/standingStock: playroom isn't in the weekly draw/);
     expect(problems).toMatch(/standingStock: a piece twice/);
     expect(problems).toMatch(/standingStock: fromPhase must be a phase of the run/);
     expect(problems).toMatch(/standingStock: firstJobPhase must be a phase of the run/);

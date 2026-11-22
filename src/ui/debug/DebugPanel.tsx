@@ -98,8 +98,10 @@ const GOODS: { value: string; label: string; group: string }[] = [
     label: d.name,
     group: 'Fixtures → hand',
   })),
+  // The special pieces, dealt ones too (D-200), and the pieces never dealt: the members' rooms
+  // and the Addition.
   ...Object.values(CONTENT.pieces)
-    .filter((d) => d.drawWeight === 0)
+    .filter((d) => d.special || d.drawWeight === 0)
     .map((d) => ({ value: `piece:${d.id}`, label: d.name, group: 'Special pieces → reserve' })),
   ...Object.values(CONTENT.tools).map((d) => ({
     value: `tool:${d.id}`,
