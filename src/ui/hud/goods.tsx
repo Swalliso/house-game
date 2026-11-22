@@ -432,7 +432,7 @@ export function ToolWorth({
             {wow}{' '}
             <Tip
               title="The week you use it"
-              text="What it adds to that week’s Wow, as your house stands now. It counts for one week, so a bigger week gets more from it."
+              text={`What it adds to that week’s ${wow}, as your house stands now. It counts for one week, so a bigger week gets more from it.`}
             >
               the week you use it
             </Tip>
