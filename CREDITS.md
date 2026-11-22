@@ -38,6 +38,14 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   the street's sedans, are Modern Exteriors cuts from its animated sheets; the neighbors walking
   the sidewalk are Modern Interiors' premade characters. The title's car drives the lot's street
   too. LimeZu's art, cut and credited as above.
+- **More life** (D-185, `art/limezu/life.json`, `yard.json`, `people.json`, `interiors.json` and
+  `house.json`): the frog on the lily pads, the butterflies over the beds and the house cat (and
+  its black recolor) are Modern Interiors' animated objects; the fish under the water are Modern
+  Exteriors' animated fishes, the water's color keyed out; the household's breath, book and phone
+  are more rows of their premade characters' sheets; the piano, the toy box and the Pool's float
+  move through the rest of their sheets' frames. The hens' peck and the breath of the dog in the
+  dogs' bed are our own drawings. LimeZu's art, cut, edited as its licenses allow, and credited as
+  above.
 - **The household** (D-177, `art/limezu/people.json`): Grandma, Renfield, Nana and Rowan,
   standing and walking up to the door, are Modern Interiors' premade characters, Grandma's and
   Nana's hair recolored gray; Ivy is composed by `npm run art:cut` from the same pack's character
@@ -48,6 +56,12 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   Exteriors to LimeZu's own autumn and olive colorways of its Camping trees (their pixel twins,
   muted as our greens are) and to grass that matches. LimeZu's art, cut, edited as its licenses
   allow, and credited as above.
+- **The lot's ground** (D-190, `art/limezu/ground.json`): the short grass's patches and the bare
+  earth's edges, the wildflower drifts, clover, sprouts, pebbles, mushrooms, twigs, fallen
+  leaves, ferns, shrubs, moss and the logs adrift, cut from Modern Exteriors' terrain sheet,
+  autotiles and its Camping, Garden, Graveyard and Terrains theme singles, muted as our greens
+  are, with autumn and dry recolors where they have greens. LimeZu's art, cut, edited as its
+  licenses allow, and credited as above.
 - **Rooms in more than one arrangement** (D-173, `art/limezu/interiors.json`): the wardrobes,
   nightlamps, desks, bookcases, televisions, side-on sofas, piano, fish tank, cuckoo clock,
   pictures, hutch, round and cloth-covered tables, plants, rugs, mats and clothes rails that give

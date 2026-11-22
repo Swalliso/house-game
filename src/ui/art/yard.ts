@@ -14,8 +14,12 @@
 //   the Driveway nearest the front door or a Garage with room for it (D-126; it slides there as
 //   the drive grows, HouseLayers.tsx), a Fence's pickets and posts, a Pool's ladder and float,
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
-//   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
-//   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
+//   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the
+//   Pergola over its Patio or (D-194) its Lawn, Garden Lights as two bollards with their glow; a
+//   fixture's badge shows only where a door keeps it off.
+// - The yard's pieces live (D-185): a butterfly flutters over each Flower Bed and Herb Garden,
+//   the Pool's float bobs, and the hens peck, each on its own beat. All of it is items' frames,
+//   stepped a whole art px at a time, and their first frames are the pieces at rest.
 // - A piece's picture can depend on whether its requirement is met, from the rules' tally
 //   (yardModel's `unmet`; D-179): the Doghouse's dog sits on its lead in the kennel's doorway
 //   while it earns nothing outside a fenced yard, and once the yard closes it's loose, hopping
@@ -23,7 +27,7 @@
 // - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
 //   clear of the door that opens onto it (under a small parasol in place of the full one), the
 //   car parks further along its Driveway, or on the next one, and a Pergola, which reaches every
-//   edge of its Patio, gives way to a shallower or narrower cut of it on the Patio's far side
+//   edge of its Patio or Lawn, gives way to a shallower or narrower cut of it on the far side
 //   (its badge only where doors open onto two sides). Every prop keeps its whole box off them,
 //   so no pixel of one can hide a mat. An outbuilding's own building always stands (no door
 //   opens onto one): only its roof, rising over the row behind it, can hide part of a mat there.
@@ -55,7 +59,7 @@ import {
   type PlacedPiece,
   type Rot,
 } from '../../rules/index.ts';
-import { isIndoor, occupancy } from '../board/geometry.ts';
+import { digitCell, isIndoor, occupancy } from '../board/geometry.ts';
 import {
   grow,
   overlaps,
@@ -65,7 +69,7 @@ import {
   type Rect,
 } from '../board/house-model.ts';
 import { CELL, type SpriteId } from '../sprites.ts';
-import { artSize } from './drawings.ts';
+import { artSize, HEN_PHASES, henDrawing } from './drawings.ts';
 import type { Item } from './rooms.ts';
 
 export type Rgb = readonly [number, number, number];
@@ -383,10 +387,14 @@ function build(
   };
 }
 
-/** How many colors a yard piece's main prop comes in (parasols, planters, coops, birdhouses). */
+/**
+ * How many colors a yard piece's main prop comes in (parasols, planters, coops, birdhouses), and
+ * the butterfly over a Herb Garden (D-185; a Flower Bed's takes its planter's).
+ */
 const COLORS: Readonly<Partial<Record<PieceId, number>>> = {
   patio: 3,
   flowerBed: 4,
+  herbGarden: 4,
   henhouse: 3,
   birdhouse: 4,
 };
@@ -729,10 +737,10 @@ const PARASOLS: readonly SpriteId[] = ['parasol-0', 'parasol-1', 'parasol-2'];
 const SMALL_PARASOLS: readonly SpriteId[] = ['parasol-small-0', 'parasol-small-1'];
 
 /**
- * Where a Patio's Pergola may stand, best first: the whole one (64 × 61, its legs on the patio's
- * front edge); the shallower cut (64 × 51) at the front, clear of a north door's mat, or at the
- * back, clear of a south one's; the narrower cut (50 × 61) on the west side, clear of an east
- * door's mat, or on the east side, clear of a west one's.
+ * Where a Pergola may stand over its Patio or Lawn (both 2 × 2), best first: the whole one (64 ×
+ * 61, its legs on the piece's front edge); the shallower cut (64 × 51) at the front, clear of a
+ * north door's mat, or at the back, clear of a south one's; the narrower cut (50 × 61) on the
+ * west side, clear of an east door's mat, or on the east side, clear of a west one's.
  */
 function pergolas(box: Rect): [SpriteId, number, number][] {
   const { x, y, w, h } = box;
@@ -748,6 +756,22 @@ function pergolas(box: Rect): [SpriteId, number, number][] {
     ['pergola-narrow', x + w - narrow.w, y + h - narrow.h],
   ];
 }
+
+/**
+ * Stands the Pergola over its piece: the first of its cuts (pergolas()) clear of every door,
+ * after what goes under it (`under`, the Patio's table and seats, given the cut and where it
+ * stands). False where none is clear, with nothing placed: its badge shows instead.
+ */
+function pergola(y: Yard, under?: (sprite: SpriteId, x: number, y: number) => void): boolean {
+  for (const [sprite, px, py] of pergolas(y.box)) {
+    if (!y.fits(sprite, px, py)) continue;
+    under?.(sprite, px, py);
+    y.put(sprite, px, py);
+    y.fixtureShown = true;
+    return true;
+  }
+  return false;
+}
 const PLANTERS: readonly SpriteId[] = ['planter-0', 'planter-1', 'planter-2', 'planter-3'];
 const POTS: readonly SpriteId[] = ['pot-flowers-0', 'pot-flowers-1', 'pot-flowers-2'];
 const COOPS: readonly SpriteId[] = ['coop-0', 'coop-1', 'coop-2'];
@@ -757,6 +781,34 @@ const BIRDHOUSES: readonly SpriteId[] = [
   'birdhouse-2',
   'birdhouse-3',
 ];
+/**
+ * The butterflies (D-185), by color: white, blue, red and yellow, in the planters' order (blue,
+ * yellow, white and pink flowers), so each bed's stands out from its flowers.
+ */
+const BUTTERFLIES: readonly SpriteId[] = [
+  'butterfly-0',
+  'butterfly-1',
+  'butterfly-2',
+  'butterfly-3',
+];
+
+/**
+ * A butterfly fluttering over a Flower Bed or a Herb Garden (D-185), in the piece's color
+ * (colors(): the hash's pick, neighbors' differ, and the ghost shows the one it'll get). It
+ * flaps and bobs on its own frames, over the plants of the piece's cell without the digit (a
+ * Flower Bed's one cell), 3 to 9 px in from its west edge: clear of the digit at the cell's foot,
+ * and of a fixture's badge at the piece's top right, which reaches 16 px in at 1×. Its cut is
+ * clear under the butterfly, so the item's foot is on the cell's last rows, at or in front of
+ * the planter's, and it draws over the plants rather than behind them.
+ */
+function butterfly(y: Yard): void {
+  const sprite = pick(BUTTERFLIES, y.ctx.color);
+  const digit = digitCell(y.cells);
+  const c = y.cells.find((q) => q.x !== digit.x || q.y !== digit.y) ?? digit;
+  const x = c.x * CELL + 3 + ((y.hash >>> 11) % 7);
+  const foot = c.y * CELL + CELL - ((y.hash >>> 14) % 3);
+  y.put(sprite, x, foot - artSize(sprite).h);
+}
 
 /** A seat on each side of a little table, facing it: where they keep off the doors, or none. */
 function seats(
@@ -789,6 +841,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
       y.oval(cx, cy + 2, 22, 16, WET, 0.22);
       y.fixtureShown = y.put('own-sprinkler', cx - 13, cy - 8);
     }
+    // D-194: a Pergola over the grass, as over a Patio, with nothing under it.
+    if (y.fixture === 'pergola') pergola(y);
   },
 
   patio: (y) => {
@@ -812,15 +866,14 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     // south edge, narrower for one on its east or west edge, on the patio's far side. With doors
     // on two sides none fits, so its badge shows (HouseLayers.tsx) and the patio keeps its
     // parasol and seats.
-    if (y.fixture === 'pergola') {
-      for (const [sprite, px, py] of pergolas(y.box)) {
-        if (!y.fits(sprite, px, py)) continue;
+    if (
+      y.fixture === 'pergola' &&
+      pergola(y, (sprite, px, py) => {
         const { w: pw, h: ph } = artSize(sprite);
         seats(y, px + pw / 2 - 6, py + ph - 9, moves);
-        y.put(sprite, px, py);
-        y.fixtureShown = true;
-        return;
-      }
+      })
+    ) {
+      return;
     }
     // The parasol's stand behind the table, its canopy over the seats.
     const parasol = y.put(pick(PARASOLS, y.ctx.color), x + Math.floor((w - 47) / 2), base - 61 - 4);
@@ -835,7 +888,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
   pool: (y) => {
     poolTiles(y);
     const { x, y: top, w, h } = y.box;
-    // The ladder over the north coping, and a float on the water by the piece's hash.
+    // The ladder over the north coping, and a float on the water by the piece's hash, bobbing on
+    // its frames (D-185).
     y.put('pool-ladder', y.hash % 2 ? x + w - 22 : x + 8, top + 1);
     const fx = x + 10 + ((y.hash >>> 3) % Math.max(1, w - 52));
     const fy = top + 22 + ((y.hash >>> 7) % Math.max(1, h - 50));
@@ -858,18 +912,24 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
 
   flowerBed: (y) => {
     y.put(pick(PLANTERS, y.ctx.color), y.box.x + 1, y.box.y + 11);
+    butterfly(y);
   },
 
   herbGarden: (y) => {
     for (const c of y.cells) y.put('herb-planter', c.x * CELL + 1, c.y * CELL + 9);
+    butterfly(y);
   },
 
+  // A pack of one to three tiles (D-195): a sapling on each, the two looks taking turns.
   sapling: (y) => {
-    const { x, y: top } = y.box;
-    y.oval(x + 16, top + 27, 9, 3, SOIL, 0.55);
-    const s: SpriteId = y.hash % 2 ? 'sapling-1' : 'sapling-0';
-    const { w, h } = artSize(s);
-    y.put(s, x + Math.floor((CELL - w) / 2), top + 28 - h);
+    y.cells.forEach((c, k) => {
+      const x = c.x * CELL;
+      const top = c.y * CELL;
+      y.oval(x + 16, top + 27, 9, 3, SOIL, 0.55);
+      const s: SpriteId = (y.hash + k) % 2 ? 'sapling-1' : 'sapling-0';
+      const { w, h } = artSize(s);
+      y.put(s, x + Math.floor((CELL - w) / 2), top + 28 - h);
+    });
   },
 
   doghouse: (y) => {
@@ -912,8 +972,11 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     y.oval(rx + 16, ry + 17, 12, 9, STRAW, 0.35);
     y.stand(pick(COOPS, y.ctx.color), coop.x * CELL, coop.y * CELL);
     const brown = (y.hash >>> 5) % 2 === 1;
-    y.put(brown ? 'own-hen-brown-e' : 'own-hen-e', rx + 4, ry + 5);
-    y.put(brown ? 'own-hen-w' : 'own-hen-brown-w', rx + 17, ry + 9);
+    // Each pecks now and then (D-185), on its own beat by the hash, never the other's.
+    const beat = (y.hash >>> 9) % HEN_PHASES;
+    const other = beat + 1 + ((y.hash >>> 13) % (HEN_PHASES - 1));
+    y.put(henDrawing(brown ? 'brown-e' : 'e', beat), rx + 4, ry + 5);
+    y.put(henDrawing(brown ? 'w' : 'brown-w', other), rx + 17, ry + 9);
     // The run's picket front, post to post.
     y.put('picket-run', rx, ry + 15);
     y.put('picket-run', rx + 16, ry + 15);

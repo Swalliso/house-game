@@ -286,6 +286,17 @@ export const FEEL = {
    */
   dog: { wakeDelayMs: 220, barkGain: 0.9, hopMs: 140, roofMs: 2380, grassMs: 1680 },
   /**
+   * The hens by a Henhouse peck now and then (D-185, drawings.ts): each holds its head up for
+   * `restMs`, then pecks twice (down, up, down), every frame `peckMs`, on its own phase.
+   */
+  hen: { peckMs: 200, restMs: 3800 },
+  /**
+   * The dog asleep in the dogs' bed (Nana's Room, the Barkers' first Living Room) breathes once
+   * every `breathMs`, its flank 1 px higher for `inMs` of it, in frames of `stepMs` (D-185).
+   * Under 2 s a breath reads as a twitch.
+   */
+  dogBed: { breathMs: 2500, inMs: 1000, stepMs: 500 },
+  /**
    * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
    * and walls are drawn with the whole house, so the flash shows which room is reacting.
    */
@@ -505,6 +516,23 @@ export const FEEL = {
   },
 
   /**
+   * A pin (D-186), in real time, outside the tally (it never sets busy). Pinned, the pushpin
+   * stabs into the card's edge from `stickPx` UI px above over `stickMs`. A hand dealt around a
+   * kept card (the week after a pin, or a reroll or the Catalog's redraw with one in the hand):
+   * the kept card stays put, its Kept tag stamping in over `keptInMs`, and each other card slides
+   * in from `dealFromPx` UI px to the right over `dealMs`, `staggerMs` after the one before it.
+   * A hand of four takes 340 ms; the next action finishes the deal at once.
+   */
+  pin: {
+    stickMs: 160,
+    stickPx: 3,
+    dealMs: 220,
+    staggerMs: 60,
+    dealFromPx: 8,
+    keptInMs: 280,
+  },
+
+  /**
    * A household member arriving (M4b, D-103; D-126): the doorbell rings at the front door, their
    * card slides in (`cardInMs`) and stays up `cardMs` in real time, and their cards pop into the
    * reserve once it has rung, with a shimmer.
@@ -540,6 +568,22 @@ export const FEEL = {
       minPx: 32,
       standInMs: 400,
     },
+  },
+
+  /**
+   * D-185: the household standing, at the front door or in their room (board/people.ts pace,
+   * PeopleLayer.tsx Standing): decoration only. Each member breathes, each frame of their idle
+   * shown `idleFrameMs`. Now and then an adult reads, and a turn later takes a call, each frame
+   * of the book or the phone shown `busyFrameMs`: a turn every `turnMs` (between the two, by hash
+   * of the run's seed and who they are), and the book or the phone shows for its first 16%, a
+   * few seconds (people.css's member-*-turn keyframes: 8% of the two turns). Held still under a
+   * sheet over the board; with Reduce motion they stand on their first frame, and never read or
+   * call.
+   */
+  household: {
+    idleFrameMs: 450,
+    busyFrameMs: 350,
+    turnMs: [20000, 40000] as const,
   },
 
   /**
@@ -626,6 +670,13 @@ export const FEEL = {
     spinDeg: -9,
     /** A hovered or focused polaroid rises this far, in CSS px (whole pixels: crisp text). */
     liftPx: 6,
+    /**
+     * S10's first test (D-187): the viewer's Play steps through the strip, a photo every
+     * `playMs` (about two a second), each with a thock a little higher than the last
+     * (`playRate` more each time, from 1).
+     */
+    playMs: 500,
+    playRate: 0.08,
   },
 
   /**
@@ -681,6 +732,17 @@ export const FEEL = {
       /** How far a crow flies, in cells: up, and away sideways; each one after the first, one more. */
       flyUpCells: 4,
       flyAwayCells: 3,
+    },
+    /**
+     * D-185: life at the water (TerrainLayer.tsx WaterLife, terrain/water.ts). A frog on a lily
+     * pad breathes (its frames, at the cut's pace) once every `frogEveryMs`, sitting still
+     * between; under the surface of each pond, creek and lake, fish come by once every
+     * `fishEveryMs`. Each takes its own time in the range, and its own phase, by hash, so no two
+     * move together.
+     */
+    water: {
+      frogEveryMs: [5000, 9000],
+      fishEveryMs: [10000, 20000],
     },
     /**
      * The street's regulars: each lane's next car or walker comes by this long after the last
@@ -787,6 +849,32 @@ export const FEEL = {
     confetti: 1.6,
     /** A hurried look: the rest of the crowd's walk plays this many times as fast. */
     hurry: 4,
+  },
+
+  /**
+   * The house builds itself (S10, D-187, board/TimelapseLayer.tsx): `delayMs` after the look down
+   * the street comes back (or the last tally, with no look), the lot is cleared to how the run
+   * began for `startMs`, and the house goes up again build by build (screens/photos.ts
+   * buildSteps), plain cuts `stepMs` apart, each with its place sound a little higher. All of it
+   * keeps within `maxMs`: with more builds than fit, each is shorter. The finished house holds
+   * `holdMs`, then the board is live again and the photos deal in. A click, a key or the wheel
+   * skips it at once. Off with Reduce motion, for a debug run and for a run loaded already over,
+   * as the look down the street is.
+   */
+  timelapse: {
+    delayMs: 250,
+    startMs: 300,
+    stepMs: 120,
+    holdMs: 300,
+    maxMs: 5000,
+    /**
+     * The place sounds (`place-room`, `place-yard`) climb the tally's ladder from `rate`, this many
+     * of its steps over the rebuild (four steps of a major pentatonic: up a major sixth), at
+     * `gain`.
+     */
+    rate: 0.85,
+    ladderSteps: 4,
+    gain: 0.5,
   },
 
   /**

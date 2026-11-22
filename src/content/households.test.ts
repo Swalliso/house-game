@@ -5,7 +5,16 @@
 // and households.ts: when tuning changes one, change the test with it.
 
 import { describe, expect, it } from 'vitest';
-import type { Action, ClientId, Content, CrewId, PieceId, RunState, Tag } from '../rules/index.ts';
+import type {
+  Action,
+  ClientId,
+  Content,
+  CrewId,
+  Modifier,
+  PieceId,
+  RunState,
+  Tag,
+} from '../rules/index.ts';
 import { cardText, rules } from '../rules/index.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { bounds, shapeCells } from '../rules/grid.ts';
@@ -373,12 +382,32 @@ describe('what a client brings, and the standing stock (D-160)', () => {
         mode: 'firstJob',
       }).reserve,
     ).toEqual([]);
-    // Both stay in the weekly draw, at their usual weights, from the first week on.
+    // Both stay in the weekly draw from the first week on, at half weight (D-197, below).
     for (const phase of [0, 1, 4]) {
       const ids = drawWeights(CONTENT, phase).map((w) => w.card.id);
       expect(ids).toContain('hallway');
       expect(ids).toContain('fence');
     }
+  });
+
+  it('the Hallway and the Fence draw at half weight, since the stock keeps one of each (D-197)', () => {
+    // From Drywall (complexity 3 at 100%), in hundredths: the Hallway and the Fence at 5, the
+    // Long Hallway (the stock never brings it) and the Driveway at 10.
+    const weights = (mods: readonly Modifier[] = []) => {
+      const pool = drawWeights(CONTENT, 4, { mods });
+      return (id: PieceId) => pool.find((w) => w.card.id === id)?.weight;
+    };
+    const plain = weights();
+    expect((['hallway', 'fence', 'longHallway', 'driveway'] as const).map(plain)).toEqual([
+      500, 500, 1000, 1000,
+    ]);
+    // The Hendersons' and the Barkers' +100% on the Fence put it back at 10 on their jobs.
+    for (const id of ['hendersons', 'barkers'] as const) {
+      expect(weights(CONTENT.clients[id].pool)('fence'), id).toBe(1000);
+    }
+    expect(weights(CONTENT.clients.vladislav.pool)('fence')).toBe(500);
+    // The stock still brings one of each in week 1, whatever the weights.
+    expect(start('vladislav').reserve).toEqual(STOCK);
   });
 });
 
@@ -409,15 +438,17 @@ describe('a real Hendersons run', () => {
       s = out.state;
     }
     // D-160: the standing stock's Hallway and Fence came in Foundation's first week (week 5)
-    // and wait unplaced, so each arrival's cards follow them.
+    // and wait unplaced, so each arrival's cards follow them. D-188: the twins' week is
+    // Framing's first, so the wrong delivery's piece (this seed's is a Hot Tub) lands after them.
     expect(arrived).toEqual([
-      { week: 9, arrival: 'twins', reserve: 3 },
-      { week: 17, arrival: 'grandma', reserve: 5 },
+      { week: 9, arrival: 'twins', reserve: 4 },
+      { week: 17, arrival: 'grandma', reserve: 6 },
     ]);
     expect(s.reserve).toEqual([
       { id: 'hallway', stock: true },
       { id: 'fence', stock: true },
       { id: 'nursery', arrival: 'twins' },
+      { id: 'hotTub', surprise: true },
       { id: 'grandmasRoom', arrival: 'grandma' },
       { id: 'bathroom', arrival: 'grandma' },
     ]);

@@ -6,7 +6,8 @@
 //   reach shop 3 and use a tool or install a supply, so later shops and the real tools run in
 //   npm test (counted over the 5, so one harsh seed after a content change doesn't fail it).
 //   Over all 5 greedy sets a floor: it beats random at the same week on every seed, meets
-//   milestone 1 on every seed, and meets milestone 3 on most;
+//   milestone 1 on every seed, and meets milestone 3 on most. On each finished house the house
+//   report's Garage reach (D-189) agrees with the rules' tally (its drive's lines, D-195);
 // - the same seed and policy give the same results (§8, Determinism);
 // - a bot that loops or breaks stops with a SimError that names the seed and carries a run
 //   code that replays to where it stopped, so a sweep can’t hang CI.
@@ -16,6 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Action, ClientId, RunState } from '../src/rules/index.ts';
 import {
+  conditionText,
   CONTENT,
   contentHash,
   decodeRunCode,
@@ -27,6 +29,11 @@ import { POLICIES, type Policy } from './policies/index.ts';
 import { SimError, simulateRun } from './simulate.ts';
 
 const SEEDS = ['smoke-0', 'smoke-1', 'smoke-2', 'smoke-3', 'smoke-4'];
+/** The suffix on the Garage's lines that wait for its drive (D-195): " (touching the street …)". */
+const DRIVE = (() => {
+  const e = CONTENT.pieces.garage.effects.find((x) => x.kind === 'conditional');
+  return e?.kind === 'conditional' ? ` (${conditionText(CONTENT, e.when)})` : '';
+})();
 const CLIENTS = Object.values(CONTENT.clients)
   .filter((c) => c.tier === 'core')
   .map((c) => c.id);
@@ -115,6 +122,11 @@ describe.each(CLIENTS)('the smoke sim for %s', (client) => {
         probed++;
         if (record.enclosure) measured++;
       }
+      // D-189: the house report reads a Garage as unreached exactly when the rules' tally leaves
+      // out its drive's lines (D-195: it earns its own +2 without them).
+      const garage = rules.currentTally(state).pieces.find((p) => p.defId === 'garage');
+      const reached = garage?.lines.some((l) => l.label.endsWith(DRIVE)) ?? false;
+      expect(record.house.garageUnreached, seed).toBe(!!garage && !reached);
       expectReplays(run);
     }
     expect(economy).toBeGreaterThanOrEqual(3);

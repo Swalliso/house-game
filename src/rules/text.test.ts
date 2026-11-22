@@ -56,6 +56,19 @@ describe('modifier text', () => {
     ).toBe('Bedrooms come up more often (+5)');
   });
 
+  it('says a fixture’s grant to its own piece adds to what the piece earns (D-194)', () => {
+    const grant = {
+      kind: 'grantEffect',
+      target: { host: true },
+      effect: { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
+    } as const;
+    expect(modifierText(CONTENT, grant)).toBe('+2 more per touching Dining Room or Herb Garden');
+    // A grant to other pieces names them, as before (Good Bones).
+    expect(modifierText(CONTENT, { ...grant, target: { property: 'room' } })).toBe(
+      'Rooms: +2 per touching Dining Room or Herb Garden',
+    );
+  });
+
   it('names what an earn modifier is for, for telling breakdown lines apart', () => {
     expect(earnTargetText(C, { piece: 'pool' })).toBe('Pools');
     expect(earnTargetText(C, { tag: 'Dark' })).toBe('Dark pieces');
@@ -171,8 +184,9 @@ describe('a compact hand card (D-121)', () => {
       // Playtest 4's fix (D-114), behind "Links the rooms it touches…" before this.
       hallway: ['+2 per touching room (up to 4)'],
       longHallway: ['+2 per touching room (up to 4)'],
-      // Built like any room (D-140), so its requirement is about pay: both in one short line
-      // ("…if touching the street or a Driveway" lost its last words).
+      // Built like any room (D-140), so its drive is about pay: what it earns there, in one
+      // short line ("…if touching the street or a Driveway" lost its last words). D-195: +2 of
+      // it comes anywhere, which Inspect says ("+2, +5 by…" runs a letter over the budget).
       garage: ['+5 by the street or a Driveway'],
       homeOffice: ['+2 every week'],
       lawn: ['+1 every week'],
@@ -196,8 +210,9 @@ describe('a compact hand card (D-121)', () => {
       mudroom: ['+50% to fenced Pet pieces'],
       pool: ['+12 every 3rd week'],
       sunroom: ['+6 every week while Sunny'],
-      hotTub: ['+3 per touching Patio'],
-      firePit: ['+50% to touching Patios'],
+      // D-195: "+3 per touching Patio, Pool, or Fire Pit" runs 41 letters.
+      hotTub: ['+3 per Patio, Pool, or Fire Pit'],
+      firePit: ['+50% to touching Social pieces'],
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
@@ -227,7 +242,7 @@ describe('a compact hand card (D-121)', () => {
       bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms'],
       bayWindow: ['Fits most exterior rooms', 'Gives it a view'],
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
-      pergola: ['Fits a Patio', 'Gives it a view'],
+      pergola: ['Fits a Patio or Lawn', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],
     });
     // One the draw never deals (the Catalog's hand can): its set, in a few words.
@@ -262,7 +277,43 @@ describe('a compact hand card (D-121)', () => {
     );
     expect(fixtureText(CONTENT, CONTENT.fixtures.soundproofing).effects).toEqual([
       'Loud neighbors (the street, Garages, Playrooms, and Pools) can’t take points off it',
+      'Earns +25%',
     ]);
+  });
+
+  // D-194: each of the five says what it pays in any room or yard piece it fits.
+  it('says what the five fixtures of D-194 pay wherever they fit', () => {
+    const effects = (id: keyof typeof CONTENT.fixtures) =>
+      fixtureText(CONTENT, CONTENT.fixtures[id]).effects;
+    expect(effects('soundproofing')).toContain('Earns +25%');
+    expect(effects('bayWindow')).toEqual([
+      'Gives it a view, which counts as one more view',
+      'Earns +25%',
+    ]);
+    expect(effects('gardenLights')).toEqual([
+      'Makes it Pretty',
+      'Earns +25%',
+      '+25% more in the front yard',
+    ]);
+    // The Island's grant is a line its Kitchen (and an L-Kitchen) already has: the card names it.
+    expect(effects('kitchenIsland')).toEqual([
+      'Earns +25%',
+      'Doubles its +2 per touching Dining Room or Herb Garden',
+    ]);
+    expect(fixtureText(CONTENT, CONTENT.fixtures.pergola).fits).toBe('Fits a Patio or Lawn');
+    // A grant its rooms don't have on their cards just adds: "+3 more per…".
+    const island = CONTENT.fixtures.kitchenIsland;
+    const other = {
+      ...island,
+      modifiers: [
+        {
+          kind: 'grantEffect' as const,
+          target: { host: true as const },
+          effect: { kind: 'neighbor' as const, match: { piece: 'livingRoom' as const }, amount: 3 },
+        },
+      ],
+    };
+    expect(fixtureText(CONTENT, other).effects).toEqual(['+3 more per touching Living Room']);
   });
 
   it('falls back to the first line when nothing pays', () => {
@@ -321,19 +372,23 @@ describe('set chips (D-122)', () => {
     );
   });
 
-  it('the glossary names the Sparkle set at the content’s number, and the Garage’s requirement (D-140)', () => {
+  it('the glossary names the Sparkle set at the content’s number, and the Garage’s drive (D-140, D-195)', () => {
     const g = glossary(CONTENT);
     // Generated from the set, so a tuned number can't leave "×2" behind.
     expect(g.sparkle.text).toBe(
       'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, and each needs a setup. Each source counts once a week.',
     );
-    expect(g.requirement.text).toContain('a Garage touching the street or a Driveway');
-    // The Garage's card says it plainly: built like any room, paid once it's reached.
+    // D-195: the Garage earns +2 off its drive, so it isn't among the pieces that earn nothing
+    // without something; its garage sales still count for the budget.
+    expect(g.requirement.text).not.toContain('Garage');
+    expect(g.budget.text).toContain('from Garage and Home Office');
+    // The Garage's card says it plainly: built like any room, +2 anywhere, and the rest once
+    // it's reached, each line with what it waits for.
     expect(cardText(CONTENT, CONTENT.pieces.garage).effects).toEqual([
-      'Earns nothing unless touching the street or a Driveway',
-      '+5 every week',
-      '+1 budget every 2nd week',
-      '+3 if touching the Old Shed', // D-145
+      '+2 every week',
+      '+3 every week if touching the street or a Driveway',
+      '+1 budget every 2nd week if touching the street or a Driveway',
+      '+3 if touching the Old Shed and the street or a Driveway', // D-145
     ]);
     expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
       'Must be built touching the street or a Driveway',

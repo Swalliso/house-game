@@ -174,6 +174,34 @@
     "h": 41,
     "spec": "24153a418bea6e94"
   },
+  "butterfly-0": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 130,
+    "spec": "b9b55a782dde5a2a"
+  },
+  "butterfly-1": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 120,
+    "spec": "2a3bff490f0a3e95"
+  },
+  "butterfly-2": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 140,
+    "spec": "d84ce25ce7dec647"
+  },
+  "butterfly-3": {
+    "w": 7,
+    "h": 26,
+    "frames": 4,
+    "ms": 150,
+    "spec": "5756a0de75706bd9"
+  },
   "candles": {
     "w": 13,
     "h": 14,
@@ -250,6 +278,20 @@
     "w": 61,
     "h": 37,
     "spec": "0bbd9b7a4769ff04"
+  },
+  "cat": {
+    "w": 28,
+    "h": 15,
+    "frames": 35,
+    "ms": 160,
+    "spec": "b95d691a27d2078c"
+  },
+  "cat-black": {
+    "w": 28,
+    "h": 15,
+    "frames": 35,
+    "ms": 160,
+    "spec": "ac4a13359d2a046e"
   },
   "chair-east-0": {
     "w": 13,
@@ -332,6 +374,66 @@
     "w": 22,
     "h": 24,
     "spec": "dfc3c2f60096f7e9"
+  },
+  "clover-0": {
+    "w": 16,
+    "h": 12,
+    "spec": "b4064da86cc6512a"
+  },
+  "clover-0-autumn": {
+    "w": 16,
+    "h": 12,
+    "spec": "744f71490ca12711"
+  },
+  "clover-0-dry": {
+    "w": 16,
+    "h": 12,
+    "spec": "b5b1b5bb7a8fd030"
+  },
+  "clover-1": {
+    "w": 16,
+    "h": 12,
+    "spec": "76cb9cc81cf67130"
+  },
+  "clover-1-autumn": {
+    "w": 16,
+    "h": 12,
+    "spec": "45e3ae54cb07a7ec"
+  },
+  "clover-1-dry": {
+    "w": 16,
+    "h": 12,
+    "spec": "c18c22b8cc6fad8e"
+  },
+  "clover-2": {
+    "w": 7,
+    "h": 6,
+    "spec": "28457ed1d8257a92"
+  },
+  "clover-2-autumn": {
+    "w": 7,
+    "h": 6,
+    "spec": "a22c73ee24e63623"
+  },
+  "clover-2-dry": {
+    "w": 7,
+    "h": 6,
+    "spec": "06def7e69c449ef3"
+  },
+  "clover-3": {
+    "w": 7,
+    "h": 6,
+    "spec": "6b3bfc6a20245208"
+  },
+  "clover-3-autumn": {
+    "w": 7,
+    "h": 6,
+    "spec": "36b78a34d637aabc"
+  },
+  "clover-3-dry": {
+    "w": 7,
+    "h": 6,
+    "spec": "300fcd24f56529c2"
   },
   "coat-rack": {
     "w": 11,
@@ -478,6 +580,21 @@
     "h": 42,
     "spec": "f07bb0d3e3e14116"
   },
+  "dirt-edge": {
+    "w": 192,
+    "h": 64,
+    "spec": "38524d56398ec385"
+  },
+  "dirt-edge-autumn": {
+    "w": 192,
+    "h": 64,
+    "spec": "4ea53ece8c8c4099"
+  },
+  "dirt-edge-dry": {
+    "w": 192,
+    "h": 64,
+    "spec": "0d20c1f9711837c7"
+  },
   "dresser-0": {
     "w": 29,
     "h": 24,
@@ -487,6 +604,96 @@
     "w": 29,
     "h": 24,
     "spec": "fb9959ea1bb3eb39"
+  },
+  "drift-blue": {
+    "w": 30,
+    "h": 24,
+    "spec": "27681041cb5d4ea2"
+  },
+  "drift-blue-autumn": {
+    "w": 30,
+    "h": 24,
+    "spec": "d73260b2ed9a068d"
+  },
+  "drift-blue-dry": {
+    "w": 30,
+    "h": 24,
+    "spec": "9faeeea50bd28078"
+  },
+  "drift-log-0": {
+    "w": 16,
+    "h": 8,
+    "spec": "2bfd6e2291bf17b6"
+  },
+  "drift-log-1": {
+    "w": 16,
+    "h": 9,
+    "spec": "edf3d84c58e008ed"
+  },
+  "drift-log-2": {
+    "w": 46,
+    "h": 13,
+    "spec": "11cc89f454d076b7"
+  },
+  "drift-pink": {
+    "w": 30,
+    "h": 24,
+    "spec": "6167901b0b0fd171"
+  },
+  "drift-pink-autumn": {
+    "w": 30,
+    "h": 24,
+    "spec": "2144dc60b94ec8bb"
+  },
+  "drift-pink-dry": {
+    "w": 30,
+    "h": 24,
+    "spec": "1560bb3c692bd145"
+  },
+  "drift-red": {
+    "w": 30,
+    "h": 24,
+    "spec": "a52a54c49fc64f41"
+  },
+  "drift-red-autumn": {
+    "w": 30,
+    "h": 24,
+    "spec": "a260138fdfa12c6e"
+  },
+  "drift-red-dry": {
+    "w": 30,
+    "h": 24,
+    "spec": "1249fb147340f26c"
+  },
+  "drift-violet": {
+    "w": 30,
+    "h": 24,
+    "spec": "2007ba1396254376"
+  },
+  "drift-violet-autumn": {
+    "w": 30,
+    "h": 24,
+    "spec": "bd614f98e086df93"
+  },
+  "drift-violet-dry": {
+    "w": 30,
+    "h": 24,
+    "spec": "18e8fbf759525aea"
+  },
+  "drift-white": {
+    "w": 30,
+    "h": 24,
+    "spec": "f698f9dabfa0bc4a"
+  },
+  "drift-white-autumn": {
+    "w": 30,
+    "h": 24,
+    "spec": "17a6e672d3cbca9d"
+  },
+  "drift-white-dry": {
+    "w": 30,
+    "h": 24,
+    "spec": "cad1730080a2e70d"
   },
   "easel-0": {
     "w": 16,
@@ -617,6 +824,66 @@
     "w": 32,
     "h": 8,
     "spec": "033ce8cfebbc7841"
+  },
+  "fern-0": {
+    "w": 11,
+    "h": 7,
+    "spec": "29a8670fea1c5fd0"
+  },
+  "fern-0-autumn": {
+    "w": 11,
+    "h": 7,
+    "spec": "53f7223086c1be11"
+  },
+  "fern-0-dry": {
+    "w": 11,
+    "h": 7,
+    "spec": "4eff3ba6e32620b7"
+  },
+  "fern-1": {
+    "w": 12,
+    "h": 12,
+    "spec": "fab7158932d516e6"
+  },
+  "fern-1-autumn": {
+    "w": 12,
+    "h": 12,
+    "spec": "731ce3452486148c"
+  },
+  "fern-1-dry": {
+    "w": 12,
+    "h": 12,
+    "spec": "5faf31ccbbeb0a79"
+  },
+  "fern-2": {
+    "w": 11,
+    "h": 12,
+    "spec": "8be0782e014a7418"
+  },
+  "fern-2-autumn": {
+    "w": 11,
+    "h": 12,
+    "spec": "30565ca529612736"
+  },
+  "fern-2-dry": {
+    "w": 11,
+    "h": 12,
+    "spec": "f216ae41eb174d41"
+  },
+  "fern-3": {
+    "w": 7,
+    "h": 5,
+    "spec": "41ef407dda42390e"
+  },
+  "fern-3-autumn": {
+    "w": 7,
+    "h": 5,
+    "spec": "0685285b724d671c"
+  },
+  "fern-3-dry": {
+    "w": 7,
+    "h": 5,
+    "spec": "3670dac914186e7d"
   },
   "fire-pit": {
     "w": 16,
@@ -779,6 +1046,21 @@
     "h": 32,
     "spec": "e698a3e36723b50c"
   },
+  "grass-light": {
+    "w": 32,
+    "h": 32,
+    "spec": "e25839b978b3435b"
+  },
+  "grass-light-autumn": {
+    "w": 32,
+    "h": 32,
+    "spec": "f40f49974204a221"
+  },
+  "grass-light-dry": {
+    "w": 32,
+    "h": 32,
+    "spec": "8c1ffc3a5bfd1d1d"
+  },
   "grass-outside": {
     "w": 256,
     "h": 256,
@@ -911,6 +1193,36 @@
     "h": 33,
     "spec": "fa7d6a60210d1afa"
   },
+  "leaves-0": {
+    "w": 12,
+    "h": 9,
+    "spec": "9c29056c6dc00107"
+  },
+  "leaves-1": {
+    "w": 6,
+    "h": 7,
+    "spec": "48628e32c9d8204e"
+  },
+  "leaves-2": {
+    "w": 9,
+    "h": 4,
+    "spec": "4ca4860509b9e3fe"
+  },
+  "leaves-3": {
+    "w": 14,
+    "h": 9,
+    "spec": "bc0cc9c711b672fb"
+  },
+  "leaves-4": {
+    "w": 12,
+    "h": 9,
+    "spec": "b8fffc920cd11724"
+  },
+  "leaves-5": {
+    "w": 9,
+    "h": 4,
+    "spec": "57b74648a3f3c7f4"
+  },
   "lectern": {
     "w": 17,
     "h": 30,
@@ -950,6 +1262,34 @@
     "frames": 6,
     "ms": 200,
     "spec": "19e44f8c3cb17c19"
+  },
+  "life-fish-1": {
+    "w": 16,
+    "h": 16,
+    "frames": 11,
+    "ms": 110,
+    "spec": "8288a4cc1073b04b"
+  },
+  "life-fish-2": {
+    "w": 16,
+    "h": 16,
+    "frames": 14,
+    "ms": 110,
+    "spec": "d580af47a8973c6c"
+  },
+  "life-fish-3": {
+    "w": 16,
+    "h": 16,
+    "frames": 14,
+    "ms": 110,
+    "spec": "4d2e60ddf1313496"
+  },
+  "life-frog": {
+    "w": 16,
+    "h": 16,
+    "frames": 6,
+    "ms": 120,
+    "spec": "e6d63405f22311a9"
   },
   "life-walker-1": {
     "w": 16,
@@ -1018,6 +1358,81 @@
     "w": 30,
     "h": 30,
     "spec": "e6fc0d05861a8a38"
+  },
+  "moss-0": {
+    "w": 16,
+    "h": 9,
+    "spec": "27227477f4d3d9b4"
+  },
+  "moss-0-autumn": {
+    "w": 16,
+    "h": 9,
+    "spec": "b99819d80b956084"
+  },
+  "moss-0-dry": {
+    "w": 16,
+    "h": 9,
+    "spec": "f923747f8f622e9e"
+  },
+  "mush-0": {
+    "w": 15,
+    "h": 13,
+    "spec": "404e4fc2a0136b75"
+  },
+  "mush-0-autumn": {
+    "w": 15,
+    "h": 13,
+    "spec": "e73240fb2cf45a6b"
+  },
+  "mush-0-dry": {
+    "w": 15,
+    "h": 13,
+    "spec": "c74b9099dd25988b"
+  },
+  "mush-1": {
+    "w": 12,
+    "h": 9,
+    "spec": "00b307562dffe891"
+  },
+  "mush-1-autumn": {
+    "w": 12,
+    "h": 9,
+    "spec": "cbf9723e1551ab74"
+  },
+  "mush-1-dry": {
+    "w": 12,
+    "h": 9,
+    "spec": "65254af43ba8d155"
+  },
+  "mush-2": {
+    "w": 11,
+    "h": 11,
+    "spec": "b541f9f981a81c7a"
+  },
+  "mush-2-autumn": {
+    "w": 11,
+    "h": 11,
+    "spec": "a0923adfd9649962"
+  },
+  "mush-2-dry": {
+    "w": 11,
+    "h": 11,
+    "spec": "52ee02f1df9d6f2b"
+  },
+  "mush-3": {
+    "w": 15,
+    "h": 13,
+    "spec": "8c0b518a0c32e856"
+  },
+  "mush-3-autumn": {
+    "w": 15,
+    "h": 13,
+    "spec": "5e3a99506a07742f"
+  },
+  "mush-3-dry": {
+    "w": 15,
+    "h": 13,
+    "spec": "488767d14ad24721"
   },
   "neighbor-country": {
     "w": 282,
@@ -1164,10 +1579,66 @@
     "h": 19,
     "spec": "bc913116b65ff7c2"
   },
+  "pebbles-0": {
+    "w": 15,
+    "h": 13,
+    "spec": "3baa5cfa3f7eaed4"
+  },
+  "pebbles-0-autumn": {
+    "w": 15,
+    "h": 13,
+    "spec": "40c174798ed296d6"
+  },
+  "pebbles-0-dry": {
+    "w": 15,
+    "h": 13,
+    "spec": "2083cfce755c7161"
+  },
+  "pebbles-1": {
+    "w": 14,
+    "h": 15,
+    "spec": "51c2c16c9b682752"
+  },
+  "pebbles-1-autumn": {
+    "w": 14,
+    "h": 15,
+    "spec": "b43e5cf7157ceb33"
+  },
+  "pebbles-1-dry": {
+    "w": 14,
+    "h": 15,
+    "spec": "e0946d89037f61bf"
+  },
+  "pebbles-2": {
+    "w": 14,
+    "h": 14,
+    "spec": "6b215f724e6cf3a8"
+  },
+  "pebbles-3": {
+    "w": 15,
+    "h": 12,
+    "spec": "aee707f4dbc33cdf"
+  },
   "people-grandma": {
     "w": 16,
     "h": 26,
-    "spec": "0f7f5d3c919aa128"
+    "frames": 6,
+    "ms": 450,
+    "spec": "fc368d845c17ea8d"
+  },
+  "people-grandma-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "78a84ed2ae6a034f"
+  },
+  "people-grandma-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "98fa269d190b497f"
   },
   "people-grandma-walk": {
     "w": 16,
@@ -1179,7 +1650,9 @@
   "people-ivy": {
     "w": 16,
     "h": 26,
-    "spec": "572f55086ee1e057"
+    "frames": 6,
+    "ms": 450,
+    "spec": "2271a18896f3eca6"
   },
   "people-ivy-walk": {
     "w": 16,
@@ -1191,7 +1664,23 @@
   "people-nana": {
     "w": 16,
     "h": 26,
-    "spec": "8c3737db14986b2e"
+    "frames": 6,
+    "ms": 450,
+    "spec": "7a8fffffe0ecf132"
+  },
+  "people-nana-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "5ca08753d9ac86da"
+  },
+  "people-nana-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "eff9330453cedb69"
   },
   "people-nana-walk": {
     "w": 16,
@@ -1203,7 +1692,23 @@
   "people-renfield": {
     "w": 16,
     "h": 26,
-    "spec": "a52e40db20536027"
+    "frames": 6,
+    "ms": 450,
+    "spec": "68fdc6d4c0caeda0"
+  },
+  "people-renfield-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "ab36947a363ab56d"
+  },
+  "people-renfield-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "c27550515cf61055"
   },
   "people-renfield-walk": {
     "w": 16,
@@ -1215,7 +1720,23 @@
   "people-rowan": {
     "w": 16,
     "h": 26,
-    "spec": "f69f38a8cbe38554"
+    "frames": 6,
+    "ms": 450,
+    "spec": "77b1b96976d577fe"
+  },
+  "people-rowan-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "64f1708aff1a3ce1"
+  },
+  "people-rowan-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "df23a127946a96a8"
   },
   "people-rowan-walk": {
     "w": 16,
@@ -1257,7 +1778,9 @@
   "piano": {
     "w": 31,
     "h": 32,
-    "spec": "adada3369340140e"
+    "frames": 37,
+    "ms": 200,
+    "spec": "1e447584f39938f6"
   },
   "picket-post": {
     "w": 5,
@@ -1342,7 +1865,9 @@
   "pool-float-0": {
     "w": 32,
     "h": 22,
-    "spec": "7024326f13cbd810"
+    "frames": 2,
+    "ms": 1000,
+    "spec": "c57a6ab5ff9e9b75"
   },
   "pool-ladder": {
     "w": 15,
@@ -1541,6 +2066,51 @@
     "ms": 130,
     "spec": "2bd92db79414d000"
   },
+  "shrub-0": {
+    "w": 16,
+    "h": 15,
+    "spec": "b72ba012588ba615"
+  },
+  "shrub-0-autumn": {
+    "w": 16,
+    "h": 15,
+    "spec": "2fdbaa5db162622c"
+  },
+  "shrub-0-dry": {
+    "w": 16,
+    "h": 15,
+    "spec": "27173d983d5cbe43"
+  },
+  "shrub-1": {
+    "w": 14,
+    "h": 14,
+    "spec": "15628197c9f0bafa"
+  },
+  "shrub-1-autumn": {
+    "w": 14,
+    "h": 14,
+    "spec": "89c290b504f005d1"
+  },
+  "shrub-1-dry": {
+    "w": 14,
+    "h": 14,
+    "spec": "1b018ea4921b8ba7"
+  },
+  "shrub-2": {
+    "w": 16,
+    "h": 16,
+    "spec": "06bf31c0248f4266"
+  },
+  "shrub-2-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "025616e3373f8402"
+  },
+  "shrub-2-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "ed90522e5ed7d535"
+  },
   "side-lamp": {
     "w": 16,
     "h": 22,
@@ -1592,6 +2162,51 @@
     "frames": 8,
     "ms": 180,
     "spec": "66d3d08c742d875b"
+  },
+  "sprig-0": {
+    "w": 11,
+    "h": 8,
+    "spec": "b3bbad6da82296f9"
+  },
+  "sprig-0-autumn": {
+    "w": 11,
+    "h": 8,
+    "spec": "9b3f933e04c68446"
+  },
+  "sprig-0-dry": {
+    "w": 11,
+    "h": 8,
+    "spec": "def273fa57d34f7a"
+  },
+  "sprig-1": {
+    "w": 12,
+    "h": 11,
+    "spec": "0ab6d05edd92dfb5"
+  },
+  "sprig-1-autumn": {
+    "w": 12,
+    "h": 11,
+    "spec": "a313ba0e2243edc1"
+  },
+  "sprig-1-dry": {
+    "w": 12,
+    "h": 11,
+    "spec": "51967aa6802b8e45"
+  },
+  "sprig-2": {
+    "w": 11,
+    "h": 7,
+    "spec": "92c1b6255ccd58b7"
+  },
+  "sprig-2-autumn": {
+    "w": 11,
+    "h": 7,
+    "spec": "0e4797834dfa943b"
+  },
+  "sprig-2-dry": {
+    "w": 11,
+    "h": 7,
+    "spec": "409909f9bcbb8363"
   },
   "stool-0": {
     "w": 13,
@@ -1721,7 +2336,9 @@
   "toy-box": {
     "w": 15,
     "h": 15,
-    "spec": "f92c6d8287526c1c"
+    "frames": 35,
+    "ms": 200,
+    "spec": "509e4dcbb143044b"
   },
   "toy-train": {
     "w": 55,
@@ -1924,6 +2541,36 @@
     "frames": 6,
     "ms": 160,
     "spec": "0d3d946385523298"
+  },
+  "twig-0": {
+    "w": 16,
+    "h": 7,
+    "spec": "f9b4618631afb5cc"
+  },
+  "twig-0-autumn": {
+    "w": 16,
+    "h": 7,
+    "spec": "bcc98cff4f117034"
+  },
+  "twig-0-dry": {
+    "w": 16,
+    "h": 7,
+    "spec": "4a57dc2e58cb6637"
+  },
+  "twig-1": {
+    "w": 13,
+    "h": 8,
+    "spec": "1197897f7e080798"
+  },
+  "twig-1-autumn": {
+    "w": 13,
+    "h": 8,
+    "spec": "63138539b71e9834"
+  },
+  "twig-1-dry": {
+    "w": 13,
+    "h": 8,
+    "spec": "0150e2e28a09a7d3"
   },
   "vanity-0": {
     "w": 28,

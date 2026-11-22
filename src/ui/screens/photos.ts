@@ -2,12 +2,17 @@
 // the run's setup and actions through the rules and keeps the state each time a milestone
 // resolves, and frames every photo the same way, so the strip reads as a time-lapse of one
 // spot. photo-paint.ts paints them in the browser; EndPhotos.tsx deals them in.
+//
+// The same replay gives the house's time-lapse (S10, D-187): the state after every action that
+// changed the house, which board/TimelapseLayer.tsx plays on the board at the end of a run.
 
 import {
   rules,
   type Action,
+  type GameEvent,
   type HouseState,
   type MilestoneRecord,
+  type PieceId,
   type RunSetup,
   type RunState,
 } from '../../rules/index.ts';
@@ -45,6 +50,84 @@ export function milestoneShots(setup: RunSetup, actions: readonly Action[]): Mil
   }
   memo = { setup, actions, shots };
   return shots;
+}
+
+/** One build of the time-lapse (D-187): the house just after an action that changed it. */
+export interface BuildStep {
+  /** The run's state just after the action. */
+  state: RunState;
+  /** What changed, for its place sound: a room (or a fixture in one), or the yard. */
+  kind: 'room' | 'yard';
+}
+
+/** The house as it went up: the lot as the run began, then each build in order. */
+export interface Timelapse {
+  start: RunState;
+  steps: BuildStep[];
+}
+
+/**
+ * The events that change how the house looks: a piece placed, moved, torn down (or a feature
+ * cleared), turned into another, grown, renovated (a finished room lights its lamp, D-181), or
+ * given a fixture.
+ */
+const BUILDS: ReadonlySet<GameEvent['t']> = new Set([
+  'placed',
+  'moved',
+  'demolished',
+  'transformed',
+  'extended',
+  'renovated',
+  'installed',
+]);
+
+/** The piece a build event is about, if it names one (a fixture's, its host). */
+function builtPiece(e: GameEvent, house: HouseState): PieceId | undefined {
+  switch (e.t) {
+    case 'placed':
+    case 'moved':
+    case 'transformed':
+    case 'extended':
+    case 'renovated':
+    case 'demolished':
+      return e.defId;
+    case 'installed':
+      return house.pieces.find((p) => p.uid === e.uid)?.defId;
+    default:
+      return undefined;
+  }
+}
+
+let stepsMemo: { setup: RunSetup; actions: readonly Action[]; lapse: Timelapse } | null = null;
+
+/**
+ * The run's builds, in order (D-187): the state after every action whose events change how the
+ * house looks (BUILDS), each with the kind of its first build for its sound. Replays the actions
+ * from the setup with `apply`, as milestoneShots does, and stops quietly at an action that no
+ * longer applies. The last answer is kept, so a run is replayed once.
+ */
+export function buildSteps(setup: RunSetup, actions: readonly Action[]): Timelapse {
+  if (stepsMemo && stepsMemo.actions === actions && stepsMemo.setup === setup) {
+    return stepsMemo.lapse;
+  }
+  const start = rules.newRun(setup);
+  const steps: BuildStep[] = [];
+  let s = start;
+  for (const action of actions) {
+    let events: readonly GameEvent[];
+    try {
+      ({ state: s, events } = rules.apply(s, action));
+    } catch {
+      break;
+    }
+    const build = events.find((e) => BUILDS.has(e.t));
+    if (!build) continue;
+    const id = builtPiece(build, s.house);
+    steps.push({ state: s, kind: id !== undefined && isIndoor(id) ? 'room' : 'yard' });
+  }
+  const lapse = { start, steps };
+  stepsMemo = { setup, actions, lapse };
+  return lapse;
 }
 
 /** A box on the board's canvas, in art px: the lot, its street row and the road below. */

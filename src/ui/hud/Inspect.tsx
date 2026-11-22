@@ -80,9 +80,18 @@ import {
 import { Button, Icon } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS } from '../sprites.ts';
 import type { IconName } from '../theme/art.ts';
-import { BlueprintWorth, GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
+import {
+  BlueprintWorth,
+  FixtureWorth,
+  GoodBody,
+  goodName,
+  offerGood,
+  PieceWorth,
+  ToolWorth,
+  type GoodRef,
+} from './goods.tsx';
 import { extraSlotWords } from './household.ts';
-import { Tip } from './Tip.tsx';
+import { Tip, withTerm } from './Tip.tsx';
 import './inspect.css';
 
 const GLOSSARY = glossary(CONTENT);
@@ -101,23 +110,6 @@ const REGION_TERM: Partial<Record<Region, Term>> = {
   backYard: 'backYard',
   fencedYard: 'fencedYard',
 };
-
-/**
- * `text` with its term's name (the glossary title, in any case) as a Tip: "In the [front
- * yard]". The whole text is the Tip if the name isn't in it.
- */
-function withTerm(text: string, term: Term): ComponentChildren {
-  const words = GLOSSARY[term].title.toLowerCase();
-  const at = text.toLowerCase().indexOf(words);
-  if (at < 0) return <Tip term={term}>{text}</Tip>;
-  return (
-    <>
-      {text.slice(0, at)}
-      <Tip term={term}>{text.slice(at, at + words.length)}</Tip>
-      {text.slice(at + words.length)}
-    </>
-  );
-}
 
 /** A region's words, as a Tip where the glossary has the region. */
 function regionWords(text: string, region: Region): ComponentChildren {
@@ -488,7 +480,8 @@ export function SetProgressLines({ id }: { id: PieceId }) {
 
 /**
  * A card in the reserve's extra slots (M4b, D-160): where it came from (the crew, a household
- * member, the client, or the standing stock), and that it doesn't take a slot of the reserve's.
+ * member, the client, the standing stock, or the wrong delivery, D-188), and that it doesn't
+ * take a slot of the reserve's.
  */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
   const words = extraSlotWords(run.value.setup.clientId, r, run.value.setup.crewId);
@@ -818,6 +811,29 @@ function PlacingInfo() {
   );
 }
 
+/**
+ * What a good would do for your house, from the rules (D-107, D-141, D-193): a blueprint you hold
+ * says what it's adding; one on offer, a fixture, a piece in Your goods or on offer, and a tool
+ * say what they'd add (in the shop, the next week's). Crates and upgrades have no line, and
+ * nothing does off the build and shop screens.
+ */
+function GoodWorth({ good }: { good: GoodRef }) {
+  const s = run.value;
+  if (s.screen !== 'build' && s.screen !== 'shop') return null;
+  switch (good.kind) {
+    case 'blueprint':
+      return <BlueprintWorth value={rules.blueprintValue(s, good.id)} where="panel" />;
+    case 'fixture':
+      return <FixtureWorth value={rules.fixtureValue(s, good.id)} where="panel" />;
+    case 'piece':
+      return <PieceWorth value={rules.pieceValue(s, good.id)} where="panel" />;
+    case 'tool':
+      return <ToolWorth value={rules.toolValue(s, good.id)} where="panel" />;
+    default:
+      return null;
+  }
+}
+
 /** A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold. */
 function ItemInfo({
   good,
@@ -836,10 +852,7 @@ function ItemInfo({
         {goodName(good)}
       </h2>
       <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
-      {/* D-141: what a blueprint you hold is adding, from the rules. */}
-      {good.kind === 'blueprint' && sellAs && (
-        <BlueprintWorth value={rules.blueprintValue(s, good.id)} where="panel" />
-      )}
+      <GoodWorth good={good} />
       {good.kind === 'blueprint' && sellAs && (
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}
@@ -958,10 +971,10 @@ function StrikeInfo() {
 }
 
 const FEATURE_TEXT: Record<string, string> = {
-  tree: 'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. Building here clears it.',
+  // D-195: what a Tree does is its glossary tip's text (the Sapling's card links it).
+  tree: `${GLOSSARY.tree.text} Building here clears it.`,
   // D-174: on an Old Woods lot the Trees stay, in placement's own words.
-  keptTree:
-    'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. These old Trees stay: build around them.',
+  keptTree: `${GLOSSARY.tree.text} These old Trees stay: build around them.`,
   pond: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   creek:
     'Water, and a view. It counts once as a neighbor. Nothing can be built on it, except a Driveway.',
@@ -1153,9 +1166,10 @@ export function Inspect() {
           <Timers lines={timers} />
           <h3>Card</h3>
           <ul class="effects">
-            {text.effects.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
+            {text.effects.map((t, i) => {
+              const term = text.terms?.[i];
+              return <li key={t}>{term ? withTerm(t, term) : t}</li>;
+            })}
           </ul>
           {text.member && <p class="member-note">{text.member}</p>}
           {text.perHouse && <p class="member-note">{text.perHouse}</p>}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Lot, LotBalance, LotKind, TerrainId } from './index.ts';
 import {
+  cutBox,
+  easeThrough,
   generateLot,
   KIND_CHECKS,
   lotBiome,
@@ -9,6 +11,7 @@ import {
   lotToRows,
   lotTraits,
   protectedTerrain,
+  ROUND_PONDS,
   terrainAt,
   withTraits,
 } from './lot.ts';
@@ -311,11 +314,12 @@ describe('lot kinds (D-166)', () => {
       const b = bare(before);
       a.forEach((t, k) => {
         if (t === b[k]) return;
-        // Rocky: Boulders on open ground. Open: woods Trees gone. Pond: open ground or Trees.
+        // Rocky: Boulders on open ground. Open: woods Trees gone. Pond: open ground or Trees,
+        // and (D-191) the pond's own tiles its round shape leaves out are open ground.
         if (now.kind === 'rocky') expect([b[k], t]).toEqual([null, 'boulder']);
         if (now.kind === 'open') expect([b[k], t]).toEqual(['tree', null]);
-        if (now.kind === 'pond') expect([null, 'tree']).toContain(b[k]);
-        if (now.kind === 'pond') expect(t).toBe('pond');
+        if (now.kind === 'pond' && t === 'pond') expect([null, 'tree']).toContain(b[k]);
+        if (now.kind === 'pond' && t !== 'pond') expect([b[k], t]).toEqual(['pond', null]);
       });
       if (now.kind === 'rocky') {
         const more = count(now, 'boulder') - count(before, 'boulder');
@@ -514,5 +518,249 @@ describe('biomes and their lots (D-174)', () => {
     };
     expect(creekShare('dry')).toBeLessThan(0.16);
     expect(creekShare('meadow')).toBeGreaterThan(0.16);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// D-191: natural water. A pond rounds off, a lake's shore curves, and a creek bends gently.
+
+/** The tiles of a terrain, as "x,y" keys, and their box. */
+function tilesOf(lot: Lot, t: TerrainId) {
+  const keys = new Set<string>();
+  let x0 = lot.width;
+  let y0 = lot.height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < lot.height; y++) {
+    for (let x = 0; x < lot.width; x++) {
+      if (terrainAt(lot, x, y) !== t) continue;
+      keys.add(`${x},${y}`);
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+    }
+  }
+  return { keys, x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+/** How many of the tile's four sides are the same terrain. */
+const besideSame = (lot: Lot, x: number, y: number) =>
+  [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ].filter(([dx, dy]) => terrainAt(lot, x + dx!, y + dy!) === terrainAt(lot, x, y)).length;
+
+/** A creek running across: the row it leaves each column by, column by column. */
+function acrossRows(lot: Lot): number[] {
+  const rows: number[] = [];
+  for (let x = 0; x < lot.width - 1; x++) {
+    const ys: number[] = [];
+    for (let y = 0; y < lot.height; y++) {
+      if (terrainAt(lot, x, y) === 'creek' && terrainAt(lot, x + 1, y) === 'creek') ys.push(y);
+    }
+    expect(ys, `column ${x}`).toHaveLength(1);
+    rows.push(ys[0]!);
+  }
+  return rows;
+}
+
+/**
+ * The turns along a line of rows or depths, each as wide as it is: a run of one value whose
+ * neighbors on both sides lie the same way of it.
+ */
+function turnWidths(values: readonly number[]): number[] {
+  const runs: { v: number; n: number }[] = [];
+  for (const v of values) {
+    const last = runs[runs.length - 1];
+    if (last && last.v === v) last.n++;
+    else runs.push({ v, n: 1 });
+  }
+  const out: number[] = [];
+  for (let k = 1; k < runs.length - 1; k++) {
+    const { v, n } = runs[k]!;
+    if (Math.sign(runs[k - 1]!.v - v) === Math.sign(runs[k + 1]!.v - v)) out.push(n);
+  }
+  return out;
+}
+
+describe('natural water (D-191)', () => {
+  const real = CONTENT.balance.lot;
+
+  it('eases between marks a row at a time, flat a column either side of each', () => {
+    const ys = easeThrough([2, 5, 2, 4], 6, 19);
+    expect(ys.slice(0, 2)).toEqual([2, 2]);
+    expect(ys.slice(5, 8)).toEqual([5, 5, 5]);
+    expect(ys.slice(11, 14)).toEqual([2, 2, 2]);
+    expect(ys[18]).toBe(4);
+    for (let x = 1; x < ys.length; x++)
+      expect(Math.abs(ys[x]! - ys[x - 1]!)).toBeLessThanOrEqual(1);
+    // Up to the first mark it only rises, and down to the next it only falls.
+    for (let x = 1; x <= 6; x++) expect(ys[x]!).toBeGreaterThanOrEqual(ys[x - 1]!);
+    for (let x = 7; x <= 12; x++) expect(ys[x]!).toBeLessThanOrEqual(ys[x - 1]!);
+  });
+
+  it('cuts a box’s corners in steps', () => {
+    const rows = (s: { w: number; h: number; cuts: readonly number[] }) => {
+      const cells = new Set(cutBox(s.w, 0, 0, s));
+      return Array.from({ length: s.h }, (_, y) =>
+        Array.from({ length: s.w }, (_, x) => (cells.has(y * s.w + x) ? '#' : '.')).join(''),
+      );
+    };
+    expect(rows({ w: 5, h: 5, cuts: [2, 1, 1, 1] })).toEqual([
+      '..##.',
+      '.####',
+      '#####',
+      '#####',
+      '.###.',
+    ]);
+    expect(rows({ w: 3, h: 3, cuts: [1, 0, 1, 0] })).toEqual(['.##', '###', '##.']);
+  });
+
+  it('gives a pond lot one of the round ponds, and no tile of it sticks out alone', () => {
+    const shapes = ROUND_PONDS.map((s) => {
+      const cells = cutBox(s.w, 0, 0, s);
+      return { s, key: cells.map((i) => `${i % s.w},${Math.floor(i / s.w)}`).join(' ') };
+    });
+    for (const { s } of shapes) {
+      const n = cutBox(s.w, 0, 0, s).length;
+      expect(n).toBeGreaterThanOrEqual(real.pondTiles[0]);
+      expect(n).toBeLessThanOrEqual(real.pondTiles[1]);
+    }
+    let ponds = 0;
+    const seen = new Set<string>();
+    for (let i = 0; i < 1500; i++) {
+      const lot = generateLot(`seed-${i}`, real);
+      if (lot.kind !== 'pond') continue;
+      ponds++;
+      const { keys, x0, y0, w, h } = tilesOf(lot, 'pond');
+      const at = [...keys]
+        .map((k) => k.split(',').map(Number) as [number, number])
+        .sort((a, b) => a[1] - b[1] || a[0] - b[0])
+        .map(([x, y]) => `${x - x0},${y - y0}`)
+        .join(' ');
+      const shape = shapes.find(({ s, key }) => s.w === w && s.h === h && key === at);
+      expect(shape, `seed-${i}`).toBeDefined();
+      seen.add(JSON.stringify(shape!.s));
+      for (const k of keys) {
+        const [x, y] = k.split(',').map(Number);
+        expect(besideSame(lot, x!, y!), `seed-${i} ${k}`).toBeGreaterThanOrEqual(2);
+      }
+    }
+    expect(ponds).toBeGreaterThan(150);
+    // Every shape comes up.
+    expect(seen.size).toBe(ROUND_PONDS.length);
+  });
+
+  it('rounds a 3 × 3 pond off by a corner, or two across from each other', () => {
+    const n = new Map<number, number>();
+    for (let i = 0; i < 1000; i++) {
+      const lot = generateLot(`seed-${i}`, B);
+      const { keys, x0, y0, w, h } = tilesOf(lot, 'pond');
+      n.set(keys.size, (n.get(keys.size) ?? 0) + 1);
+      if (keys.size === 4 || keys.size === 6) {
+        // 2 × 2 and 2 × 3 stay as drawn.
+        expect(w * h).toBe(keys.size);
+        continue;
+      }
+      expect([w, h]).toEqual([3, 3]);
+      const gone = [
+        [0, 0],
+        [2, 0],
+        [2, 2],
+        [0, 2],
+      ].map(([dx, dy]) => !keys.has(`${x0 + dx!},${y0 + dy!}`));
+      expect(gone.filter(Boolean)).toHaveLength(9 - keys.size);
+      if (keys.size === 7) expect(gone[0] === gone[2]).toBe(true);
+    }
+    expect([...n.keys()].sort()).toEqual([4, 6, 7, 8]);
+  });
+
+  it('eases a lake’s shore from bay to point a row at a time, each turn three columns wide', () => {
+    let lakes = 0;
+    for (let i = 0; i < 1000; i++) {
+      const lot = generateLot(`seed-${i}`, real);
+      if (lot.kind !== 'lake') continue;
+      lakes++;
+      const depths = Array.from({ length: lot.width }, (_, x) => {
+        let d = 0;
+        while (terrainAt(lot, x, d) === 'lake') d++;
+        return d;
+      });
+      for (let x = 1; x < depths.length; x++) {
+        expect(Math.abs(depths[x]! - depths[x - 1]!), `seed-${i}`).toBeLessThanOrEqual(1);
+      }
+      for (const n of turnWidths(depths)) expect(n, `seed-${i}`).toBeGreaterThanOrEqual(3);
+      // It turns at least once: never a straight shore.
+      expect(new Set(depths).size, `seed-${i}`).toBeGreaterThan(1);
+    }
+    expect(lakes).toBeGreaterThan(40);
+  });
+
+  it('bends a creek gently: across the lot a row at a time, from the back down and round', () => {
+    let across = 0;
+    let fromBack = 0;
+    let straight = 0;
+    for (let i = 0; i < 600; i++) {
+      const lot = generateLot(`creek-${i}`, i % 2 ? B : real);
+      const cells = creekCells(lot);
+      if (cells.length === 0) continue;
+      // It leaves the lot straight wherever it meets an edge: its mouths run on straight past
+      // the board (outside.ts), so its cell on the edge runs straight in from it.
+      const { width: w } = lot;
+      const creek = (x: number, y: number) => terrainAt(lot, x, y) === 'creek';
+      for (const c of cells) {
+        if (c.y === 0) {
+          expect([creek(c.x - 1, 0), creek(c.x + 1, 0), creek(c.x, 1)], `creek-${i}`).toEqual([
+            false,
+            false,
+            true,
+          ]);
+          straight++;
+        }
+        if (c.x === 0 || c.x === w - 1) {
+          const inward = c.x === 0 ? 1 : w - 2;
+          const along = [creek(c.x, c.y - 1), creek(c.x, c.y + 1), creek(inward, c.y)];
+          expect(along, `creek-${i} ${c.x},${c.y}`).toEqual([false, false, true]);
+          straight++;
+        }
+      }
+      if (cells.some((c) => c.y === 0)) {
+        // From the back edge to a side: only ever down, or toward that side.
+        fromBack++;
+        const start = cells.find((c) => c.y === 0)!;
+        const side = cells.find((c) => c.x === 0 || c.x === lot.width - 1)!;
+        const dx = Math.sign(side.x - start.x);
+        for (const c of cells) {
+          expect(c.y).toBeGreaterThanOrEqual(0);
+          expect(Math.sign(c.x - start.x) * dx).toBeGreaterThanOrEqual(0);
+        }
+        // Down or across, one cell at a time: each row's creek tiles are one run.
+        for (let y = 0; y <= side.y; y++) {
+          const xs = cells.filter((c) => c.y === y).map((c) => c.x);
+          expect(xs.length, `creek-${i} row ${y}`).toBeGreaterThan(0);
+          expect(Math.max(...xs) - Math.min(...xs) + 1).toBe(xs.length);
+        }
+      } else {
+        across++;
+        const rows = acrossRows(lot);
+        for (let x = 1; x < rows.length; x++) {
+          expect(Math.abs(rows[x]! - rows[x - 1]!), `creek-${i}`).toBeLessThanOrEqual(1);
+        }
+        for (const n of turnWidths(rows)) expect(n, `creek-${i}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+    expect(across).toBeGreaterThan(50);
+    expect(fromBack).toBeGreaterThan(50);
+    expect(straight).toBeGreaterThan(200);
+    // A split lot's creek bends the same way.
+    for (let i = 0; i < 400; i++) {
+      const lot = generateLot(`seed-${i}`, real);
+      if (lot.kind !== 'split') continue;
+      const rows = acrossRows(lot);
+      for (const n of turnWidths(rows)) expect(n, `seed-${i}`).toBeGreaterThanOrEqual(3);
+    }
   });
 });

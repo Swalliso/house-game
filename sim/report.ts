@@ -13,7 +13,7 @@
 import { SERVICE_NAMES, type Content, type ServiceId } from '../src/rules/index.ts';
 import { SCORE_LABELS } from '../src/content/labels.ts';
 import { BOT_BLIND } from './policies/shop.ts';
-import type { RunRecord } from './simulate.ts';
+import type { HoldCount, RunRecord, ShelfCount } from './simulate.ts';
 
 export function percentile(values: readonly number[], p: number): number {
   if (values.length === 0) return NaN;
@@ -201,6 +201,15 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
     ['  No yard inside the house (H2)', ...cols((rs) => share(rs, (r) => H(r).h2))],
     ['  One of each shared room (H3)', ...cols((rs) => share(rs, (r) => H(r).h3))],
     ['  Visible repeats', ...cols((rs) => share(rs, (r) => H(r).visibleRepeats))],
+    [
+      '  A Garage nothing reaches (of those with one)',
+      ...cols((rs) =>
+        share(
+          rs.filter((r) => (H(r).roomCounts.garage ?? 0) > 0),
+          (r) => H(r).garageUnreached,
+        ),
+      ),
+    ],
     ["  research.md's plausibility check", ...cols((rs) => share(rs, (r) => H(r).plausible))],
     ['  Corners, median', ...cols((rs) => median(rs, (r) => H(r).corners))],
     ['  Fill, median', ...cols((rs) => median(rs, (r) => H(r).fill, 2))],
@@ -208,6 +217,10 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
     ['The household'],
     ['  No household', ...cols((rs) => share(rs, (r) => H(r).noHousehold))],
     ['  Bathroom ratio held', ...cols((rs) => share(rs, (r) => H(r).bathroomRatio))],
+    [
+      '  Extra Bathrooms (2+ past the ratio)',
+      ...cols((rs) => share(rs, (r) => H(r).extraBathrooms)),
+    ],
     ['  Bedrooms per run', ...cols((rs) => mean(rs, (r) => H(r).bedrooms))],
     ['  Rooms, median', ...cols((rs) => median(rs, (r) => H(r).rooms))],
     ['  Tiny houses (8 or fewer rooms)', ...cols((rs) => share(rs, (r) => H(r).tiny))],
@@ -847,19 +860,25 @@ export interface FenceStats {
   byM3: number[];
   /** The same through milestone 4. */
   byM4: number[];
-  /** Runs with a probe that resolved milestone 4, and those offered at least the probe's count. */
+  /**
+   * Runs with a probe that resolved milestone 4, and those offered at least the probe's count by
+   * then: the hand's Fence-type cards and, since D-197, the standing stock's.
+   */
   covered: { k: number; n: number };
 }
 
 export function fenceStats(records: readonly RunRecord[]): FenceStats {
   const through = (r: RunRecord, k: number) => sumOf(r.wallOffers.slice(0, k));
+  // D-197: the hand shows the Fence at half weight because Your goods always holds one, so the
+  // stock's count beside the hand's.
+  const offered = (r: RunRecord, k: number) => through(r, k) + sumOf(r.stockWallOffers.slice(0, k));
   const withProbe = records.filter((r) => r.enclosure !== null && resolved(r, 4));
   return {
     probes: records.flatMap((r) => (r.enclosure ? [r.enclosure.placements] : [])),
     byM3: records.filter((r) => resolved(r, 3)).map((r) => through(r, 3)),
     byM4: records.filter((r) => resolved(r, 4)).map((r) => through(r, 4)),
     covered: {
-      k: withProbe.filter((r) => through(r, 4) >= r.enclosure!.placements).length,
+      k: withProbe.filter((r) => offered(r, 4) >= r.enclosure!.placements).length,
       n: withProbe.length,
     },
   };
@@ -894,7 +913,7 @@ function fenceReport(records: readonly RunRecord[]): string {
       ` ${atLeast2(f.byM3)} of ${f.byM3.length} runs`,
     `  by milestone 4: p50 ${fix(rankQuantile(f.byM4, 50), 0)}, 2 or more in` +
       ` ${atLeast2(f.byM4)} of ${f.byM4.length} runs`,
-    `  by milestone 4, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
+    `  by milestone 4, with the stock’s, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
   );
   out.push(reserveReport(records));
   return out.join('\n');
@@ -902,7 +921,8 @@ function fenceReport(records: readonly RunRecord[]): string {
 
 /**
  * D-160: reserve cards played per run, by where they came from. The standing stock's and what
- * the client brought are the ones a bot could leave waiting all run.
+ * the client brought are the ones a bot could leave waiting all run; D-188's wrong delivery
+ * comes once, at Framing, so its number is the share of runs that build it.
  */
 function reserveReport(records: readonly RunRecord[]): string {
   const n = Math.max(1, records.length);
@@ -910,7 +930,8 @@ function reserveReport(records: readonly RunRecord[]): string {
     (sumOf(records.map((r) => r.reservePlays[k])) / n).toFixed(2);
   return (
     `Reserve cards played per run: the stock ${per('stock')} · the client’s ${per('client')}` +
-    ` · the crew’s ${per('crew')} · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
+    ` · the crew’s ${per('crew')} · the wrong delivery’s ${per('surprise')}` +
+    ` · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
   );
 }
 
@@ -1046,6 +1067,8 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
         sum((r) => r.economy.skips),
         sum((r) => r.economy.visits),
       )}` + ` · goods sold per run ${(sum((r) => r.economy.sold) / n).toFixed(2)}`,
+      shelfLine(records),
+      holdsLine(records),
       `Bonus rerolls per run: bought ${(sum((r) => r.economy.bonusRerollsBought) / n).toFixed(2)}` +
         ` · used ${(sum((r) => r.economy.bonusRerollsUsed) / n).toFixed(2)}` +
         ` · held at the end ${(sum((r) => r.economy.bonusRerollsHeld) / n).toFixed(2)}`,
@@ -1055,6 +1078,75 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   out.push(fixturesReport(content, records));
   out.push(toolsReport(content, records));
   return out.join('\n');
+}
+
+/**
+ * D-196: holds per run, the share whose good was back on a later visit's shelf, the share of
+ * those bought, and how many were dropped (the run came to own the good, or its type reached
+ * its limit).
+ */
+function holdsLine(records: readonly RunRecord[]): string {
+  const n = Math.max(1, records.length);
+  const total = (k: keyof HoldCount) => sumOf(records.map((r) => r.economy.holds?.[k] ?? 0));
+  return (
+    `Holds per run: ${(total('made') / n).toFixed(2)}` +
+    ` · back on a later shelf ${pct(total('back'), total('made'))}` +
+    ` · bought ${pct(total('bought'), total('back'))} of those · dropped ${total('dropped')}`
+  );
+}
+
+/** The kinds of good on a shelf, in the shop's order, for the shelf line (D-192). */
+const SHELF_KINDS: readonly (readonly [string, string])[] = [
+  ['blueprint', 'blueprints'],
+  ['piece', 'pieces'],
+  ['fixture', 'fixtures'],
+  ['tool', 'tools'],
+  ['crate', 'crates'],
+  ['upgrade', 'upgrades'],
+];
+
+/**
+ * D-192: the goods on offer per visit (refreshes count), the share the rules said could pay in
+ * the house as it stood, and the share the shop bot valued at 0 there; then each kind's offers
+ * with those two shares.
+ */
+function shelfLine(records: readonly RunRecord[]): string {
+  const visits = sumOf(records.map((r) => r.economy.visits + r.economy.refreshes));
+  const total = (kind: string | null, f: (c: ShelfCount) => number) =>
+    sumOf(
+      records.flatMap((r) =>
+        Object.entries(r.economy.shelf ?? {})
+          .filter(([k]) => kind === null || k === kind)
+          .map(([, c]) => f(c)),
+      ),
+    );
+  const offered = total(null, (c) => c.offered);
+  const kinds = SHELF_KINDS.flatMap(([kind, name]) => {
+    const n = total(kind, (c) => c.offered);
+    if (n === 0) return [];
+    const could = pct(
+      total(kind, (c) => c.couldPay),
+      n,
+    );
+    return [
+      `${name} ${n} (${could}, ${pct(
+        total(kind, (c) => c.zero),
+        n,
+      )})`,
+    ];
+  });
+  return [
+    `Goods on offer per visit: ${(offered / Math.max(1, visits)).toFixed(1)}` +
+      ` · could pay in the house ${pct(
+        total(null, (c) => c.couldPay),
+        offered,
+      )}` +
+      ` · the shop bot values at 0 ${pct(
+        total(null, (c) => c.zero),
+        offered,
+      )}`,
+    `  by kind (could pay, bot 0): ${kinds.join(' · ') || 'none'}`,
+  ].join('\n');
 }
 
 /**
@@ -1375,7 +1467,7 @@ export function criteria(content: Content, input: CriteriaInput): Criterion[] {
     });
   }
   const fenceText =
-    'fences pay their way: probe p50 2–3; ≥ 50% of runs see that many by milestone 4';
+    'fences pay their way: probe p50 2–3; ≥ 50% of runs see that many by milestone 4, in the hand or Your goods';
   const f = greedy ? fenceStats(greedy) : null;
   if (f && f.probes.length > 0 && f.covered.n > 0) {
     const med = medianInterval(f.probes);
@@ -1388,7 +1480,7 @@ export function criteria(content: Content, input: CriteriaInput): Criterion[] {
       text: fenceText,
       measured:
         `enclosure probe p50 ${med.est} Fence cards [${med.lo}–${med.hi}] n=${f.probes.length}\n` +
-        `offered their probe’s count by milestone 4: ${fmtRate(f.covered.k, f.covered.n)}`,
+        `offered their probe’s count by milestone 4, the hand’s and the stock’s: ${fmtRate(f.covered.k, f.covered.n)}`,
       verdict: pass ? 'PASS' : 'FAIL',
       sure: pass
         ? a.sure && b.sure

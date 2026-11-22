@@ -76,6 +76,7 @@ import type {
   FixtureId,
   FixtureValue,
   GameEvent,
+  HoldDrop,
   HouseState,
   InstallAction,
   InstallGain,
@@ -88,6 +89,7 @@ import type {
   PieceId,
   PieceInfo,
   PieceScore,
+  PieceValue,
   PlaceAction,
   PlacedPiece,
   Region,
@@ -109,12 +111,15 @@ import type {
   SetId,
   SetProgress,
   SetScore,
+  ShelfGood,
+  ShopVisit,
   Slots,
   Tag,
   TagSource,
   Tally,
   TileInfo,
   ToolId,
+  ToolValue,
   TypeLimit,
   UseToolAction,
   WeekScore,
@@ -138,10 +143,20 @@ import {
   countingMod,
   grows,
   lastWeekOnly,
+  modifiersNeeds,
   scalingStat,
   scoresWeek,
   totalWithOneMore,
 } from './blueprint-value.ts';
+import {
+  clearNote,
+  copyNote,
+  NO_NUMBER,
+  payingDef,
+  rhythmOf,
+  setNeeds,
+  timersNote,
+} from './good-value.ts';
 import {
   DRAW_ROWS,
   drawableTypes,
@@ -153,7 +168,7 @@ import {
   strikeCandidates,
   swapCandidates,
 } from './draw.ts';
-import { estimatePlay, type Estimate } from './estimate.ts';
+import { estimatePlay, type Estimate, type EstimateOptions } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
   bounds,
@@ -191,7 +206,7 @@ import {
   targetPctFor,
   verdictFor,
 } from './milestones.ts';
-import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
+import { ruleFrom, runModifiers, setupRule, sourceName, type ActiveMod } from './modifiers.ts';
 import {
   addPiece,
   clearTiles,
@@ -206,12 +221,15 @@ import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, matchesPiece, rootType, type Yard } from './selectors.ts';
+import { isType, matchesPiece, meetsCondition, rootType, type Yard } from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
+import { shelfFor, type Shelf } from './shelf.ts';
 import { isRoom } from './layout.ts';
 import {
   canStrike,
   crateOptions,
+  heldIndex,
+  HOLD_REASONS,
   inExtraSlot,
   offerPrice,
   openVisit,
@@ -221,6 +239,7 @@ import {
   roomFor,
   roomForOption,
   sellPrice,
+  shelfGood,
   SHOP_REASONS,
   slotsFor,
   stockFor,
@@ -360,14 +379,33 @@ export interface Rules {
    */
   blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null;
   /**
+   * D-193: what a piece would add to the house as it stands, for its line on a shop card, a
+   * crate's option, or in Inspect: its best play from Your goods (a spot, or for a type at its
+   * limit a Renovation or an extension), found as the shop bot finds one (the best few spots by
+   * estimatePlay, and the few it flags as blind spots, each scored exactly), with the week's
+   * total with it less without, and each week left in the run added up with nothing more built,
+   * as blueprintValue's are. In the shop the first week is the next phase's first, after the
+   * transforms that start it. Null if it has no legal play, or off the build and shop screens.
+   */
+  pieceValue(state: RunState, id: PieceId): PieceValue | null;
+  /**
+   * D-193: what a tool would do for the house as it stands, used in the week a fixture would be
+   * valued in: a one-week tool's gain that week (Rush Order); a Remodel Plan's next level, that
+   * week and over the run, or what it's waiting for; and for a tool whose worth hangs on a
+   * choice made when it's used, what it would do here (a Fertilizer, a Copy Machine, a
+   * Dumpster) or why it has no number. Null off the build and shop screens.
+   */
+  toolValue(state: RunState, id: ToolId): ToolValue | null;
+  /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
    * candidates before scoring the best few exactly (§4, Performance), checklist lines that
    * counts decide included (`specFlips`). Its hints mark plays whose payoff it can't see:
    * `setHint`, one that might complete a set; `yardHint`, a Fence that would close a new
    * fenced yard; `linkHint`, a Hallway that would link rooms anew; `specHint`, a piece that
-   * would join an unmet pair line's types.
+   * would join an unmet pair line's types. `opts`: what it reads beyond what the bots ask of
+   * it, as the value lines do (D-193).
    */
-  estimatePlay(state: RunState, play: PlaceAction): Estimate;
+  estimatePlay(state: RunState, play: PlaceAction, opts?: EstimateOptions): Estimate;
   /** The tile counts of the house's fenced yards. */
   fencedYards(state: RunState): readonly number[];
   /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
@@ -385,6 +423,13 @@ export interface Rules {
    * previewed. Null for a set whose members must touch.
    */
   setProgress(state: RunState, set: SetId): SetProgress | null;
+  /**
+   * D-192: whether a good could pay in the house as it stands, the check the shop's shelf leans
+   * on (shelf.ts): a fixture some piece could take, Remodel Plans for a set the house holds (or
+   * Full House one member short), a special piece under its limit, a blueprint the lot allows,
+   * and every crate and upgrade.
+   */
+  canPay(state: RunState, good: ShelfGood): boolean;
   /** The shop's offers with prices and whether each can be bought. Empty outside the shop. */
   shopOffers(state: RunState): OfferView[];
   canRefresh(state: RunState): Availability & { price: number };
@@ -401,6 +446,16 @@ export interface Rules {
    * the type, the hand cards that would leave (it, and any other of its type), and the words.
    */
   previewStrike(state: RunState, i: number): StrikePreview;
+  /**
+   * D-186: whether hand card i can be pinned for next week now, or its pin taken off, and why
+   * not: the card last week's pin kept can't be pinned again.
+   */
+  canPin(state: RunState, i: number): Availability;
+  /**
+   * D-196: whether shop offer i can be held for the next visit now, or let go, and why not: not
+   * a service, a sold good, one the run couldn't own by then, or in a shop no shop follows.
+   */
+  canHold(state: RunState, i: number): Availability;
   /** Whether a tool can be used now, with this target. */
   canUseTool(state: RunState, action: UseToolAction): Availability;
   /**
@@ -450,6 +505,13 @@ interface WeekResult {
   installed: Extract<GameEvent, { t: 'installed' }> | null;
   renovated: Extract<GameEvent, { t: 'renovated' }> | null;
   extended: Extract<GameEvent, { t: 'extended' }> | null;
+}
+
+/** D-186: the card a pin carries into the next week's hand, and its place in its row. */
+interface Keep {
+  card: Card;
+  /** Its slot in its row: the slot it comes back to. */
+  k: number;
 }
 
 /** One shape a card is listed at: a rotation of its own, or a pack's tiles at rot 0. */
@@ -551,6 +613,10 @@ export function createRules(content: Content): Rules {
     }
     return l;
   }
+
+  /** D-192: what a shop's shelf leans toward, read through the run's own layout and limits. */
+  const shelfOf = (state: RunState): Shelf =>
+    shelfFor(content, state, { layout: () => layoutFor(state), limits: () => limitsOf(state) });
 
   /** D-165: the per-house cap a card's type has reached (one Kitchen), if any. */
   function capReached(state: RunState, def: PieceDef): TypeLimit | null {
@@ -1003,8 +1069,9 @@ export function createRules(content: Content): Rules {
   // Transitions.
 
   /**
-   * Start of week, step 1: pieces old enough transform. The Sapling becomes a Tree tile; it
-   * never holds a fixture (checkInstall, D-095), so none is lost with it.
+   * Start of week, step 1: pieces old enough transform. Each of a Sapling's tiles becomes a Tree
+   * (a pack since D-195: one to three); it never holds a fixture (checkInstall, D-095), so none
+   * is lost with it.
    */
   function resolveTransforms(state: RunState, events: GameEvent[]): RunState {
     let house = state.house;
@@ -1096,7 +1163,8 @@ export function createRules(content: Content): Rules {
    * first of up to `swapTries` cards from its row that has one, or by the last tried. The
    * draw's `n` keys the swaps' streams, one per card. The draw's one `handDrawn` event carries
    * the hand after its swaps, and what each swapped card replaced. A reroll's swaps leave out
-   * the `held` cards it replaced while enough others remain (D-132).
+   * the `held` cards it replaced while enough others remain (D-132). The card a pin kept is
+   * never swapped (D-186).
    */
   function swapDead(
     state: RunState,
@@ -1109,7 +1177,8 @@ export function createRules(content: Content): Rules {
     for (const r of DRAW_ROWS) {
       const at = s.hand.flatMap((c, i) => (rowOf(content, c) === r ? [i] : []));
       at.forEach((i, k) => {
-        if (cardHasPlay(s, i)) return;
+        // The card a pin kept stays, with a play or without one (D-186).
+        if (i === s.kept || cardHasPlay(s, i)) return;
         const was = s.hand[i]!;
         const inRow = at.map((j) => s.hand[j]!);
         const tries = swapCandidates(
@@ -1232,7 +1301,12 @@ export function createRules(content: Content): Rules {
         layoutFor(state, h),
       );
     },
-    drawSpecial: (state) => drawFor(state, state.draws, true),
+    // D-186: the card a pin kept stays where it is through the Catalog's redraw.
+    drawSpecial: (state) => {
+      const hand = drawFor(state, state.draws, true);
+      const keep = keptNow(state);
+      return keep ? withKept(hand, keep) : { hand };
+    },
     payReward: (state, reward, key, events) => payReward(state, reward, key, events),
     payFinds: (state, finds, events, lot) => payFinds(state, finds, events, lot),
   };
@@ -1258,7 +1332,8 @@ export function createRules(content: Content): Rules {
 
   /**
    * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
-   * what the client brings for that phase, and the standing stock's top-up (D-160).
+   * what the client brings for that phase, the standing stock's top-up (D-160), the crew's own
+   * card and the wrong delivery's piece (D-171, D-188), and the crew's tool.
    */
   function arrive(state: RunState, events: GameEvent[]): RunState {
     if (state.overtimeWeek !== 0) return state;
@@ -1269,24 +1344,26 @@ export function createRules(content: Content): Rules {
       }
       s = deliver(s, events);
     }
-    return crewTool(crewStock(restock(s, events), events), events);
+    return crewTool(surprise(crewStock(restock(s, events), events), events), events);
   }
 
-  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171). */
+  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171, D-188). */
   function addExtra(
     s: RunState,
-    from: 'client' | 'stock' | 'crew',
+    from: 'client' | 'stock' | 'crew' | 'surprise',
     cards: readonly PieceId[],
     events: GameEvent[],
   ): RunState {
     if (cards.length === 0) return s;
     events.push({ t: 'delivered', from, phase: s.phase, cards: [...cards] });
-    const mark =
+    const mark: Omit<ReservePiece, 'id'> =
       from === 'client'
-        ? { client: true as const }
+        ? { client: true }
         : from === 'crew'
-          ? { crew: true as const }
-          : { stock: true as const };
+          ? { crew: true }
+          : from === 'surprise'
+            ? { surprise: true }
+            : { stock: true };
     return { ...s, reserve: [...s.reserve, ...cards.map((id): ReservePiece => ({ id, ...mark }))] };
   }
 
@@ -1329,11 +1406,12 @@ export function createRules(content: Content): Rules {
    * reserve.
    */
   /**
-   * D-171: a crew's stock in the order it comes this run: drawn once from `crew/stock`, every
-   * card before any comes again.
+   * `pool` in an order drawn once a run from the stream `key`: D-171's crew stock
+   * (`crew/stock`), every card before any comes again, and D-188's wrong delivery
+   * (`delivery/surprise`).
    */
-  function crewStockOrder(seed: string, pool: readonly PieceId[]): PieceId[] {
-    const rng = stream(seed, 'crew/stock');
+  function runOrder(seed: string, key: string, pool: readonly PieceId[]): PieceId[] {
+    const rng = stream(seed, key);
     const left = [...pool];
     const order: PieceId[] = [];
     while (left.length > 0) order.push(...left.splice(rng.int(left.length), 1));
@@ -1364,8 +1442,26 @@ export function createRules(content: Content): Rules {
     const pool = content.crews[s.setup.crewId].stock;
     if (!pool || pool.length === 0 || !crewStockDue(s)) return s;
     if (s.reserve.some((r) => r.crew)) return s;
-    const order = crewStockOrder(s.setup.seed, pool);
+    const order = runOrder(s.setup.seed, 'crew/stock', pool);
     return addExtra(s, 'crew', [order[s.phase % order.length]!], events);
+  }
+
+  /**
+   * D-188: the wrong delivery. Once a run, in the first week of `surpriseDelivery.phase` (never
+   * in a first job or an overtime week), a piece nobody ordered lands in the reserve's extra
+   * slots: the first in the run's order (`delivery/surprise`, the seed alone) whose type isn't at
+   * a limit for this client; if none fits, nothing comes. A struck type still comes, as the
+   * standing stock does (D-157). The week starts once, so nothing marks it as done.
+   */
+  function surprise(s: RunState, events: GameEvent[]): RunState {
+    const due = b.surpriseDelivery;
+    if (due.pieces.length === 0 || s.setup.mode === 'firstJob') return s;
+    if (s.overtimeWeek !== 0 || s.slot !== 1 || s.phase !== due.phase) return s;
+    const full = typesAtLimit(limitsOf(s));
+    const id = runOrder(s.setup.seed, 'delivery/surprise', due.pieces).find(
+      (p) => !full.has(rootType(content.pieces[p])),
+    );
+    return id ? addExtra(s, 'surprise', [id], events) : s;
   }
 
   /**
@@ -1694,10 +1790,16 @@ export function createRules(content: Content): Rules {
     return view;
   }
 
-  function startWeek(state: RunState, events: GameEvent[]): RunState {
+  /** `keep`: the card last week's pin carries in (D-186). */
+  function startWeek(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     // Step 1: transforms; step 2 (M4b): arrivals, in their phase's first week; step 3: the draw.
-    let s = arrive(resolveTransforms(state, events), events);
+    let s = unpinned(arrive(resolveTransforms(state, events), events));
     s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
+    // D-186: the kept card takes a slot of its row, on the draw's own keys: nothing shifts.
+    if (keep) {
+      const put = withKept(s.hand, keep);
+      s = { ...s, hand: put.hand, kept: put.kept };
+    }
     // Start of week, step 4 (D-121): a card with no play is swapped for one from its row.
     const after = swapDead(s, 0);
     events.push({
@@ -1708,6 +1810,7 @@ export function createRules(content: Content): Rules {
       hand: after.state.hand,
       reroll: false,
       ...swapNote(after.swapped),
+      ...(s.kept === undefined ? {} : { kept: s.kept }),
     });
     return after.state;
   }
@@ -1767,7 +1870,8 @@ export function createRules(content: Content): Rules {
       events.push({ t: 'targetReached', phase: state.phase, target, score });
     }
     return {
-      ...state,
+      // The hand goes, and a pin with it: what it keeps travels as afterTally's `keep` (D-186).
+      ...unpinned(state),
       house,
       score,
       budget,
@@ -1788,16 +1892,20 @@ export function createRules(content: Content): Rules {
   }
 
   /** End of week, after the tally: early completion, the milestone, overtime, or the next week. */
-  function afterTally(s: RunState, events: GameEvent[]): RunState {
+  /**
+   * `keep`: the card a pin carries into the next week (D-186). It comes into the phase's next
+   * week or an overtime week; a milestone (its shop) and Complete early drop it.
+   */
+  function afterTally(s: RunState, events: GameEvent[], keep?: Keep): RunState {
     const target = targetOf(s);
     if (s.overtimeWeek === 0 && s.slot < W && s.autoComplete && s.score >= target) {
       return completeEarly(s, W - s.slot, false, events);
     }
-    if (s.overtimeWeek > 0 || s.slot >= W) return endOfPhase(s, events);
-    return startWeek({ ...s, slot: s.slot + 1, week: s.week + 1 }, events);
+    if (s.overtimeWeek > 0 || s.slot >= W) return endOfPhase(s, events, keep);
+    return startWeek({ ...s, slot: s.slot + 1, week: s.week + 1 }, events, keep);
   }
 
-  function endOfPhase(s: RunState, events: GameEvent[]): RunState {
+  function endOfPhase(s: RunState, events: GameEvent[], keep?: Keep): RunState {
     const target = targetOf(s);
     const forced = s.forcedMiss === s.phase && s.overtimeWeek === 0;
     if (s.score >= target && !forced) {
@@ -1818,7 +1926,8 @@ export function createRules(content: Content): Rules {
         target,
         score: s.score,
       });
-      return startWeek(next, events);
+      // D-186: a pin carries into an overtime week: no shop comes between.
+      return startWeek(next, events, keep);
     }
     return resolveMilestone(s, 'failed', 0, null, events);
   }
@@ -1868,7 +1977,7 @@ export function createRules(content: Content): Rules {
     };
     events.push({ t: 'milestone', name: phaseName(b, s.phase), ...record });
     let next: RunState = {
-      ...s,
+      ...unpinned(s),
       score,
       budget: s.budget + reward.budget,
       budgetEarned: s.budgetEarned + reward.budget,
@@ -1912,14 +2021,19 @@ export function createRules(content: Content): Rules {
   }
 
   function openShop(s: RunState, number: number, forced: boolean, events: GameEvent[]): RunState {
-    const shop = openVisit(content, s, number, forced);
+    // D-196: a held good the run can't own by now is dropped as the shelf is stocked.
+    const kept = dropHold(s, events);
+    s = kept.state;
+    const stocked = openVisit(content, s, number, forced, shelfOf(s));
+    const shop = kept.dropped ? { ...stocked, dropped: kept.dropped } : stocked;
     events.push({ t: 'shopOpened', number, offers: shop.offers, sale: shop.sale });
-    let next: RunState = { ...s, screen: 'shop', hand: [], offers: { shop } };
+    // The hand is set aside, and a pin with it (D-186): it doesn't cross a shop.
+    let next: RunState = { ...unpinned(s), screen: 'shop', hand: [], offers: { shop } };
     // Shop 1's free Housewarming crate: 1 of 3 Common blueprints, to teach blueprints.
     const n = stockFor(content, number).housewarming;
     if (n > 0) {
       const key = `crate/${number}/0/housewarming`;
-      const options = crateOptions(content, next, 'housewarming', key, n);
+      const options = crateOptions(content, next, 'housewarming', key, n, shelfOf(next));
       if (options.length > 0) {
         events.push({ t: 'crateOpened', source: 'housewarming', options });
         next = { ...next, offers: { shop, pick: { source: 'housewarming', options } } };
@@ -1945,7 +2059,8 @@ export function createRules(content: Content): Rules {
       weeksSaved,
       rule(s, 'earlyRewardPct'),
     );
-    let cur: RunState = { ...s, hand: [], draws: 0 };
+    // The hand goes, and a pin with it (D-186).
+    let cur: RunState = { ...unpinned(s), hand: [], draws: 0 };
     for (let k = 0; k < weeksSaved; k++) {
       if (!(manual && k === 0)) {
         cur = resolveTransforms({ ...cur, slot: cur.slot + 1, week: cur.week + 1 }, events);
@@ -2099,7 +2214,118 @@ export function createRules(content: Content): Rules {
       slots.push({ i: j, was, card: s.hand[j]! });
     }
     events.push({ t: 'cardStruck', i, type, slots, strikesLeft: s.strikesLeft });
-    return s;
+    // A pin, or the card a pin kept, goes with its card (D-186).
+    return withMarks(
+      s,
+      s.pinned !== undefined && gone.includes(s.pinned) ? undefined : s.pinned,
+      s.kept !== undefined && gone.includes(s.kept) ? undefined : s.kept,
+    );
+  }
+
+  // -------------------------------------------------------------------------------------
+  // Pins (D-186): one hand card kept for next week, in its row in place of a fresh card.
+
+  const KEPT_AGAIN = 'Kept from last week: it can’t be pinned again.';
+
+  function canPin(state: RunState, i: number): Availability {
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
+    if (!Number.isInteger(i) || !state.hand[i]) {
+      return { ok: false, reason: 'Pick a card in your hand.' };
+    }
+    // Pinned again and again, a card would stand in the hand for good (D-121 turned that down).
+    if (i === state.kept) return { ok: false, reason: KEPT_AGAIN };
+    return { ok: true };
+  }
+
+  /** Pins hand card i (already checked), moving the pin from another card, or takes it off. */
+  function pin(state: RunState, i: number, events: GameEvent[]): RunState {
+    const on = state.pinned !== i;
+    events.push({ t: 'cardPinned', i, pinned: on });
+    return withMarks(state, on ? i : undefined, state.kept);
+  }
+
+  /** The state with no pin and no kept card: the hand they pointed into is gone. */
+  function unpinned(state: RunState): RunState {
+    if (state.pinned === undefined && state.kept === undefined) return state;
+    const { pinned: _pinned, kept: _kept, ...rest } = state;
+    return rest;
+  }
+
+  /** `state` with its pin and its kept card at these places in the hand (none if undefined). */
+  function withMarks(
+    state: RunState,
+    pinned: number | undefined,
+    kept: number | undefined,
+  ): RunState {
+    if (state.pinned === pinned && state.kept === kept) return state;
+    return {
+      ...unpinned(state),
+      ...(pinned === undefined ? {} : { pinned }),
+      ...(kept === undefined ? {} : { kept }),
+    };
+  }
+
+  /**
+   * Hand card i leaves mid-week (Weekend Crew's play, D-075; the Handyman's install, D-171):
+   * the cards after it move up, and the pin and the kept card's places with them. A pin on it
+   * goes with it.
+   */
+  function withoutHandCard(state: RunState, i: number): RunState {
+    const shift = (j: number | undefined) =>
+      j === undefined || j === i ? undefined : j > i ? j - 1 : j;
+    return withMarks(
+      { ...state, hand: state.hand.filter((_, k) => k !== i) },
+      shift(state.pinned),
+      shift(state.kept),
+    );
+  }
+
+  /** Hand card i's place in its row: the slot a pin brings it back to. */
+  function rowSlot(hand: readonly Card[], i: number): number {
+    const row = rowOf(content, hand[i]!);
+    return hand.slice(0, i).filter((c) => rowOf(content, c) === row).length;
+  }
+
+  /**
+   * What a pin carries out of the week ending now: the pinned card, and its place in its row.
+   * Nothing when `played`, the hand card that ends the week, is the pinned one.
+   */
+  function keepOf(state: RunState, played?: number): Keep | undefined {
+    const i = state.pinned;
+    if (i === undefined || i === played) return undefined;
+    const card = state.hand[i];
+    return card ? { card, k: rowSlot(state.hand, i) } : undefined;
+  }
+
+  /** The card the hand's kept card is, to carry through a redraw in the same week. */
+  function keptNow(state: RunState): Keep | undefined {
+    const i = state.kept;
+    const card = i === undefined ? undefined : state.hand[i];
+    return card ? { card, k: rowSlot(state.hand, i!) } : undefined;
+  }
+
+  /**
+   * A drawn hand with the kept card in it: in its row's k-th slot (the row's last when the row
+   * is shorter), in place of the card drawn there. Where the draw dealt the same card in
+   * another slot of the row, that slot takes the card it displaced instead, so the row stays
+   * distinct (D-043) and the kept card stays where it was pinned. A row the draw left empty
+   * (a pool run dry) gets it on its own.
+   */
+  function withKept(hand: readonly Card[], keep: Keep): { hand: Card[]; kept: number } {
+    const row = rowOf(content, keep.card);
+    const out = [...hand];
+    const at = out.flatMap((c, j) => (rowOf(content, c) === row ? [j] : []));
+    if (at.length === 0) {
+      const r = DRAW_ROWS.indexOf(row);
+      const before = out.filter((c) => DRAW_ROWS.indexOf(rowOf(content, c)) < r).length;
+      out.splice(before, 0, keep.card);
+      return { hand: out, kept: before };
+    }
+    const i = at[Math.min(keep.k, at.length - 1)]!;
+    const dealt = at.find((j) => j !== i && sameType(out[j]!, keep.card));
+    if (dealt !== undefined) out[dealt] = out[i]!;
+    out[i] = keep.card;
+    return { hand: out, kept: i };
   }
 
   function canCompleteEarly(state: RunState): EarlyOffer {
@@ -2184,6 +2410,8 @@ export function createRules(content: Content): Rules {
     // The sale ends when its good is sold.
     const sale = visit.sale === action.i && offer.kind !== 'service' ? null : visit.sale;
     s = { ...s, offers: { ...s.offers, shop: { ...visit, offers, sale, boughtAny: true } } };
+    // D-196: buying the held good lets its hold go.
+    if (action.i === heldIndex(visit, state.held)) s = unheld(s);
     events.push({
       t: 'bought',
       i: action.i,
@@ -2198,7 +2426,7 @@ export function createRules(content: Content): Rules {
     if (offer.kind === 'crate') {
       const v = s.offers!.shop!;
       const key = `crate/${v.number}/${v.refreshes}/${action.i}`;
-      const options = crateOptions(content, s, offer.id, key);
+      const options = crateOptions(content, s, offer.id, key, undefined, shelfOf(s));
       events.push({ t: 'crateOpened', source: offer.id, options });
       s = { ...s, offers: { ...s.offers, pick: { source: offer.id, options } } };
     }
@@ -2325,6 +2553,81 @@ export function createRules(content: Content): Rules {
       return after.state;
     }
     return startPhase(s, events);
+  }
+
+  // -------------------------------------------------------------------------------------
+  // Holds (D-196): one shop good kept for the next visit, in place of a fresh good of its kind.
+
+  /**
+   * Why a good couldn't come back to the shelf now, or null if it can: the run owns it (a
+   * blueprint or an upgrade), or its type is at its limit (a special piece, as the draw reads
+   * the limits).
+   */
+  function holdDrop(state: RunState, good: ShelfGood): HoldDrop | null {
+    switch (good.kind) {
+      case 'blueprint':
+        return state.blueprints.some((o) => o.id === good.id) ? 'owned' : null;
+      case 'upgrade':
+        return state.upgrades.includes(good.id) ? 'owned' : null;
+      case 'piece': {
+        const root = rootType(content.pieces[good.id]);
+        return typesAtLimit(limitsOf(state)).has(root) ? 'limit' : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  function canHold(state: RunState, i: number): Availability {
+    const visit = state.screen === 'shop' ? state.offers?.shop : undefined;
+    if (!visit) return { ok: false, reason: SHOP_REASONS.notOpen };
+    if (state.offers?.pick) return { ok: false, reason: SHOP_REASONS.picking };
+    // No shop follows the last phase's milestone (D-051), so a hold there would keep nothing.
+    if (state.phase >= phaseCount(b) - 1) return { ok: false, reason: HOLD_REASONS.lastShop };
+    const offer = Number.isInteger(i) ? visit.offers[i] : undefined;
+    if (!offer) return { ok: false, reason: HOLD_REASONS.nothing };
+    if (offer.kind === 'service') return { ok: false, reason: HOLD_REASONS.service };
+    if (offer.sold) return { ok: false, reason: SHOP_REASONS.sold };
+    // The held good can always be let go.
+    if (i === heldIndex(visit, state.held)) return { ok: true };
+    // One the next stocking would drop can't be held.
+    const drop = holdDrop(state, offer);
+    if (drop === 'owned') return { ok: false, reason: SHOP_REASONS.owned };
+    if (drop === 'limit') return { ok: false, reason: HOLD_REASONS.atLimit };
+    return { ok: true };
+  }
+
+  /** Holds offer i (already checked), moving the hold from another good, or lets it go. */
+  function hold(state: RunState, i: number, events: GameEvent[]): RunState {
+    const visit = state.offers!.shop!;
+    const offer = visit.offers[i]!;
+    if (offer.kind === 'service') return state;
+    const good = shelfGood(offer);
+    const on = i !== heldIndex(visit, state.held);
+    events.push({ t: 'goodHeld', i, good, held: on });
+    return on ? { ...state, held: good } : unheld(state);
+  }
+
+  /** The state with no hold. */
+  function unheld(state: RunState): RunState {
+    if (state.held === undefined) return state;
+    const { held: _held, ...rest } = state;
+    return rest;
+  }
+
+  /**
+   * As a shelf is stocked (a visit's, or a refresh's): the hold let go if its good can't come
+   * back now, with an event, and the visit's line about it.
+   */
+  function dropHold(
+    state: RunState,
+    events: GameEvent[],
+  ): { state: RunState; dropped?: ShopVisit['dropped'] } {
+    const good = state.held;
+    const why = good ? holdDrop(state, good) : null;
+    if (!good || !why) return { state };
+    events.push({ t: 'holdDropped', good, why });
+    return { state: unheld(state), dropped: { good, why } };
   }
 
   // -------------------------------------------------------------------------------------
@@ -2491,6 +2794,7 @@ export function createRules(content: Content): Rules {
     'buy',
     'sell',
     'refreshShop',
+    'hold',
     'leaveShop',
     'pick',
     'setAutoComplete',
@@ -2515,6 +2819,7 @@ export function createRules(content: Content): Rules {
     const shopOnly =
       action.t === 'buy' ||
       action.t === 'refreshShop' ||
+      action.t === 'hold' ||
       action.t === 'leaveShop' ||
       action.t === 'pick';
     if (state.screen === 'build' && shopOnly) throw new IllegalAction(SHOP_REASONS.notOpen);
@@ -2558,9 +2863,10 @@ export function createRules(content: Content): Rules {
           let s: RunState = crew
             ? { ...state, house: result.house, freePlay: 'used' }
             : { ...state, house: result.house };
+          // A hand card's place goes, and the pin's and the kept card's move with it (D-186).
           s = fromReserve
             ? { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) }
-            : { ...s, hand: s.hand.filter((_, k) => k !== play.i) };
+            : withoutHandCard(s, play.i);
           // M4b: a piece a running restriction forbids breaks it.
           if (result.placed) {
             const uid = result.placed.uid;
@@ -2582,8 +2888,10 @@ export function createRules(content: Content): Rules {
         }
         // A Time Capsule built over pays before the tally.
         s = payFinds(s, check?.finds, events);
+        // D-186: the pinned card comes into next week's hand, unless it's the card played.
+        const keep = keepOf(s, play?.from === 'hand' ? play.i : undefined);
         s = recordTally(s, week.house, week.tally, play === null, false, events);
-        return done(afterTally(s, events));
+        return done(afterTally(s, events, keep));
       }
       case 'reroll': {
         const can = canReroll(state);
@@ -2592,17 +2900,27 @@ export function createRules(content: Content): Rules {
         // Neither deals back a card the hand holds now while its row's pool has enough others.
         const n = state.draws;
         const held = state.hand;
+        // D-186: the card a pin kept stays where it is, on the draw's own keys; a card pinned
+        // this week goes with the rest, and its pin with it.
+        let hand = drawFor(state, n, false, held);
+        let kept: number | undefined;
+        const keep = keptNow(state);
+        if (keep) ({ hand, kept } = withKept(hand, keep));
         // The phase's own rerolls go first; bought ones never expire.
         const fromPhase = state.rerollsLeft > 0;
         const after = swapDead(
-          {
-            ...state,
-            hand: drawFor(state, n, false, held),
-            swapped: [],
-            draws: n + 1,
-            rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
-            bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
-          },
+          withMarks(
+            {
+              ...state,
+              hand,
+              swapped: [],
+              draws: n + 1,
+              rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
+              bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
+            },
+            undefined,
+            kept,
+          ),
           n,
           held,
         );
@@ -2614,6 +2932,7 @@ export function createRules(content: Content): Rules {
           hand: after.state.hand,
           reroll: true,
           ...swapNote(after.swapped),
+          ...(kept === undefined ? {} : { kept }),
         });
         return done(after.state);
       }
@@ -2621,6 +2940,11 @@ export function createRules(content: Content): Rules {
         const can = canStrikeCard(state, action.i);
         if (!can.ok) throw new IllegalAction(can.reason!);
         return done(strikeFromHand(state, action.i, events));
+      }
+      case 'pin': {
+        const can = canPin(state, action.i);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        return done(pin(state, action.i, events));
       }
       case 'demolish': {
         if (state.demolitionsLeft <= 0) throw new IllegalAction(REASONS.noDemolitions);
@@ -2678,8 +3002,12 @@ export function createRules(content: Content): Rules {
         const can = canRefresh(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
         const visit = visitOf(state);
-        const next = refreshVisit(content, state, visit);
-        const budget = state.budget - can.price;
+        // D-196: the held good stays on the shelf, unless the run came to own it this visit.
+        const kept = dropHold(state, events);
+        const s = kept.state;
+        const refreshed = refreshVisit(content, s, visit, shelfOf(s));
+        const next = kept.dropped ? { ...refreshed, dropped: kept.dropped } : refreshed;
+        const budget = s.budget - can.price;
         events.push({
           t: 'shopRefreshed',
           refreshes: next.refreshes,
@@ -2688,7 +3016,12 @@ export function createRules(content: Content): Rules {
           offers: next.offers,
           sale: next.sale,
         });
-        return done({ ...state, budget, offers: { ...state.offers, shop: next } });
+        return done({ ...s, budget, offers: { ...s.offers, shop: next } });
+      }
+      case 'hold': {
+        const can = canHold(state, action.i);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        return done(hold(state, action.i, events));
       }
       case 'pick':
         return done(pick(state, action.i, events));
@@ -2805,7 +3138,69 @@ export function createRules(content: Content): Rules {
     return weekStarted(state) ? s : resolveTransforms(s, []);
   }
 
+  /**
+   * D-193: what no good's value reads. A click in the shop (buying, selling, a refresh, opening
+   * a crate, a hold) changes only these, so its values carry over from the state before.
+   */
+  const VALUE_BLIND: ReadonlySet<string> = new Set<keyof RunState>([
+    'budget',
+    'reserve',
+    'supplies',
+    'offers',
+    'servicesBought',
+    'bonusRerolls',
+    'demolitionsLeft',
+    'strikesLeft',
+    'struck',
+    // D-196: the good held for the next shop only changes what a shelf stocks.
+    'held',
+  ]);
+  let valuedLast: RunState | null = null;
+
+  /**
+   * D-193: the state a good's values are kept by: the last one valued, while this one differs
+   * from it only in what no value reads (VALUE_BLIND, and of the offers, only whether the ?debug
+   * panel forced them), else this one.
+   */
+  function valuedState(state: RunState): RunState {
+    const last = valuedLast;
+    if (last === state) return state;
+    if (last && sameForValues(last, state)) return last;
+    valuedLast = state;
+    return state;
+  }
+
+  function sameForValues(a: RunState, b: RunState): boolean {
+    if (!!a.offers?.shop?.forced !== !!b.offers?.shop?.forced) return false;
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const k of keys) {
+      if (!VALUE_BLIND.has(k) && a[k as keyof RunState] !== b[k as keyof RunState]) return false;
+    }
+    return true;
+  }
+
+  /** Each kind of value, kept by the state it's worked out from (valuedState). */
+  function kept<K, V>(
+    cache: WeakMap<RunState, Map<K, V>>,
+    state: RunState,
+    key: K,
+    work: (s: RunState, key: K) => V,
+  ): V {
+    const s = valuedState(state);
+    let known = cache.get(s);
+    if (!known) cache.set(s, (known = new Map()));
+    if (!known.has(key)) known.set(key, work(s, key));
+    return known.get(key)!;
+  }
+
+  /** Kept (D-193): Inspect asks again as it renders, as for a blueprint. */
+  const fixtureValues = new WeakMap<RunState, Map<FixtureId, FixtureValue | null>>();
+
   function fixtureValue(state: RunState, fixture: FixtureId): FixtureValue | null {
+    return kept(fixtureValues, state, fixture, valueFixture);
+  }
+
+  function valueFixture(state: RunState, fixture: FixtureId): FixtureValue | null {
     if (!Object.hasOwn(content.fixtures, fixture)) return null;
     const week = installWeek(state);
     if (!week) return null;
@@ -2848,22 +3243,63 @@ export function createRules(content: Content): Rules {
     return resolveTransforms(next, []);
   }
 
+  /**
+   * D-141's projection (D-193 shares it): the week a good bought now would first count in
+   * (installWeek's), then each week after it to the run's end with nothing more built, the
+   * house's timers running on. This phase's weeks left, then every later phase's; overtime can't
+   * be foreseen. Kept by state, so every good on a shelf walks the same weeks. Null on the
+   * screens installWeek has none for.
+   */
+  const idleRuns = new WeakMap<RunState, readonly RunState[] | null>();
+
+  function idleRun(state: RunState): readonly RunState[] | null {
+    let run = idleRuns.get(state);
+    if (run === undefined) {
+      const first = installWeek(state);
+      if (first) {
+        const weeks = weeksLeft(first) + Math.max(0, phaseCount(b) - 1 - first.phase) * W;
+        const out = [first];
+        for (let k = 1; k < weeks; k++) out.push(idleNextWeek(out[k - 1]!));
+        run = out;
+      } else run = null;
+      idleRuns.set(state, run);
+    }
+    return run;
+  }
+
+  /** Each of idleRun's weeks' Wow and budget as the house stands, for D-193's gains. */
+  const idleTallies = new WeakMap<RunState, { wow: number[]; budget: number[] }>();
+
+  function idleTotals(
+    state: RunState,
+    run: readonly RunState[],
+  ): { wow: number[]; budget: number[] } {
+    let t = idleTallies.get(state);
+    if (!t) {
+      t = { wow: [], budget: [] };
+      for (const s of run) {
+        const tally = tallyOf(s, s.house, false);
+        t.wow.push(tally.total);
+        t.budget.push(tally.budget);
+      }
+      idleTallies.set(state, t);
+    }
+    return t;
+  }
+
   const blueprintValues = new WeakMap<RunState, Map<BlueprintId, BlueprintValue | null>>();
 
   function blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null {
-    let known = blueprintValues.get(state);
-    if (!known) blueprintValues.set(state, (known = new Map()));
-    let value = known.get(id);
-    if (value === undefined) known.set(id, (value = valueBlueprint(state, id)));
-    return value;
+    return kept(blueprintValues, state, id, valueBlueprint);
   }
 
   function valueBlueprint(state: RunState, id: BlueprintId): BlueprintValue | null {
     if (!Object.hasOwn(content.blueprints, id)) return null;
     const def = content.blueprints[id];
     const scoring = def.modifiers.filter(scoresWeek);
-    const first = installWeek(state);
-    if (scoring.length === 0 || !first) return null;
+    const run = idleRun(state);
+    if (scoring.length === 0 || !run) return null;
+    const first = run[0]!;
     // As if bought now (its granted timers count from here), or as it is if it's held already.
     const held = first.blueprints.some((o) => o.id === id);
     const boughtWeek = first.week;
@@ -2877,17 +3313,15 @@ export function createRules(content: Content): Rules {
       return { wow: a.total - z.total, budget: a.budget - z.budget };
     };
 
-    // This phase's weeks left, then every later phase's (overtime can't be foreseen): each one
-    // tallied with and without it, with nothing more built.
-    const weeks = weeksLeft(first) + Math.max(0, phaseCount(b) - 1 - first.phase) * W;
+    // Each week left in the run, tallied with and without it, with nothing more built.
+    const weeks = run.length;
     const lastOnly = lastWeekOnly(scoring);
-    let cur = first;
     let shown: RunState | null = null;
     let overRun = 0;
     let budget = 0;
     let top = 0;
     let any = false;
-    for (let k = 0; k < weeks; k++) {
+    for (const cur of run) {
       // The week the line's gain is for: the first, or the first that's a phase's last.
       if (!shown && (!lastOnly || isLastWeek(cur))) shown = cur;
       const g = gainIn(cur);
@@ -2895,7 +3329,6 @@ export function createRules(content: Content): Rules {
       budget += g.budget;
       top = Math.max(top, g.wow);
       any ||= g.wow !== 0 || g.budget !== 0;
-      if (k < weeks - 1) cur = idleNextWeek(cur);
     }
     shown ??= first;
     const gain = gainIn(shown).wow;
@@ -2927,6 +3360,236 @@ export function createRules(content: Content): Rules {
       });
     }
     return value;
+  }
+
+  /**
+   * D-193: a piece's spots scored exactly when it's valued: the best few by the rules' estimate,
+   * as the shop bot's bestPlacement takes (sim/policies/shop.ts)...
+   */
+  const VALUE_TOP = 8;
+  /** ...and the next few the estimate flags as its blind spots, as greedy's shortlist adds. */
+  const VALUE_HINTS = 8;
+  const VIEW_ESTIMATE = { touching: true, earnNothing: true } as const;
+
+  const pieceValues = new WeakMap<RunState, Map<PieceId, PieceValue | null>>();
+
+  function pieceValue(state: RunState, id: PieceId): PieceValue | null {
+    return kept(pieceValues, state, id, valuePiece);
+  }
+
+  /**
+   * D-193: reserve piece `i`'s play that adds the most to the week: its legal spots ranked by
+   * the estimate, the best few and the few it flags as blind spots (a set, a fenced yard, a
+   * link, a pair line, the sun) scored exactly, and every Renovation and extension it could
+   * make, which are few. Ties go to the first: the estimate's order, then the lot's.
+   *
+   * A rhythm piece (the Pool) is ranked by the weeks it pays as well (`pay`): the estimate reads
+   * it as paying, and each play's exact gain this week and in its first paying week count by
+   * how many of the run's weeks are like each.
+   */
+  function bestPlayOf(
+    s: RunState,
+    i: number,
+    pay: { def: PieceDef; at: RunState; weeks: number; rest: number } | null,
+  ): { play: PlaceAction | RenovateAction | ExtendAction; gain: number } | null {
+    const def = content.pieces[s.reserve[i]!.id];
+    const estDef = pay?.def ?? def;
+    const pass = tallyOf(s, s.house, false);
+    const layout = layoutFor(s);
+    const mods = modsOf(s).active;
+    const checklist = { specs: clientOf(s).specs, phase: s.phase };
+    const ranked: { play: PlaceAction; est: Estimate }[] = [];
+    eachLegalSpot(s, 'reserve', i, (play) => {
+      const cells = placedCells(play.shape ?? def.shape, play.x, play.y, play.rot);
+      // What it would touch counts here (Creekside's creek), and a modifier that has it earn
+      // nothing, though the bots' estimate skips both.
+      const est = estimatePlay(
+        content,
+        layout,
+        pass,
+        estDef,
+        cells,
+        mods,
+        checklist,
+        VIEW_ESTIMATE,
+      );
+      ranked.push({ play, est });
+    });
+    // A stable sort: equal estimates keep the lot's order.
+    ranked.sort((p, q) => q.est.delta - p.est.delta);
+    const exact: (PlaceAction | RenovateAction | ExtendAction)[] = [];
+    let hints = 0;
+    ranked.forEach(({ play, est }, k) => {
+      if (k < VALUE_TOP) exact.push(play);
+      else if (
+        hints < VALUE_HINTS &&
+        (est.setHint || est.yardHint || est.linkHint || est.specHint || est.sunHint)
+      ) {
+        hints++;
+        exact.push(play);
+      }
+    });
+    for (const uid of renovateTargets(s, 'reserve', i)) {
+      exact.push({ t: 'renovate', from: 'reserve', i, uid });
+    }
+    exact.push(...extendSpots(s, 'reserve', i));
+    let best: { play: PlaceAction | RenovateAction | ExtendAction; gain: number } | null = null;
+    let bestScore = -Infinity;
+    for (const play of exact) {
+      const house = applyPlay(s, play).house;
+      const gain = tallyOf(s, house, false).total - pass.total;
+      // The paying week's base is the same for every play, so it's left out of the ranking.
+      const score = pay ? gain * pay.rest + tallyOf(pay.at, house, false).total * pay.weeks : gain;
+      if (score > bestScore) [best, bestScore] = [{ play, gain }, score];
+    }
+    return best;
+  }
+
+  function valuePiece(state: RunState, id: PieceId): PieceValue | null {
+    if (!Object.hasOwn(content.pieces, id)) return null;
+    const run = idleRun(state);
+    if (!run) return null;
+    const first = run[0]!;
+    // As if bought: one more piece in Your goods, which goes down without using the week.
+    const s: RunState = { ...first, reserve: [...first.reserve, { id }] };
+    // Built in the week valued, a rhythm first pays in its `every`th week (onCadence).
+    const every = rhythmOf(content.pieces[id]);
+    const paying = every === null ? null : Math.floor(run.length / every);
+    const pay =
+      every !== null && paying
+        ? {
+            def: payingDef(content.pieces[id])!,
+            at: run[every - 1]!,
+            weeks: paying,
+            rest: run.length - paying,
+          }
+        : null;
+    const best = bestPlayOf(s, s.reserve.length - 1, pay);
+    if (!best) return null;
+    const { play } = best;
+    // The house with it, through each week left: its own timers run on with the rest.
+    const base = idleTotals(state, run);
+    let cur: RunState = { ...first, house: applyPlay(s, play).house };
+    const gains: number[] = [];
+    let overRun = 0;
+    let budget = 0;
+    for (let k = 0; k < run.length; k++) {
+      const tally = tallyOf(cur, cur.house, false);
+      const g = tally.total - base.wow[k]!;
+      gains.push(g);
+      overRun += g;
+      budget += tally.budget - base.budget[k]!;
+      if (k < run.length - 1) cur = idleNextWeek(cur);
+    }
+    const value: PieceValue = {
+      how: play.t,
+      gain: gains[0]!,
+      weeksLeft: run.length,
+      overRun,
+      budget,
+    };
+    if (overRun === 0 && budget === 0 && gains.every((g) => g === 0)) {
+      // Nothing at its best spot: say so if something has it earn nothing there.
+      const placed: RunState = { ...first, house: applyPlay(s, play).house };
+      const uid =
+        play.t === 'place'
+          ? placed.house.pieces.find((p) => !first.house.pieces.some((q) => q.uid === p.uid))?.uid
+          : play.uid;
+      const why = uid === undefined ? null : zeroedBy(placed, uid);
+      if (why) value.nothing = why;
+    }
+    if (play.t === 'place') {
+      value.spot = play.shape
+        ? { x: play.x, y: play.y, rot: play.rot, shape: play.shape }
+        : { x: play.x, y: play.y, rot: play.rot };
+      const pays = every === null ? undefined : gains[every - 1];
+      if (every !== null && pays !== undefined && pays > value.gain) {
+        value.rhythm = { every, gain: pays };
+      }
+    } else {
+      if (play.t === 'extend') value.spot = { x: play.x, y: play.y, rot: play.rot };
+      const room = first.house.pieces.find((p) => p.uid === play.uid)!;
+      value.room = { uid: room.uid, defId: room.defId };
+    }
+    return value;
+  }
+
+  /** What has a placed piece earn nothing (a change order's puppies on Flower Beds), if any. */
+  function zeroedBy(state: RunState, uid: number): string | null {
+    const layout = layoutFor(state);
+    for (const m of modsOf(state).active) {
+      if (
+        m.mod.kind === 'earnNothing' &&
+        matchesPiece(content, layout, m.mod.target, uid, m.host)
+      ) {
+        return sourceName(content, m.source);
+      }
+    }
+    return null;
+  }
+
+  const toolValues = new WeakMap<RunState, Map<ToolId, ToolValue | null>>();
+
+  function toolValue(state: RunState, id: ToolId): ToolValue | null {
+    return kept(toolValues, state, id, valueTool);
+  }
+
+  function valueTool(state: RunState, id: ToolId): ToolValue | null {
+    if (!Object.hasOwn(content.tools, id)) return null;
+    const run = idleRun(state);
+    if (!run) return null;
+    const first = run[0]!;
+    const use = content.tools[id].use;
+    // As if bought and used in the week valued, as tools.ts uses it.
+    const s: RunState = { ...first, supplies: [...first.supplies, { kind: 'tool', id }] };
+    const used = (): RunState =>
+      useTool(toolCtx, s, { t: 'useTool', i: s.supplies.length - 1 }, []);
+    const before = tallyOf(first, first.house, false);
+    switch (use.kind) {
+      case 'weekModifiers': {
+        const after = used();
+        const tally = tallyOf(after, after.house, false);
+        const gain = tally.total - before.total;
+        if (gain !== 0) return { kind: 'week', gain };
+        const stats = { milestonesEarly: after.milestonesEarly };
+        const needs = modifiersNeeds(content, use.modifiers, layoutFor(after), tally, stats);
+        return { kind: 'needs', needs };
+      }
+      case 'levelSet': {
+        // The level lasts the run: each week left, with it and without.
+        const setLevels = used().setLevels;
+        const base = idleTotals(state, run);
+        let gain = 0;
+        let overRun = 0;
+        run.forEach((cur, k) => {
+          const g = tallyOf({ ...cur, setLevels }, cur.house, false).total - base.wow[k]!;
+          if (k === 0) gain = g;
+          overRun += g;
+        });
+        if (gain === 0 && overRun === 0) {
+          const progress = setProgressOf(content, layoutFor(first), use.set);
+          return { kind: 'needs', needs: setNeeds(content, use.set, progress), set: use.set };
+        }
+        const level = setLevels[use.set]!;
+        return { kind: 'level', set: use.set, level, gain, weeksLeft: run.length, overRun };
+      }
+      case 'advanceTimers': {
+        const after = used();
+        const grows = tallyOf(after, after.house, false).total > before.total;
+        const note = timersNote(content, first.house, first.week, use.weeks, grows);
+        return { kind: 'note', note };
+      }
+      case 'copy':
+        return { kind: 'note', note: copyNote(content, before, first.house) };
+      case 'reward':
+        return use.reward.demolitions
+          ? { kind: 'note', note: clearNote(content, first.house) }
+          : null;
+      case 'extraPlay':
+      case 'specialHand':
+      case 'move':
+        return { kind: 'note', note: NO_NUMBER[use.kind] };
+    }
   }
 
   function legalPlacements(state: RunState): PlaceAction[] {
@@ -3098,6 +3761,10 @@ export function createRules(content: Content): Rules {
       for (const o of viewOffers(content, state)) if (o.ok) out.push({ t: 'buy', i: o.i });
       state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
       state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
+      // D-196: a hold on any good but a service, moved to it, or let go; none in the last shop.
+      (state.offers?.shop?.offers ?? []).forEach((_, i) => {
+        if (canHold(state, i).ok) out.push({ t: 'hold', i });
+      });
       if (canRefresh(state).ok) out.push({ t: 'refreshShop' });
       out.push({ t: 'leaveShop' });
       return out;
@@ -3128,6 +3795,10 @@ export function createRules(content: Content): Rules {
     if (canReroll(state).ok) out.push({ t: 'reroll' });
     state.hand.forEach((_, i) => {
       if (canStrikeCard(state, i).ok) out.push({ t: 'strikeCard', i });
+    });
+    // D-186: a pin on any card the last week's pin didn't keep, or off the pinned one.
+    state.hand.forEach((_, i) => {
+      if (canPin(state, i).ok) out.push({ t: 'pin', i });
     });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
@@ -3176,22 +3847,33 @@ export function createRules(content: Content): Rules {
     // enough (Fertilizer, mid-week) changes at the next one; in a shop or change order a
     // milestone opened, the next phase's first week is still to start, so it changes then.
     const soonest = weekStarted(state) ? 1 : 0;
-    const unmet = unmetRequirement(content, layoutFor(state), def, uid);
+    const layout = layoutFor(state);
+    const unmet = unmetRequirement(content, layout, def, uid);
     const next = (every: number) => {
       for (let a = age; a < age + every; a++)
         if (onCadence(a, every)) return state.week + (a - age);
       return state.week;
     };
-    for (const e of def.effects) {
+    for (const outer of def.effects) {
+      // A timer under a condition (D-195: the Garage's garage sales, once its drive comes) waits
+      // while the condition doesn't hold, as one under a requirement does.
+      const waits =
+        outer.kind === 'conditional' && !meetsCondition(content, layout, outer.when, uid)
+          ? outer.when
+          : null;
+      const e = outer.kind === 'conditional' ? outer.effect : outer;
       if (e.kind === 'transform') {
         const into =
           'piece' in e.into
             ? content.pieces[e.into.piece].name
             : content.features[e.into.feature].name;
         const when = state.week + Math.max(soonest, e.afterWeeks - age);
-        out.push(`Becomes a ${into} at the start of week ${when}`);
-      } else if (unmet && (e.kind === 'rhythm' || e.kind === 'economy')) {
-        out.push(`Paused: it must be ${conditionText(content, unmet.condition)}`);
+        // A pack's tiles each become one (D-195: a Sapling of three becomes three Trees).
+        const n = shapeCells(piece.shape ?? def.shape, 0).length;
+        const what = n > 1 && 'feature' in e.into ? `${n} ${plural(into)}` : article(into);
+        out.push(`Becomes ${what} at the start of week ${when}`);
+      } else if ((unmet || waits) && (e.kind === 'rhythm' || e.kind === 'economy')) {
+        out.push(`Paused: it must be ${conditionText(content, unmet?.condition ?? waits!)}`);
       } else if (e.kind === 'rhythm') {
         const w = next(e.every);
         out.push(w === state.week ? `Pays +${e.amount} this week` : `Next +${e.amount}: week ${w}`);
@@ -3521,7 +4203,9 @@ export function createRules(content: Content): Rules {
     installGains,
     fixtureValue,
     blueprintValue,
-    estimatePlay: (state, play) => {
+    pieceValue,
+    toolValue,
+    estimatePlay: (state, play, opts) => {
       const def = placeDef(state, play);
       if (!def) throw new IllegalAction('There is no card there.');
       return estimatePlay(
@@ -3532,6 +4216,7 @@ export function createRules(content: Content): Rules {
         placedCells(play.shape ?? def.shape, play.x, play.y, play.rot),
         modsOf(state).active,
         { specs: clientOf(state).specs, phase: state.phase },
+        opts,
       );
     },
     fencedYards: (state) => layoutFor(state).fencedSizes,
@@ -3584,6 +4269,7 @@ export function createRules(content: Content): Rules {
       };
     },
     setProgress: (state, set) => setProgressOf(content, layoutFor(state), set),
+    canPay: (state, good) => shelfOf(state).canPay(good),
     shopOffers: (state) => viewOffers(content, state),
     canRefresh,
     sellPrice: (state, from, i) => {
@@ -3603,6 +4289,8 @@ export function createRules(content: Content): Rules {
     canStrikeAny,
     canStrikeCard,
     previewStrike,
+    canPin,
+    canHold,
     canUseTool: (state, action) => canUseTool(toolCtx, state, action),
     previewTool: (state, action) => {
       const before = state.screen === 'build' ? score(passTally(state)) : NO_SCORE;

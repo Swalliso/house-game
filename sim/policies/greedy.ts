@@ -58,6 +58,11 @@ export interface GreedyOptions {
   early?: EarlyMode;
   /** Default 'none': it never strikes. 'fixed' strikes hand cards by STRIKE_ORDER (D-157). */
   strikes?: StrikeMode;
+  /**
+   * D-196: default true: as it leaves a shop, it holds the good it valued most but couldn't
+   * afford. False never holds (the paired trial's other arm).
+   */
+  holds?: boolean;
 }
 
 export interface RankedPlay {
@@ -187,10 +192,11 @@ function completesEarly(rules: Rules, state: RunState, mode: EarlyMode): boolean
 }
 
 /** The policy's label for reports: 'greedy', or 'greedy · early always · strikes fixed'. */
-function labelOf(early: EarlyMode, strikes: StrikeMode): string {
+function labelOf(early: EarlyMode, strikes: StrikeMode, holds: boolean): string {
   const parts = ['greedy'];
   if (early !== 'never') parts.push(`early ${early}`);
   if (strikes !== 'none') parts.push(`strikes ${strikes}`);
+  if (!holds) parts.push('no holds');
   return parts.join(' · ');
 }
 
@@ -198,17 +204,33 @@ function labelOf(early: EarlyMode, strikes: StrikeMode): string {
  * A greedy bot with these options. Every variant is named 'greedy', so the same seed keys
  * the same streams and variants play alike until their choices differ; `label` tells them apart.
  */
+/** A pack placed as one tile. */
+function isLoneTile(p: PlaceAction): boolean {
+  return !!p.shape && p.shape.length === 1 && p.shape[0] === '#';
+}
+
+/** Whether the card a placement plays is a pack that lists a lone tile among its shapes. */
+function listsLoneTile(rules: Rules, state: RunState, p: PlaceAction): boolean {
+  const card = p.from === 'hand' ? state.hand[p.i] : state.reserve[p.i];
+  const id = card && ('kind' in card ? (card.kind === 'piece' ? card.id : null) : card.id);
+  const pack = id ? rules.content.pieces[id].pack : undefined;
+  return !!pack?.shapes.some((s) => s.length === 1 && s[0] === '#');
+}
+
 export function makeGreedy(opts: GreedyOptions = {}): Policy {
   const early = opts.early ?? 'never';
   const strikes = opts.strikes ?? 'none';
+  const holds = opts.holds ?? true;
   return {
     name: 'greedy',
-    label: labelOf(early, strikes),
+    label: labelOf(early, strikes, holds),
     act(rules: Rules, state: RunState, rng: Rng): Action {
       // M4b, D-144: one of the two change orders, by what its card says (orders.ts).
       if (state.screen === 'changeOrder') return pickChangeOrder(rules, state);
       const salt = rng.u32();
-      if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
+      if (state.screen === 'shop') {
+        return shopAct(rules, state, rng, { salt, strikes, early, holds });
+      }
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
       // D-157: a strike first, so the card that takes the struck one's slot is in the week.
       const strike = strikes === 'fixed' ? strikeAct(rules, state) : null;
@@ -221,10 +243,12 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       // and the first Fence earns nothing until its yard closes.
       const exact: NonNullable<Play>[] = [];
       for (const p of rules.legalPlays(state)) {
-        // A single tile of a pack isn't worth ranking: the planner below finds the ones that
-        // close a yard, and a lone Fence or Driveway tile earns next to nothing.
+        // A single tile of a pack isn't worth ranking: the planners below find the ones that
+        // close a yard or reach a Garage, and a lone Fence or Driveway tile earns next to
+        // nothing. A pack that lists a lone tile among its shapes pays as much for one (D-195:
+        // a Sapling's +1 is the piece's).
         if (p.t === 'place') {
-          if (!(p.shape && p.shape.length === 1 && p.shape[0] === '#')) plays.push(p);
+          if (!isLoneTile(p) || listsLoneTile(rules, state, p)) plays.push(p);
         } else exact.push(p);
       }
       state.hand.forEach((_, i) => exact.push(...fencePlans(rules, state, 'hand', i)));

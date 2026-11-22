@@ -100,9 +100,10 @@ describe('content', () => {
       ['birdhouse', 3, 5],
       ['porch', 4, 5],
     ]);
-    // Two shape variants share a type; the Fence and the Driveway are packs instead (D-106).
+    // Two shape variants share a type; the Fence and the Driveway are packs instead (D-106), and
+    // the Sapling (D-195).
     expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
-    expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
+    expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['sapling', 'fence', 'driveway']);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');
     // The indoor sets, the yard sets (D-164), then Full House, the ladder's top.
     expect(Object.keys(CONTENT.sets)).toEqual([
@@ -150,6 +151,28 @@ describe('content', () => {
     // A penalty isn't wanting: the Pool loses to Trees, and isn't in their list.
     expect(featureWantedText(CONTENT, 'tree')).not.toContain('Pool');
     expect(featureWantedText(CONTENT, 'timeCapsule')).toBeNull();
+  });
+
+  it('says what a Tree does, from the cards, in a tip the Sapling’s card links (D-195)', () => {
+    // Who wants one counts its tags and its view too: a Library wants Quiet neighbors, and a
+    // Living Room or a Patio a view.
+    expect(featureWantedText(CONTENT, 'tree')).toBe(
+      'Bedrooms, Living Rooms, Patios, Libraries, and Birdhouses earn more beside one.',
+    );
+    expect(glossary(CONTENT).tree).toEqual({
+      title: 'Tree',
+      text:
+        'Quiet and Green, and a view. Each Tree tile counts as its own neighbor: Bedrooms, ' +
+        'Living Rooms, Patios, Libraries, and Birdhouses earn more beside one, and Pools less. ' +
+        'A Treehouse must be built touching one.',
+    });
+    const sapling = cardText(CONTENT, CONTENT.pieces.sapling);
+    expect(sapling.effects).toEqual(['+1 every week', 'Each tile becomes a Tree after 4 weeks']);
+    expect(sapling.terms).toEqual([null, 'tree']);
+    // No other card links a term yet.
+    for (const p of Object.values(CONTENT.pieces)) {
+      if (p.id !== 'sapling') expect(cardText(CONTENT, p).terms, p.id).toBeUndefined();
+    }
   });
 
   it('deals the week in two rows: Rooms, then Layout (D-121)', () => {

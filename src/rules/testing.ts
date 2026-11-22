@@ -39,7 +39,7 @@ import type {
   UpgradeDef,
   UpgradeId,
 } from './index.ts';
-import { DRAW_ROWS, drawHand, type DrawOptions } from './draw.ts';
+import { DRAW_ROWS, drawHand, rowOf, type DrawOptions } from './draw.ts';
 import { placedCells } from './grid.ts';
 import { lotFromRows, terrainAt } from './lot.ts';
 import { addPiece } from './placement.ts';
@@ -990,6 +990,7 @@ export const TEST_LOT_BALANCE: LotBalance = {
   rockyBoulders: [8, 12],
   pondTiles: [14, 20],
   lakeRows: [2, 5],
+  bendEvery: [5, 8],
 };
 
 export const TEST_BALANCE: Balance = {
@@ -1056,6 +1057,9 @@ export const TEST_BALANCE: Balance = {
     strikeMinTypes: { rooms: 5, layout: 4 },
     crateOptions: 3,
     interestPer: 5,
+    // D-192's lean is off here, so the test content's shelves are what they always were;
+    // shelf.test.ts turns it on.
+    relevantWeight: 1,
   },
   fencedYardMin: 4,
   complexityPct: [
@@ -1093,6 +1097,8 @@ export const TEST_BALANCE: Balance = {
   // D-160: no standing stock, so the test content's reserves are as before; stock.test.ts
   // turns it on.
   standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1, refill: false },
+  // D-188: no wrong delivery either; surprise.test.ts turns it on.
+  surpriseDelivery: { phase: 1, pieces: [] },
 };
 
 const testTool = (
@@ -1582,4 +1588,39 @@ export function beforeSwaps(hand: readonly Card[], swapped: readonly SwappedCard
 export function drawnBefore(e: GameEvent | undefined): Card[] {
   if (e?.t !== 'handDrawn') throw new Error(`not a handDrawn event: ${e?.t}`);
   return beforeSwaps(e.hand, e.swapped);
+}
+
+/** D-186: hand card i's place in its row (0 for the row's first). */
+export function rowSlot(content: Content, hand: readonly Card[], i: number): number {
+  const row = rowOf(content, hand[i]!);
+  return hand.slice(0, i).filter((c) => rowOf(content, c) === row).length;
+}
+
+/**
+ * D-186: where a drawn hand should hold last week's kept card, worked out here apart from the
+ * rules: in its row's k-th slot (the row's last when the row is shorter), in place of the card
+ * drawn there; the slot that dealt the same card, if another one did, takes that card instead. A
+ * row the draw left empty gets the card on its own (Rooms first, Layout last). Returns the hand
+ * and the kept card's slot.
+ */
+export function keptInto(
+  content: Content,
+  hand: readonly Card[],
+  card: Card,
+  k: number,
+): { hand: Card[]; i: number } {
+  const row = rowOf(content, card);
+  const out = [...hand];
+  const at = out.flatMap((c, j) => (rowOf(content, c) === row ? [j] : []));
+  if (at.length === 0) {
+    const i = row === 'rooms' ? 0 : out.length;
+    out.splice(i, 0, card);
+    return { hand: out, i };
+  }
+  const i = at[Math.min(k, at.length - 1)]!;
+  const same = (c: Card | undefined) => c?.kind === card.kind && c.id === card.id;
+  const dealt = at.find((j) => j !== i && same(out[j]));
+  if (dealt !== undefined) out[dealt] = out[i]!;
+  out[i] = card;
+  return { hand: out, i };
 }

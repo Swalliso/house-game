@@ -878,6 +878,56 @@ describe('grantEffect', () => {
     expect(earned(rules.currentTally(state), 1)).toBe(5);
   });
 
+  it('a fixture’s grant reaches its own piece only (D-194: the Kitchen Island)', () => {
+    // TEST_CONTENT's Island, giving its Kitchen a second +2 per touching Dining Room.
+    const content: Content = {
+      ...C,
+      fixtures: {
+        ...C.fixtures,
+        kitchenIsland: {
+          ...C.fixtures.kitchenIsland,
+          modifiers: [
+            {
+              kind: 'grantEffect',
+              target: { host: true },
+              effect: { kind: 'neighbor', match: { piece: 'diningRoom' }, amount: 2 },
+            },
+          ],
+        },
+      },
+    };
+    // Two Kitchens (uids 1 and 3) either side of a Dining Room, the Island in the first.
+    const house = installed(
+      houseFrom(content, L, [
+        ['kitchen', 0, 0],
+        ['diningRoom', 2, 0],
+        ['kitchen', 4, 0],
+      ]),
+      [1, 'kitchenIsland'],
+    );
+    const t = tally(content, house);
+    // Each Kitchen: +2 for the Dining Room, at its +50%: 3. The Island's Kitchen twice that.
+    expect(earned(t, 1)).toBe(6);
+    expect(earned(t, 3)).toBe(3);
+    expect(scoreOf(t, 1).lines).toContainEqual({
+      label: 'Touching a Dining Room (Kitchen Island)',
+      op: 'add',
+      value: 2,
+      from: [{ kind: 'piece', uid: 2 }],
+    });
+    expect(scoreOf(t, 3).lines.some((l) => l.label.endsWith('(Kitchen Island)'))).toBe(false);
+    // Without the Island, both are 3.
+    const plain = tally(
+      content,
+      houseFrom(content, L, [
+        ['kitchen', 0, 0],
+        ['diningRoom', 2, 0],
+        ['kitchen', 4, 0],
+      ]),
+    );
+    expect([earned(plain, 1), earned(plain, 3)]).toEqual([3, 3]);
+  });
+
   it('Country Living: every piece earns +1 per touching Tree, up to 3, on top of its own', () => {
     const rows = withTrees([2, 4], [2, 5]);
     // A Lawn (uid 1) and a Bedroom (uid 2) on either side of two Trees.
@@ -1368,7 +1418,7 @@ const CREEKSIDE: Content = {
     ...C.lotTraits,
     creekside: {
       ...C.lotTraits.creekside,
-      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 100 }],
+      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 150 }],
     },
   },
 };
@@ -1395,7 +1445,7 @@ describe('lot traits (D-119)', () => {
     expect(sourceName(CREEKSIDE, { kind: 'lot', id: 'creekside' })).toBe('Creekside');
   });
 
-  it('Creekside: a piece touching the creek earns +100%, on a Creekside line', () => {
+  it('Creekside: a piece touching the creek earns +150%, on a Creekside line', () => {
     const r = createRules(CREEKSIDE);
     // The right Bedroom (x 3–4) touches the creek; the left one (x 1–2) touches only it.
     const s = {
@@ -1406,10 +1456,10 @@ describe('lot traits (D-119)', () => {
       ]),
     };
     const t = r.currentTally(s);
-    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 2 = 8.
-    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 100, earned: 8 });
+    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 2.5 = 10.
+    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 150, earned: 10 });
     expect(scoreOf(t, 1).lines.filter((l) => l.op === 'pct')).toEqual([
-      { label: 'Creekside', op: 'pct', value: 100, from: [] },
+      { label: 'Creekside', op: 'pct', value: 150, from: [] },
     ]);
     expect(scoreOf(t, 2)).toMatchObject({ points: 4, pct: 0, earned: 4 });
   });
@@ -1417,7 +1467,7 @@ describe('lot traits (D-119)', () => {
   it('read as a tip: what they pay, all run, what they deal more of (D-166), then the blurb', () => {
     const creekside = CONTENT.lotTraits.creekside;
     expect(lotTraitText(CONTENT, creekside)).toBe(
-      'Pieces touching the Creek earn +100%, all run. More Patios in the draw. Only a Driveway crosses it.',
+      'Pieces touching the Creek earn +150%, all run. More Patios in the draw. Only a Driveway crosses it.',
     );
     expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(
       'Pieces touching a Tree earn +25%, all run. More Treehouses and Birdhouses in the draw. Building over a Tree clears it.',

@@ -58,8 +58,13 @@ export const BALANCE: Balance = {
       dry: { weight: 20, kinds: { rocky: 50, open: 50 }, creekPct: 10 },
     },
     rockyBoulders: [8, 12],
-    pondTiles: [14, 20],
+    // D-191: a pond lot's pond is one of the round shapes (lot.ts ROUND_PONDS), 16 to 20 tiles.
+    pondTiles: [16, 20],
     lakeRows: [2, 5],
+    // D-191: water in natural shapes. A lake's shore and a creek running across the lot ease
+    // from one turn to the next over 5 to 8 columns, a creek from the back edge bends round to
+    // its side, and a pond rounds off (a pond lot's grows round).
+    bendEvery: [5, 8],
   },
 
   weeksPerPhase: 4, // D-042
@@ -188,6 +193,10 @@ export const BALANCE: Balance = {
     strikeMinTypes: { rooms: 5, layout: 4 }, // in each row (D-121)
     crateOptions: 3, // open a crate, keep 1 of 3
     interestPer: 5, // Savings Account: +1 per 5 held, up to the interestMax rule
+    // D-192: a good that can pay in the house as it stands (a fixture with a room to go in,
+    // Remodel Plans for a set held, a special piece under its limit) counts 3 times in its
+    // pick, against 1 for one that can't yet. A placeholder for the playtest.
+    relevantWeight: 3,
   },
 
   // A fenced yard has at least 10 tiles (D-069, amending D-046's 4, confirmed 2026-11-05): at
@@ -295,5 +304,13 @@ export const BALANCE: Balance = {
     firstJobPhase: 1,
     firstJobSlot: 3,
     refill: true,
+  },
+
+  // D-188: the wrong delivery. Once a run, at the start of Framing, a yard showpiece nobody
+  // ordered turns up free in Your goods: which one depends on the run's seed. All three are
+  // shop-only (draw weight 0), so a run sees one it would seldom buy. A first job gets none.
+  surpriseDelivery: {
+    phase: 2,
+    pieces: ['pool', 'hotTub', 'henhouse'],
   },
 };

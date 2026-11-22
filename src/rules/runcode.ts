@@ -279,6 +279,9 @@ function cleanAction(v: unknown): Action | null {
     case 'strikeCard':
       // D-157: a hand card, struck with its type.
       return isInt(v.i) ? { t: 'strikeCard', i: v.i } : null;
+    case 'pin':
+      // D-186: a hand card pinned for next week, or its pin taken off.
+      return isInt(v.i) ? { t: 'pin', i: v.i } : null;
     case 'completeEarly':
       return { t: 'completeEarly' };
     case 'demolish':
@@ -297,6 +300,9 @@ function cleanAction(v: unknown): Action | null {
     }
     case 'refreshShop':
       return { t: 'refreshShop' };
+    case 'hold':
+      // D-196: a shop good held for the next visit, or let go.
+      return isInt(v.i) ? { t: 'hold', i: v.i } : null;
     case 'pick':
       return isInt(v.i) ? { t: 'pick', i: v.i } : null;
     case 'useTool': {

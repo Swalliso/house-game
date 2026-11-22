@@ -799,6 +799,22 @@ export interface BlueprintDef {
   modifiers: readonly Modifier[];
   /** False for goods the shop holds back until their mechanic exists (Dream Home needs M4a's specs). */
   offered: boolean;
+  /**
+   * D-192: the shop and the crates stock it only where this holds (Waterfront only on a lot
+   * with water). Unset: anywhere.
+   */
+  stockIf?: StockIf;
+  /**
+   * D-192: the pieces it pays on, for the shelf's lean: until a placed piece matches, it counts
+   * once in its pick rather than `relevantWeight` times (Waterfront: a piece touching the
+   * water). Unset: it counts as able to pay wherever it's stocked.
+   */
+  paysOn?: Selector;
+}
+
+/** D-192: where the shop stocks a good: the lot has a tile of one of these features. */
+export interface StockIf {
+  lotHas: readonly TerrainId[];
 }
 
 export interface ToolDef {
@@ -838,6 +854,15 @@ export type PickOption =
   | { kind: 'blueprint'; id: BlueprintId }
   | { kind: 'fixture'; id: FixtureId }
   | { kind: 'piece'; id: PieceId };
+
+/** D-192: a good on a shelf or in a crate (every shop offer but a service). */
+export type ShelfGood =
+  | { kind: 'blueprint'; id: BlueprintId }
+  | { kind: 'piece'; id: PieceId }
+  | { kind: 'fixture'; id: FixtureId }
+  | { kind: 'tool'; id: ToolId }
+  | { kind: 'crate'; id: CrateId }
+  | { kind: 'upgrade'; id: UpgradeId };
 
 export type Range = readonly [min: number, max: number];
 
@@ -879,6 +904,11 @@ export interface LotBalance {
   pondTiles: Range;
   /** A lake lot's lake (D-174): this many rows from the back edge, its shore wandering. */
   lakeRows: Range;
+  /**
+   * D-191: a lake's shore and a creek running across the lot ease from one turn to the next
+   * over this many columns.
+   */
+  bendEvery: Range;
 }
 
 /** A biome's lots (D-174): how often it comes up, its kinds, and its own draw. */
@@ -999,6 +1029,16 @@ export interface Balance {
     firstJobSlot: number;
     refill: boolean;
   };
+  /**
+   * D-188: the wrong delivery. Once a run, in the first week of `phase` (never in a first job or
+   * an overtime week), one of `pieces` turns up free in the reserve's extra slots: the first, in
+   * an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the
+   * client. If none fits, nothing comes. No pieces: off.
+   */
+  surpriseDelivery: {
+    phase: number;
+    pieces: readonly PieceId[];
+  };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -1045,6 +1085,12 @@ export interface ShopBalance {
   crateOptions: number;
   /** Savings Account interest: +1 budget per this many held, up to the `interestMax` rule. */
   interestPer: number;
+  /**
+   * D-192: a good that can pay in the house as it stands (shelf.ts) counts this many times in
+   * its pick, on a shelf, in the Blueprint Folio or in the Fixture Crate, against 1 for one
+   * that can't yet. 1 turns the lean off.
+   */
+  relevantWeight: number;
 }
 
 export interface Content {
@@ -1149,7 +1195,8 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
 /**
  * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
  * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b),
- * the client's or the standing stock's (D-160). shop.ts' inExtraSlot says which.
+ * the client's or the standing stock's (D-160), or the wrong delivery's (D-188). shop.ts'
+ * inExtraSlot says which.
  */
 export interface ReservePiece {
   id: PieceId;
@@ -1164,6 +1211,8 @@ export interface ReservePiece {
   client?: true;
   /** D-160: a card from the standing stock (balance.standingStock), in an extra slot. */
   stock?: true;
+  /** D-188: the wrong delivery's piece (balance.surpriseDelivery), in an extra slot. */
+  surprise?: true;
 }
 
 export interface OwnedBlueprint {
@@ -1197,7 +1246,15 @@ export interface ShopVisit {
   boughtAny: boolean;
   /** Opened by the ?debug panel mid-phase: leaving goes back to the same week. */
   forced?: true;
+  /** D-196: the held good this visit couldn't put back on the shelf, and why, for its line. */
+  dropped?: { good: ShelfGood; why: HoldDrop };
 }
+
+/**
+ * D-196: why a held good can't come back: the run owns it (a blueprint or an upgrade), or its
+ * type is at its limit (a special piece).
+ */
+export type HoldDrop = 'owned' | 'limit';
 
 /** An opened crate waiting for a choice: only `pick` (or -1 to discard) and `sell` until then. */
 export interface CratePick {
@@ -1367,6 +1424,26 @@ export interface RunState {
   overtimeLeft: number;
   /** Cards swapped in this week because the ones they replaced had no play (D-121). */
   swapped: readonly SwappedCard[];
+  /**
+   * D-186: the hand card pinned for next week, by its place in `hand`. One at a time, set and
+   * taken off by `pin`. It goes with its card (played, struck, or redrawn by a reroll or the
+   * Catalog), and a milestone or Complete early, which empty the hand, drop it.
+   */
+  pinned?: number;
+  /**
+   * D-186: the card last week's pin kept, by its place in `hand`: it took a slot of its row in
+   * place of a fresh card. It can't be pinned again this week. A reroll and the Catalog's
+   * redraw leave it where it is, and the week's swaps (D-121) skip it.
+   */
+  kept?: number;
+  /**
+   * D-196: the shop good held for the next visit, any but a service. One at a time, set, moved
+   * and let go by `hold`. Each stocking after it, the next visit's and a refresh's, puts it back
+   * on the shelf in place of a fresh good of its kind; buying it lets it go, and so does a
+   * stocking it can't come back to (the run owns it, or a special piece's type is at its limit).
+   * Until then it stays held: a good can wait several visits.
+   */
+  held?: ShelfGood;
   /** D-040: complete each milestone as soon as its target is met. Starts off. */
   autoComplete: boolean;
   /** A run stat for scaling ×Mult (Ahead of Schedule, M3). */
@@ -1456,6 +1533,12 @@ export type RerollAction = { t: 'reroll' };
  * a card from its row. A free action that uses one of `strikesLeft`.
  */
 export type StrikeCardAction = { t: 'strikeCard'; i: number };
+/**
+ * D-186: pins hand card i for next week, or takes the pin off it. One pin at a time: pinning
+ * another card moves it there. A free action. Next week the card is back in its row, in place
+ * of a fresh card; the card a pin kept can't be pinned again.
+ */
+export type PinAction = { t: 'pin'; i: number };
 export type DemolishAction = { t: 'demolish'; x: number; y: number };
 export type CompleteEarlyAction = { t: 'completeEarly' };
 export type SetAutoCompleteAction = { t: 'setAutoComplete'; on: boolean };
@@ -1467,6 +1550,11 @@ export type SellAction = { t: 'sell'; from: 'blueprints' | 'supplies'; i: number
  */
 export type BuyAction = { t: 'buy'; i: number; strike?: CardType };
 export type RefreshShopAction = { t: 'refreshShop' };
+/**
+ * D-196: holds shop offer i for the next visit, or lets it go. One hold at a time: holding
+ * another good moves it. A free action, on any good but a service, in any shop a shop follows.
+ */
+export type HoldAction = { t: 'hold'; i: number };
 /** Keeps one of an opened crate's options; -1 discards the crate. */
 export type PickAction = { t: 'pick'; i: number };
 /**
@@ -1526,12 +1614,14 @@ export type Action =
   | PassAction
   | RerollAction
   | StrikeCardAction
+  | PinAction
   | DemolishAction
   | CompleteEarlyAction
   | SetAutoCompleteAction
   | SellAction
   | BuyAction
   | RefreshShopAction
+  | HoldAction
   | LeaveShopAction
   | PickAction
   | UseToolAction
@@ -1681,6 +1771,8 @@ export type GameEvent =
       slots: readonly StruckSlot[];
       strikesLeft: number;
     }
+  /** D-186: hand card i was pinned for next week (`pinned`), or its pin was taken off. */
+  | { t: 'cardPinned'; i: number; pinned: boolean }
   | {
       t: 'handDrawn';
       phase: number;
@@ -1695,6 +1787,11 @@ export type GameEvent =
       swapped?: readonly SwappedCard[];
       /** The Catalog's redraw from special pieces and fixtures. */
       special?: true;
+      /**
+       * D-186: the hand slot holding the card last week's pin kept: in a week's first hand, the
+       * card back in its row; after a reroll or the Catalog's redraw, the card left in place.
+       */
+      kept?: number;
     }
   | {
       t: 'placed';
@@ -1846,6 +1943,14 @@ export type GameEvent =
       sale: number | null;
     }
   | { t: 'shopClosed'; number: number; skipReward: number; budgetBefore: number; budget: number }
+  /** D-196: shop offer i was held for the next visit (`held`), or let go. */
+  | { t: 'goodHeld'; i: number; good: ShelfGood; held: boolean }
+  /**
+   * D-196: the held good couldn't come back to the shelf, so its hold is gone: the run owns it
+   * (a blueprint or an upgrade), or (a special piece) its type is at its limit. It comes as the
+   * stocking does, before `shopOpened` or `shopRefreshed`.
+   */
+  | { t: 'holdDropped'; good: ShelfGood; why: HoldDrop }
   /**
    * M4b: a household member arrived (D-103), at the start of their phase's first week (after
    * transforms, before the draw): their cards went into the reserve's extra slots.
@@ -1853,12 +1958,13 @@ export type GameEvent =
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
   /**
    * D-160: cards went into the reserve's extra slots at the start of a week, after any arrival
-   * and before the draw: what the client brought ('client'), the standing stock's top-up, or
-   * (D-171) the card from the crew's own stock ('crew').
+   * and before the draw: what the client brought ('client'), the standing stock's top-up,
+   * (D-171) the card from the crew's own stock ('crew'), or (D-188) the wrong delivery's piece,
+   * once a run ('surprise'), in that order.
    */
   | {
       t: 'delivered';
-      from: 'client' | 'stock' | 'crew';
+      from: 'client' | 'stock' | 'crew' | 'surprise';
       phase: number;
       cards: readonly PieceId[];
     }
@@ -2079,6 +2185,74 @@ export interface BlueprintValue {
   held: boolean;
 }
 
+/**
+ * D-193: what a piece would add to the house as it stands (a shop offer, a crate's option, a
+ * piece in Your goods), for its line: its best play from Your goods in the week it would go down
+ * (in the shop, the next phase's first, after its start-of-week transforms, as for a fixture),
+ * and each week left in the run added up with nothing more built (D-141's projection).
+ */
+export interface PieceValue {
+  /**
+   * How it goes down at its best: built at a spot, or, for a type at its limit, a Renovation or
+   * an extension of a room of its type (D-168).
+   */
+  how: 'place' | 'renovate' | 'extend';
+  /**
+   * Where: the spot's top-left, its turn and a pack's tiles, as the placement (or the extension)
+   * takes them. A Renovation has none.
+   */
+  spot?: { x: number; y: number; rot: Rot; shape?: readonly string[] };
+  /** The room a Renovation or an extension grows: its uid, and its piece as it's valued. */
+  room?: { uid: number; defId: PieceId };
+  /** The Wow it adds in the week it goes down. */
+  gain: number;
+  /**
+   * For a piece with a rhythm (the Pool's every 3rd week): how often it pays, and what it adds
+   * in the first week it does. Unset when that week adds no more than `gain`.
+   */
+  rhythm?: { every: number; gain: number };
+  /** Weeks still to play in the run, the first one valued included; never overtime. */
+  weeksLeft: number;
+  /**
+   * Each of those weeks' gain, added up, with nothing more built: the house's timers run on
+   * (the Pool pays in its weeks, a Sapling becomes a Tree), and each phase's last week counts
+   * as one. Roughly what it adds over the rest of the run.
+   */
+  overRun: number;
+  /** The budget it would pay over those weeks (the Henhouse's eggs). */
+  budget: number;
+  /**
+   * When it adds nothing because something has it earn nothing (a change order's "A litter of
+   * puppies" on Flower Beds): that source's name, for its line to say why.
+   */
+  nothing?: string;
+}
+
+/**
+ * D-193: what a tool would do for the house as it stands, for its line. In the shop the week
+ * valued is the next phase's first, after its start-of-week transforms, as for a fixture.
+ * - `week`: a tool for one week's tally (Rush Order): that week's total with it, less without.
+ * - `level`: a Remodel Plan for a set the house holds: the set's next level, what it adds to the
+ *   week, and each week left added up with nothing more built.
+ * - `needs`: one that would add nothing as the house stands, and what it's waiting for ("No
+ *   Entertainer yet"); `set` names a Remodel Plan's set, so its line can say what one is.
+ * - `note`: one with no number (a Fertilizer, a Copy Machine): what it would do here ("Your
+ *   Sapling becomes a Tree the week after you use it"), or why it has no number.
+ */
+export type ToolValue =
+  | { kind: 'week'; gain: number }
+  | {
+      kind: 'level';
+      set: SetId;
+      /** The level the set would go up to. */
+      level: number;
+      gain: number;
+      weeksLeft: number;
+      overRun: number;
+    }
+  | { kind: 'needs'; needs: string; set?: SetId }
+  | { kind: 'note'; note: string };
+
 export interface Legality {
   legal: boolean;
   reason?: string;
@@ -2233,6 +2407,8 @@ export interface OfferView extends Availability {
   /** Before the sale (the discount included), for the struck-through price. */
   fullPrice: number;
   onSale: boolean;
+  /** D-196: the good held for the next visit. */
+  held?: true;
 }
 
 /** How many of each slot the run has, after upgrades. */
@@ -2246,7 +2422,7 @@ export interface Slots {
 // The API.
 
 export type { EarlyOffer, Rules, ToolPreview } from './run.ts';
-export type { Estimate } from './estimate.ts';
+export type { Estimate, EstimateOptions } from './estimate.ts';
 export { stream, type Rng } from './rng.ts';
 export { createRules, IllegalAction } from './run.ts';
 export { encodeRunCode, decodeRunCode, contentHash } from './runcode.ts';
@@ -2285,6 +2461,8 @@ export {
   featureWantedText,
   modifierText,
   multNumber,
+  ordinal,
+  plural,
   regionText,
   rewardText,
   selectorText,
@@ -2307,7 +2485,7 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
-export { inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
+export { HOLD_REASONS, inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 export { isFinished } from './finished.ts';

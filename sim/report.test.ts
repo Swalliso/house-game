@@ -96,6 +96,8 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       strikesHeld: 0,
       installs: [],
       tools: [],
+      shelf: {},
+      holds: { made: 0, back: 0, bought: 0, dropped: 0 },
     },
     pieces: {},
     layers: { comfort: 0, charm: 0, sparkle: 0 },
@@ -104,8 +106,9 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
     siting: { firstRow: 5, firstIndoorRow: 5, frontGap: 5, touchesStreet: false },
     early: [],
     struck: [],
-    reservePlays: { own: 0, crew: 0, arrival: 0, client: 0, stock: 0 },
+    reservePlays: { own: 0, crew: 0, arrival: 0, client: 0, stock: 0, surprise: 0 },
     wallOffers: Array.from({ length: PHASES }, () => 0),
+    stockWallOffers: Array.from({ length: PHASES }, () => 0),
     finalScore: 1000,
     house: houseStats(CONTENT, { lot: lotFromRows(['....', '....']), pieces: [], nextUid: 1 }),
     build: {
@@ -249,10 +252,11 @@ describe('the criteria', () => {
   });
 
   it('checks fences against the probe and the Fence cards offered by milestone 4', () => {
-    const fenced = (seed: string, placements: number, offers: number) =>
+    const fenced = (seed: string, placements: number, offers: number, stock = 0) =>
       run(seed, 4, {
         enclosure: { placements, boundary: 6, yard: 9 },
         wallOffers: [offers, 0, 0, 0, 0, 0, 0].slice(0, PHASES),
+        stockWallOffers: [stock, 0, 0, 0, 0, 0, 0].slice(0, PHASES),
       });
     const pass = Array.from({ length: 100 }, (_, i) => fenced(`f-${i}`, 2, i < 70 ? 3 : 1));
     expect(find(criteria(CONTENT, { greedy: pass }), 'fences-pay')).toMatchObject({
@@ -266,6 +270,13 @@ describe('the criteria', () => {
     });
     const expensive = Array.from({ length: 100 }, (_, i) => fenced(`f-${i}`, 5, 9));
     expect(find(criteria(CONTENT, { greedy: expensive }), 'fences-pay').verdict).toBe('FAIL');
+    // D-197: the standing stock's Fences count beside the hand's, so too few in the hand and one
+    // from the stock is enough for a 2-card yard.
+    const stocked = Array.from({ length: 100 }, (_, i) => fenced(`f-${i}`, 2, i < 20 ? 3 : 1, 1));
+    expect(find(criteria(CONTENT, { greedy: stocked }), 'fences-pay')).toMatchObject({
+      verdict: 'PASS',
+      sure: true,
+    });
   });
 
   it('says what it can’t measure', () => {
@@ -361,6 +372,11 @@ describe('the aggregation', () => {
         heldAtEnd: ['rushOrder'],
         installs: [{ id: 'fireplace', from: 'hand', gain: 5, week: 6, weeksLeft: 20 }],
         tools: [{ id: 'remodelEntertainer', gain: 30, week: 9, weeksLeft: 18 }],
+        shelf: {
+          tool: { offered: 3, couldPay: 2, zero: 1 },
+          fixture: { offered: 1, couldPay: 0, zero: 1 },
+        },
+        holds: { made: 3, back: 2, bought: 1, dropped: 1 },
       },
     });
     const text = report(CONTENT, [rich, b], 'synthetic');
@@ -376,6 +392,12 @@ describe('the aggregation', () => {
       'bought, never used',
       'Remodel Plans: Entertainer',
       '+1 reroll',
+      // D-192: per visit (neither record counts a visit, so it's per one), then by kind.
+      'Goods on offer per visit: 4.0 · could pay in the house 50% · the shop bot values at 0 50%',
+      'tools 3 (67%, 33%)',
+      'fixtures 1 (0%, 100%)',
+      // D-196: per run, then shares: back of those made, bought of those back.
+      'Holds per run: 1.50 · back on a later shelf 67% · bought 50% of those · dropped 1',
       // D-157: per run, then each struck type (a run strikes a type once).
       'Strikes per run: used 1.00 · bought 0.50 · held at the end 1.50',
       'Struck type',
@@ -413,6 +435,10 @@ describe('a real run’s record', () => {
       .filter(([id]) => CONTENT.pieces[id as keyof typeof CONTENT.pieces].wall)
       .reduce((n, [, p]) => n + p.offered, 0);
     expect(record.wallOffers.reduce((n, x) => n + x, 0)).toBe(walls);
+    // D-197: the stock's Fence comes with the run (the General Contractor brings none of its
+    // own), and at most one a milestone after.
+    expect(record.stockWallOffers[0]).toBe(1);
+    for (const n of record.stockWallOffers) expect(n).toBeLessThanOrEqual(1);
     for (const p of stats) {
       expect(p.dead).toBeLessThanOrEqual(p.offered);
       expect(p.zeroWeeks).toBeLessThanOrEqual(p.pieceWeeks);

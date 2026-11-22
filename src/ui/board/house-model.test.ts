@@ -1,5 +1,5 @@
 // The house model (D-097, D-093): walls on every edge between two pieces, Hallways' doors from
-// the rules' links, a front door that faces the street, a door tree that reaches every room,
+// the rules' links (once a room a corridor, D-184), a front door that faces the street, a door tree that reaches every room,
 // windows in outside walls, and the same answer every time.
 
 import fc from 'fast-check';
@@ -20,6 +20,7 @@ import {
   WALL,
   edge,
   hallLinks,
+  heldSets,
   houseModel,
   overlaps,
   pieceModel,
@@ -922,5 +923,125 @@ describe('any house', () => {
       house: h,
     };
     expect(houseModel(h, hallLinks(state))).toBe(houseModel(h, hallLinks(state)));
+  });
+});
+
+describe('a corridor’s doors (D-184)', () => {
+  /** The board's model: the rules' Hallway links and held sets. */
+  function boardModel(h: HouseState): { m: HouseModel; sets: string[] } {
+    const state = {
+      ...rules.newRun({
+        seed: 'house',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
+      house: h,
+    };
+    const sets = heldSets(state);
+    return {
+      m: houseModel(h, hallLinks(state), null, undefined, sets),
+      sets: sets.map((s) => s.set),
+    };
+  }
+  const hallDoors = (m: HouseModel, uid: number) =>
+    m.doors.filter((d) => d.why === 'hall' && (d.a === uid || d.b === uid));
+  /** Each Hallway's corridor (the Hallways open into it with no wall), by its first piece. */
+  function corridors(m: HouseModel): Map<number, number> {
+    const open = openJoints(m);
+    const out = new Map<number, number>();
+    for (const [uid, room] of m.rooms) {
+      if (!CONTENT.pieces[room.defId].connector || out.has(uid)) continue;
+      out.set(uid, uid);
+      const stack = [uid];
+      while (stack.length > 0) {
+        for (const o of open.get(stack.pop()!) ?? []) {
+          if (!out.has(o)) {
+            out.set(o, uid);
+            stack.push(o);
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // A corridor of two Hallways down x = 3: a Living Room along both on the west, a Bedroom and
+  // a Kids' Room across it, one by each Hallway.
+  const specs: Spec[] = [
+    ['hallway', 3, 1, 1],
+    ['hallway', 3, 3, 1],
+    ['livingRoom', 1, 1],
+    ['bedroom', 4, 1],
+    ['kidsRoom', 4, 3],
+  ];
+
+  it('opens once into a room it runs past, not once a Hallway', () => {
+    const h = house(specs);
+    const { m } = boardModel(h);
+    const [hallA, hallB, living, bed, kids] = [1, 2, 3, 4, 5];
+    expect([1, 2, 3, 4].map((y) => roomAt(m, 3, y))).toEqual([hallA, hallA, hallB, hallB]);
+    expect([1, 2, 3].map((y) => roomAt(m, 2, y))).toEqual([living, living, living]);
+    // The Living Room touches both Hallways: one door onto the corridor.
+    expect(hallDoors(m, living)).toHaveLength(1);
+    expect(hallDoors(m, bed)).toHaveLength(1);
+    expect(hallDoors(m, kids)).toHaveLength(1);
+    expect(reachable(m).size).toBe(m.rooms.size);
+    expect(m.doors.filter((d) => d.why === 'hall')).toHaveLength(3);
+  });
+
+  it('opens into a room once from each corridor it is on', () => {
+    // A second corridor, a Hallway down x = 0 west of the Living Room, apart from the first.
+    const h = house([...specs, ['hallway', 0, 2, 1]]);
+    const { m } = boardModel(h);
+    const [living, west] = [3, 6];
+    expect([2, 3].map((y) => roomAt(m, 0, y))).toEqual([west, west]);
+    const doors = hallDoors(m, living);
+    expect(doors).toHaveLength(2);
+    const halls = doors.map((d) => (d.a === living ? d.b : d.a)).sort();
+    expect(new Set(halls.map((u) => corridors(m).get(u))).size).toBe(2);
+    expect(halls).toContain(west);
+  });
+
+  it('leaves a Suite’s Bathroom to open off its Bedroom, as an en-suite does', () => {
+    // A Bedroom with its Closet and Bathroom below it, a corridor down x = 3 past the Bedroom and
+    // the Bathroom, and a Kids' Room across it.
+    const h = house([
+      ['bedroom', 1, 1],
+      ['closet', 1, 3],
+      ['bathroom', 2, 3],
+      ['hallway', 3, 1, 1],
+      ['hallway', 3, 3, 1],
+      ['kidsRoom', 4, 1],
+    ]);
+    const { m, sets } = boardModel(h);
+    expect(sets).toContain('suite');
+    const [bed, closet, bath, , hallB] = [1, 2, 3, 4, 5];
+    expect(roomAt(m, 3, 3)).toBe(hallB); // the Bathroom touches the corridor
+    expect(doorBetween(m, bed, bath)?.why).toBe('set');
+    expect(doorBetween(m, bed, closet)?.why).toBe('set');
+    expect(hallDoors(m, bath)).toHaveLength(0);
+    expect(hallDoors(m, bed)).toHaveLength(1);
+    expect(reachable(m).size).toBe(m.rooms.size);
+  });
+
+  it('opens each corridor into a room at most once, in any house', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
+        const { m } = boardModel(randomHouse(seed));
+        const corridor = corridors(m);
+        const seen = new Set<string>();
+        for (const d of m.doors) {
+          if (d.why !== 'hall') continue;
+          const hall = corridor.has(d.a) ? d.a : d.b;
+          const room = hall === d.a ? d.b : d.a;
+          expect(corridor.has(room), `seed ${seed}`).toBe(false);
+          const k = `${corridor.get(hall)}-${room}`;
+          expect(seen.has(k), `seed ${seed}: ${k}`).toBe(false);
+          seen.add(k);
+        }
+      }),
+      { numRuns: 200 },
+    );
   });
 });

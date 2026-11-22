@@ -36,29 +36,35 @@ export const LAYER = {
    * D-181: each finished room's light shares it, right after its own tops (HouseLayers.tsx).
    */
   overhang: 7,
+  /**
+   * The house building itself at the end of a run (D-187, canvas): the lot as it stood, painted
+   * over the live lot and the household (on the overhang's layer), under the tree tops and the
+   * lot's life, so the street's crowd and walkers stay in front.
+   */
+  timelapse: 8,
   /** Kept for a roof over the house (D-097). Nothing draws here since D-147 took the roof out. */
-  roof: 8,
+  roof: 9,
   /** Tree tops above their own cells, over the lot and the row above it (canvas). */
-  canopy: 9,
+  canopy: 10,
   /**
    * A change order's rain over the lot (D-180): over the tree tops and the lot's life, under the
    * highlights, the labels and the ghost, so they read through it.
    */
-  weather: 10,
+  weather: 11,
   /** The tally's active piece, a held set's and the preview's sets, each piece's flash (SVG). */
-  highlights: 11,
+  highlights: 12,
   /** Digits, fixture and unmet badges, the street's label. */
-  labels: 12,
+  labels: 13,
   /** Demolish, install, and tool targets. */
-  targets: 13,
+  targets: 14,
   /** The piece being placed. */
-  ghost: 14,
+  ghost: 15,
   /** The placement preview's per-piece badges. */
-  badges: 15,
+  badges: 16,
   /** The ghost's score change and its reason. */
-  ghostText: 16,
+  ghostText: 17,
   /** Tally popups. */
-  popups: 17,
+  popups: 18,
 } as const;
 
 export type LayerName = keyof typeof LAYER;

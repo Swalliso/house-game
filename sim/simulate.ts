@@ -5,7 +5,8 @@
 // probe after milestone 3, and the economy; and for §8's M3 and M4 reports, per-piece offers,
 // picks and earnings, the score layers, flat points by source, house siting, early
 // completions, strikes used from the hand (D-157), and reserve cards played by where they came
-// from (D-160: the standing stock and what the client brought among them).
+// from (D-160: the standing stock and what the client brought among them; D-188: the wrong
+// delivery).
 //
 // A bot that loops or breaks must not hang CI or sink a sweep without a trace (§9): each run
 // caps its steps per week and in all, and any throw from the policy or from apply() comes back
@@ -38,15 +39,17 @@ import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../s
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
 import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
+import { goodValue } from './policies/shop.ts';
 
 /** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
-export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock';
+export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise';
 
 export function reserveSource(r: ReservePiece): ReserveSource {
   if (r.crew) return 'crew';
   if (r.arrival !== undefined) return 'arrival';
   if (r.client) return 'client';
   if (r.stock) return 'stock';
+  if (r.surprise) return 'surprise';
   return 'own';
 }
 
@@ -103,11 +106,17 @@ export interface RunRecord {
   struck: { type: string; week: number; phase: number }[];
   /**
    * D-160: reserve cards played (placed or renovated with), by where they came from: bought,
-   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's.
+   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's, and
+   * (D-188) the wrong delivery's.
    */
   reservePlays: Record<ReserveSource, number>;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
   wallOffers: number[];
+  /**
+   * D-197: Fence-type cards the standing stock (D-160) brought to Your goods, per phase (index =
+   * the phase they came in): what the run started with, then each of the stock's deliveries.
+   */
+  stockWallOffers: number[];
   /** The score when the run ended (early bonuses included). */
   finalScore: number;
   /** The finished house, by the systems review's measures (house.ts). */
@@ -250,6 +259,33 @@ export interface Economy {
   }[];
   /** Each tool use and the change to that week's total. */
   tools: { id: string; gain: number; week: number; weeksLeft: number }[];
+  /**
+   * D-192: the goods on offer (each visit and refresh; the services aside), by kind: how many,
+   * how many the rules said could pay in the house as it stood (`canPay`), and how many the
+   * shop bot valued at 0 there (sim/policies/shop.ts's goodValue, whoever was playing).
+   */
+  shelf: Record<string, ShelfCount>;
+  /** D-196: the run's holds, from hold to purchase. */
+  holds: HoldCount;
+}
+
+/**
+ * D-196: goods held (each hold, a moved one included); holds whose good was back on a later
+ * visit's shelf (once each); of those, bought there or after; and holds dropped (the run came to
+ * own the good, or its type reached its limit).
+ */
+export interface HoldCount {
+  made: number;
+  back: number;
+  bought: number;
+  dropped: number;
+}
+
+/** D-192: one kind of good's offers, those that could pay, and those the shop bot valued at 0. */
+export interface ShelfCount {
+  offered: number;
+  couldPay: number;
+  zero: number;
 }
 
 export function goodKey(o: ShopOffer | PickOption): string {
@@ -266,6 +302,11 @@ export interface SimOptions {
   deadCards?: boolean;
   /** Probe the enclosure cost at the start of this phase (0-based); null to skip. */
   probePhase?: number | null;
+  /**
+   * D-192: count each shelf's goods that could pay and that the shop bot values at 0 (default
+   * on). The benchmark gate turns it off, as it does the probe: it measures, it doesn't play.
+   */
+  shelfCounts?: boolean;
   /** Stop after this many weeks (for benchmarks and quick checks). */
   maxWeeks?: number;
   /** A SimError past this many actions in one week of the run (default 400). */
@@ -451,6 +492,24 @@ export function simulateRun(
     strikesHeld: 0,
     installs: [],
     tools: [],
+    shelf: {},
+    holds: { made: 0, back: 0, bought: 0, dropped: 0 },
+  };
+  /** D-196: the hold now, the visit it was made in, and whether its good has been back since. */
+  let hold: { visit: number; back: boolean } | null = null;
+  /**
+   * D-192: the shelf as it opened or refreshed, read from the state with it on screen. The
+   * shop bot's crate samples come from a stream of their own, so the bot's play is untouched.
+   */
+  const countShelf = (at: RunState, offers: readonly ShopOffer[]) => {
+    const rng = stream(seed, `shelf/${at.week}/${economy.visits}/${economy.refreshes}`);
+    for (const o of offers) {
+      if (o.kind === 'service') continue;
+      const c = (economy.shelf[o.kind] ??= { offered: 0, couldPay: 0, zero: 0 });
+      c.offered++;
+      if (rules.canPay(at, o)) c.couldPay++;
+      if (goodValue(rules, at, o, rng, { salt: 0 }) <= 0) c.zero++;
+    }
   };
   const pieces: Record<string, PieceStats> = {};
   const layers = { comfort: 0, charm: 0, sparkle: 0 };
@@ -464,8 +523,20 @@ export function simulateRun(
     arrival: 0,
     client: 0,
     stock: 0,
+    surprise: 0,
   };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
+  const stockWallOffers = Array.from({ length: phaseCount }, () => 0);
+  /** D-197: the stock's Fence-type cards, from a `delivered` event or the run's first state. */
+  const stockWalls = (phase: number, ids: readonly PieceId[]) => {
+    if (phase >= phaseCount) return;
+    for (const id of ids) if (content.pieces[id].wall) stockWallOffers[phase]!++;
+  };
+  // The stock a run starts with comes with newRun(), which returns no events.
+  stockWalls(
+    s.phase,
+    s.reserve.filter((r) => r.stock).map((r) => r.id),
+  );
   let firstRow = NaN;
   let firstIndoorRow: number | null = null;
   let occ: Occupancy | null = null;
@@ -782,6 +853,8 @@ export function simulateRun(
         if (firstIndoorRow === null && def.category === 'indoor') firstIndoorRow = row;
       } else if (e.t === 'handDrawn') {
         drawn ||= !e.reroll && !e.special;
+      } else if (e.t === 'delivered') {
+        if (e.from === 'stock') stockWalls(e.phase, e.cards);
       } else if (e.t === 'milestone') {
         milestones.push({ phase: e.phase, result: e.result, score: e.score, target: e.target });
         overtimeUsed += e.overtimeUsed;
@@ -797,14 +870,30 @@ export function simulateRun(
           economy.finalReward = e.reward.budget;
           economy.leftoverWow = e.reward.leftover?.score ?? 0;
         }
+      } else if (e.t === 'goodHeld') {
+        if (e.held) economy.holds.made++;
+        hold = e.held ? { visit: economy.visits, back: false } : null;
+      } else if (e.t === 'holdDropped') {
+        economy.holds.dropped++;
+        hold = null;
       } else if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
         if (e.t === 'shopOpened') economy.visits++;
         else economy.refreshes++;
+        if (e.t === 'shopOpened' && hold && state.held && !hold.back) {
+          hold.back = true;
+          economy.holds.back++;
+        }
         for (const o of e.offers) bump(economy.offered, goodKey(o));
+        if (opts.shelfCounts ?? true) countShelf(state, e.offers);
       } else if (e.t === 'crateOpened') {
         for (const o of e.options) bump(economy.inCrates, goodKey(o));
       } else if (e.t === 'bought') {
         bump(economy.bought, goodKey(e.offer));
+        // D-196: buying the held good ends its hold.
+        if (hold && s.held && !state.held) {
+          if (hold.back) economy.holds.bought++;
+          hold = null;
+        }
         if (e.offer.kind === 'service' && e.offer.service === 'reroll') {
           economy.bonusRerollsBought++;
         }
@@ -887,6 +976,7 @@ export function simulateRun(
       struck,
       reservePlays,
       wallOffers,
+      stockWallOffers,
       finalScore: s.score,
       house: houseStats(content, s.house),
       build,

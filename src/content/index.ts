@@ -562,6 +562,23 @@ export function validateContent(content: Content): string[] {
     problems.push(`${stockAt}: firstJobSlot must be a week of the phase`);
   }
 
+  // D-188: the wrong delivery is pieces the weekly draw never deals (draw weight 0), none of them
+  // a member's room or an Addition, none twice, in a phase of the run.
+  const surprise = content.balance.surpriseDelivery;
+  const surpriseAt = 'balance surpriseDelivery';
+  for (const id of surprise.pieces) {
+    known(id, surpriseAt);
+    const def = content.pieces[id];
+    if (def && def.drawWeight !== 0) problems.push(`${surpriseAt}: ${id} is in the weekly draw`);
+    if (def && (def.member || def.addition)) {
+      problems.push(`${surpriseAt}: ${id} is a member's room or an Addition`);
+    }
+  }
+  if (new Set(surprise.pieces).size !== surprise.pieces.length) {
+    problems.push(`${surpriseAt}: a piece twice`);
+  }
+  if (!isPhase(surprise.phase)) problems.push(`${surpriseAt}: phase must be a phase of the run`);
+
   // M4b: change orders.
   for (const [key, def] of Object.entries(content.changeOrders)) {
     const where = `change order ${key}`;
@@ -643,6 +660,24 @@ export function validateContent(content: Content): string[] {
     // D-056: ×Mult lives only on Rare blueprints.
     if (def.rarity !== 'rare' && def.modifiers.some((m) => m.kind === 'xMult')) {
       problems.push(`${where}: only Rare blueprints carry ×Mult`);
+    }
+    // D-192: the pieces it pays on name known pieces, and never a host.
+    if (def.paysOn) {
+      const ids: PieceId[] = [];
+      selectorPieceIds(def.paysOn, ids);
+      ids.forEach((id) => known(id, `${where} paysOn`));
+      if (hasHost(def.paysOn)) problems.push(`${where}: paysOn can't name a host`);
+    }
+    // D-192: where it's stocked names lot features, each once.
+    if (def.stockIf) {
+      const has = def.stockIf.lotHas;
+      if (has.length === 0) problems.push(`${where}: stockIf.lotHas names no feature`);
+      if (new Set(has).size !== has.length) problems.push(`${where}: stockIf.lotHas repeats one`);
+      for (const f of has) {
+        if (!Object.hasOwn(content.features, f) || (f as string) === 'street') {
+          problems.push(`${where}: stockIf.lotHas: "${f}" isn't a lot feature`);
+        }
+      }
     }
   }
   for (const [key, def] of Object.entries(content.tools)) {
@@ -739,6 +774,9 @@ export function validateContent(content: Content): string[] {
   }
   for (const [id, p] of Object.entries(shop.services)) {
     if (p.base < 0 || p.step < 0 || p.max < p.base) problems.push(`balance: service ${id} prices`);
+  }
+  if (!Number.isInteger(shop.relevantWeight) || shop.relevantWeight < 1) {
+    problems.push('balance: shop.relevantWeight must be a whole number ≥ 1');
   }
   const v = b.verdicts;
   if (v.length === 0 || v[0]!.minPctOfTarget !== 0)

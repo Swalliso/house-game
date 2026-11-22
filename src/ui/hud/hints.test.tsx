@@ -3,7 +3,7 @@
 // it, instead of offering to fit the lot again. And M4's keys: a change order's sheet takes
 // only Enter, Esc and D, and a pack (D-106) never turns. And the supplies: a tool or a fixture
 // from them is free, so the strip says how it's aimed and never offers Enter (the polish review).
-// And strike mode (D-157): a card's click or number key, twice.
+// And strike mode (D-157): a card's click or number key, twice. And P, a pin (D-186).
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -169,6 +169,7 @@ describe("the strip's keys for M4's plays", () => {
     expect(strip()).toEqual([
       { keys: ['Click'], words: 'the first tile' },
       { keys: ['Enter'], words: 'pass' },
+      { keys: ['P'], words: 'pin it' },
       { keys: ['Esc'], words: 'put it back' },
     ]);
     // With tiles clicked out, a click adds or takes one off, and Esc clears them all.
@@ -183,7 +184,7 @@ describe("the strip's keys for M4's plays", () => {
   it('turns a room, and says when End week renovates one, which has nothing to turn', () => {
     run.value = { ...start, screen: 'build', hand: [{ kind: 'piece', id: 'bedroom' }] };
     selected.value = 0;
-    expect(strip().map((h) => h.keys[0])).toEqual(['R', 'Click', 'Enter', 'Esc']);
+    expect(strip().map((h) => h.keys[0])).toEqual(['R', 'Click', 'Enter', 'P', 'Esc']);
     tentative.value = { t: 'renovate', from: 'hand', i: 0, uid: 1 };
     expect(strip()).toEqual([
       { keys: ['Click'], words: 'move it' },
@@ -198,6 +199,7 @@ describe("the strip's keys for M4's plays", () => {
     expect(strip()).toEqual([
       { keys: ['Click'], words: 'a piece to install it' },
       { keys: ['Enter'], words: 'pass' },
+      { keys: ['P'], words: 'pin it' },
       { keys: ['Esc'], words: 'put it back' },
     ]);
     tentative.value = { t: 'install', from: 'hand', i: 0, uid: 1 };
@@ -333,5 +335,46 @@ describe('strike mode’s keys (D-157)', () => {
     // The first job's first milestone has no Strike yet (D-149, D-157).
     firstJobSeed.value = start.setup.seed;
     expect(strip().some((h) => h.keys.includes('S'))).toBe(false);
+  });
+});
+
+describe('a pin’s key (D-186)', () => {
+  const card = { kind: 'piece', id: 'bedroom' } as const;
+
+  it('offers P on the build strip, as an extra, outside the first job', () => {
+    run.value = { ...start, screen: 'build', hand: [card, card, card, card] };
+    const p = [...walk(Hints())].find(
+      (v) =>
+        hasClass(v, 'hint') &&
+        [...walk(v.props.children as ComponentChildren)].some(
+          (k) => k.type === 'kbd' && text(k) === 'P',
+        ),
+    );
+    expect(p && hasClass(p, 'hint-extra')).toBe(true);
+    expect(strip()).toContainEqual({ keys: ['P'], words: 'pin' });
+    firstJobSeed.value = start.setup.seed;
+    expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
+  });
+
+  it('pins a hand card picked, or unpins it, but not one placed or from Your goods', () => {
+    run.value = { ...start, screen: 'build', hand: [card, card], pinned: 1 };
+    selected.value = 0;
+    expect(strip()).toContainEqual({ keys: ['P'], words: 'pin it' });
+    selected.value = 1;
+    expect(strip()).toContainEqual({ keys: ['P'], words: 'unpin it' });
+    // Placed, it's the week's build: a pin on it would go with it.
+    tentative.value = { t: 'place', from: 'hand', i: 1, x: 4, y: 4, rot: 0 };
+    expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
+    tentative.value = null;
+    run.value = { ...start, screen: 'build', reserve: [{ id: 'bedroom' }] };
+    source.value = 'reserve';
+    selected.value = 0;
+    expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
+    // Strike mode's cards are its targets.
+    run.value = { ...start, screen: 'build', hand: [card, card] };
+    source.value = 'hand';
+    selected.value = null;
+    tool.value = 'strike';
+    expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
   });
 });

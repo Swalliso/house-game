@@ -21,6 +21,7 @@ import {
   CONTENT,
   definite,
   isFinished,
+  plural,
   rewardText,
   rules,
   SCORE_LABELS,
@@ -278,11 +279,12 @@ export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(nul
  */
 export const walkIn = signal<{ arrival: ArrivalId; id: number } | null>(null);
 /**
- * D-160: the standing stock's or the client's cards, or (D-171) the crew's, just in the reserve:
- * the reserve slots (`slots`, by index) that pop in, after `delayMs`.
+ * D-160: the standing stock's or the client's cards, (D-171) the crew's, or (D-188) the wrong
+ * delivery's piece, just in the reserve: the reserve slots (`slots`, by index) that pop in, after
+ * `delayMs`. `from` is the last of the week's deliveries; `slots` holds them all.
  */
 export const justDelivered = signal<{
-  from: 'client' | 'stock' | 'crew';
+  from: 'client' | 'stock' | 'crew' | 'surprise';
   slots: readonly number[];
   delayMs: number;
   id: number;
@@ -300,6 +302,8 @@ export const fxHooks: {
 } = { wobble: () => {}, shake: () => {}, zoom: () => {}, toScreen: () => null };
 
 let nextId = 1;
+/** D-188: the state the showing delivery pop was taken from, so a week's deliveries pop together. */
+let deliveredAfter: RunState | null = null;
 let skipping = false;
 let holding = false;
 let accelerator = 0;
@@ -1700,6 +1704,14 @@ function shopBeat(e: GameEvent): void {
       // Strikes too. The ×Mult bell ('stamp') is for ×Mult only (§12, Sound; D-058).
       audio.play('buy');
       break;
+    case 'goodHeld':
+      // D-196: a pushpin going in, or coming out (higher and lighter), as the hand's (D-186).
+      audio.play('pin', e.held ? undefined : { rate: 1.35, gain: 0.8 });
+      break;
+    case 'holdDropped':
+      // D-196: a pin coming out, after the shop's chime; the line over the shelves says why.
+      audio.play('pin', { rate: 1.35, gain: 0.6, delay: 0.35 });
+      break;
     case 'picked':
       if (e.option === null) audio.play('rotate', { rate: 0.8 });
       break;
@@ -1764,15 +1776,17 @@ function sheetBeat(e: GameEvent, after: RunState): void {
  * they never play): the cards pop into the reserve's extra slots with a soft shimmer, and nothing
  * holds the week up. They're the reserve's last cards of their mark. A member arriving the same
  * week comes first in the events: then they wait for the doorbell and pop with the member's, and
- * the arrival's shimmer is theirs too.
+ * the arrival's shimmer is theirs too. D-188: a week can bring several (the stock's, the crew's
+ * and the wrong delivery's at Framing): each adds its slots to the week's pop, so none is lost.
  */
 function deliveredBeat(e: Extract<GameEvent, { t: 'delivered' }>, after: RunState): void {
-  const marked = after.reserve.flatMap((r, i) =>
-    (e.from === 'stock' ? r.stock : e.from === 'crew' ? r.crew : r.client) ? [i] : [],
-  );
+  const marked = after.reserve.flatMap((r, i) => (r[e.from] ? [i] : []));
   const withMember = justArrived.value !== null;
   const delayMs = withMember ? FEEL.arrival.landDelayMs : 0;
-  const pop = { from: e.from, slots: marked.slice(-e.cards.length), delayMs, id: nextId++ };
+  const same = justDelivered.value !== null && deliveredAfter === after;
+  const slots = [...(same ? justDelivered.value!.slots : []), ...marked.slice(-e.cards.length)];
+  const pop = { from: e.from, slots, delayMs, id: nextId++ };
+  deliveredAfter = after;
   justDelivered.value = pop;
   setTimeout(() => {
     if (justDelivered.value?.id === pop.id) justDelivered.value = null;
@@ -1905,10 +1919,12 @@ function transformBeat(e: Extract<GameEvent, { t: 'transformed' }>, after: RunSt
   const from = capitalize(definite(CONTENT.pieces[e.defId].name));
   const into =
     'feature' in e.into ? CONTENT.features[e.into.feature].name : CONTENT.pieces[e.into.piece].name;
+  // A pack's tiles each become one (D-195): "The Sapling grew into 3 Trees!"
+  const n = 'feature' in e.into ? cells.length : 1;
   popup(
     Math.min(w * 0.75, Math.max(w * 0.25, x)),
     Math.max(1.5, y),
-    `${from} grew into ${article(into)}!`,
+    `${from} grew into ${n > 1 ? `${n} ${plural(into)}` : article(into)}!`,
     'note',
     FEEL.transform.stepMs,
   );
@@ -2017,14 +2033,61 @@ function strikeBeat(e: Extract<GameEvent, { t: 'cardStruck' }>): void {
   });
 }
 
+// ---------------------------------------------------------------------------------------
+// Pins (D-186). Like a strike's, their beats play on the hand, outside the chain, and the next
+// action finishes them at once.
+
+/**
+ * A hand dealt around a kept card (FEEL.pin): the card last week's pin kept stays put while the
+ * hand's other cards slide in, one after another. `kept` is its slot.
+ */
+export const dealView = signal<{ id: number; kept: number } | null>(null);
+
+let dealTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Ends a deal at once: every card in its slot. */
+export function finishDeal(): void {
+  clearTimeout(dealTimer);
+  dealTimer = undefined;
+  dealView.value = null;
+}
+
+/** A pushpin going in, or coming out (higher and lighter). Its stab is the hand's (hand.css). */
+function pinBeat(e: Extract<GameEvent, { t: 'cardPinned' }>): void {
+  audio.play('pin', e.pinned ? undefined : { rate: 1.35, gain: 0.8 });
+}
+
+/**
+ * A hand drawn with a kept card in it: a new week's after a pin, or a reroll's or the Catalog's
+ * (D-186). It deals in around the kept card, with motion on; the hand renders it from here, so
+ * the beat starts before this action's render and no card shows at rest first.
+ */
+function dealBeat(e: Extract<GameEvent, { t: 'handDrawn' }>): void {
+  if (e.kept === undefined || !motion() || instantTally.value) return;
+  const f = FEEL.pin;
+  const id = nextId++;
+  dealView.value = { id, kept: e.kept };
+  const others = Math.max(0, e.hand.length - 1);
+  dealTimer = setTimeout(
+    () => {
+      if (dealView.value?.id === id) dealView.value = null;
+    },
+    f.dealMs + f.staggerMs * Math.max(0, others - 1),
+  );
+}
+
 onEvents((events, before, after) => {
   // D-157: a strike's beat starts now, before this action's render, so its slot never shows the
   // new card first; any action finishes the last one's at once; and one that strikes nothing
   // clears the strike's words, so the hand's status line never reads them out again (with a
   // count of strikes left that may be stale by then).
   finishStrike();
+  // D-186: so does a deal, and a hand drawn around a kept card deals in.
+  finishDeal();
   let struck = false;
   for (const e of events) {
+    if (e.t === 'cardPinned') pinBeat(e);
+    if (e.t === 'handDrawn') dealBeat(e);
     if (e.t !== 'cardStruck') continue;
     struck = true;
     strikeBeat(e);
@@ -2048,8 +2111,9 @@ onEvents((events, before, after) => {
 onRunReset(() => {
   generation++;
   skipping = true;
-  // D-157: a strike's beat and its words go with the run.
+  // D-157: a strike's beat and its words go with the run, and D-186's deal.
   finishStrike();
+  finishDeal();
   struckSaid.value = '';
   batch(() => {
     popups.value = [];

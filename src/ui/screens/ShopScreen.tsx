@@ -5,6 +5,9 @@
 // fixture, on sale or in a crate, says what it's worth in your house (D-107): the rules'
 // fixtureValue() does that. So does each blueprint, the free Housewarming pick included (D-141):
 // the rules' blueprintValue() does that, and each has its own icon (sprites.ts BLUEPRINT_ICONS).
+// And so does each piece and tool, on the shelf or in an open crate (D-193): the rules'
+// pieceValue() and toolValue(), a piece's just after the shop paints, as its search is the
+// dearest. A crate itself and an upgrade have no line.
 //
 // M5a draws it as a wood sheet over the board: the budget as the header's hero counter, the
 // goods as paper cards of one size packed onto shelves (each with its art, its kind and
@@ -15,18 +18,32 @@
 // The first job's shops run a shop behind (D-158; first-job.ts shopStageOf): its first is the
 // housewarming gift alone, its second has the shelves any run's first shop has, and from its
 // third it's the whole yard. A line under the shelves says what's still to come.
+//
+// D-196: each good wears the hand's pushpin (D-186) at its top corner, to hold it for the next
+// visit: red on the one held, which comes back pinned. A line over the shelves says when a held
+// good couldn't come back. The last shop, with no shop after it, has no pins to set, and the
+// first job has none at all.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { computed, signal } from '@preact/signals';
+import { computed, effect, signal } from '@preact/signals';
 import {
   CONTENT,
+  definite,
+  HOLD_REASONS,
   lastShopText,
   rules,
+  type Availability,
   type BlueprintId,
   type FixtureId,
   type FixtureValue,
   type OfferView,
+  type PieceId,
+  type PieceValue,
+  type RunState,
   type ServiceId,
+  type ShopVisit,
+  type ToolId,
+  type ToolValue,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
@@ -35,13 +52,15 @@ import { burstAt } from '../fx/particles.ts';
 import { settings } from '../settings.ts';
 import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
-import { shelfShown, shopStage, stageNote, type ShelfId } from '../hud/first-job.ts';
+import { shelfShown, shopStage, shown, stageNote, type ShelfId } from '../hud/first-job.ts';
 import { TagChips } from '../hud/Hand.tsx';
 import { FixtureArt, PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
 import { BLUEPRINT_ICONS, TOOL_ICONS } from '../sprites.ts';
 import {
   BlueprintWorth,
   FixtureWorth,
+  PieceWorth,
+  ToolWorth,
   goodKind,
   goodLines,
   goodName,
@@ -61,7 +80,7 @@ import {
   type CardTone,
   type IconName,
 } from '../kit/kit.tsx';
-import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
+import { buy, holdOffer, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
 import { Notes } from './Overlays.tsx';
 import {
   cardReason,
@@ -93,6 +112,85 @@ const fixtureValues = computed(() => {
 /** A fixture's line: its best host in your house and what it would add (D-107). */
 function Worth({ id }: { id: FixtureId }) {
   return <FixtureWorth value={fixtureValues.value.get(id) ?? null} />;
+}
+
+/** The goods on the shelf not yet sold, and an open crate's options. */
+function goodsOnOffer(s: RunState) {
+  const shelf = (s.offers?.shop?.offers ?? []).filter((o) => !('sold' in o && o.sold));
+  return [...shelf, ...(s.offers?.pick?.options ?? [])];
+}
+
+/**
+ * D-193: what each tool on offer (or in an open crate) would do for your house, from the rules'
+ * toolValue(): once per state, not per render.
+ */
+const toolValues = computed(() => {
+  const s = run.value;
+  const out = new Map<ToolId, ToolValue | null>();
+  if (s.screen !== 'shop') return out;
+  for (const o of goodsOnOffer(s)) {
+    if (o.kind === 'tool' && !out.has(o.id)) out.set(o.id, rules.toolValue(s, o.id));
+  }
+  return out;
+});
+
+/** A tool's line: what it would add the week it's used, or what it would do here (D-193). */
+function ToolLine({ id }: { id: ToolId }) {
+  return <ToolWorth value={toolValues.value.get(id) ?? null} />;
+}
+
+/**
+ * D-193: what each piece on offer (or in an open crate) would add at its best spot, from the
+ * rules' pieceValue(). A piece's search is the dearest of the lines (its best few spots tallied,
+ * then each week left), so its line lands just after the shop paints, a piece a task: opening
+ * the shop or a crate, or a refresh, never waits on them. A piece keeps its line from earlier in
+ * the visit until its new one lands, and a click that changes nothing they read (buying a
+ * fixture) costs nothing, as the rules carry the values over.
+ */
+const pieceValues = signal<{ visit: string; values: ReadonlyMap<PieceId, PieceValue | null> }>({
+  visit: '',
+  values: new Map(),
+});
+let pieceJob = 0;
+
+/** After the next paint, as Preact's effects run, or soon where nothing paints (tests). */
+function afterPaint(fn: () => void): void {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(fn));
+  else setTimeout(fn);
+}
+
+effect(() => {
+  const s = run.value;
+  const job = ++pieceJob;
+  if (s.screen !== 'shop') return;
+  const shop = s.offers?.shop;
+  const visit = `${s.phase}/${shop?.number ?? 0}/${shop?.forced ? s.week : ''}`;
+  if (pieceValues.peek().visit !== visit) pieceValues.value = { visit, values: new Map() };
+  const ids = [...new Set(goodsOnOffer(s).flatMap((o) => (o.kind === 'piece' ? [o.id] : [])))];
+  const next = () => {
+    const id = ids.shift();
+    if (job !== pieceJob || id === undefined) return;
+    const values = new Map(pieceValues.peek().values).set(id, rules.pieceValue(s, id));
+    pieceValues.value = { visit, values };
+    if (ids.length > 0) afterPaint(next);
+  };
+  if (ids.length > 0) afterPaint(next);
+});
+
+/**
+ * A piece's line: what it would add at its best spot, and over the run (D-193). Until it lands,
+ * an empty strip holds its place.
+ */
+function PieceLine({ id }: { id: PieceId }) {
+  const { values } = pieceValues.value;
+  if (!values.has(id)) {
+    return (
+      <div class="pcard-worth none" aria-hidden="true">
+        {'\u00a0'}
+      </div>
+    );
+  }
+  return <PieceWorth value={values.get(id) ?? null} />;
 }
 
 /**
@@ -189,6 +287,74 @@ function OfferChips({ good, kind = false }: { good: GoodRef; kind?: boolean }) {
   );
 }
 
+export const HOLD_TIP =
+  'Hold it for the next shop: it comes back in place of a new good of its kind, at that shop’s price. One hold at a time.';
+export const HELD_TIP =
+  'Held for the next shop: it comes back in place of a new good of its kind, at that shop’s price. Click to let it go.';
+export const BACK_TIP = 'Held from your last visit. No shop comes after this one.';
+
+function holdAt(i: number, can: Availability): void {
+  if (!can.ok || !holdOffer(i)) audio.play('illegal');
+}
+
+/**
+ * D-196: a good's pushpin, in the hand's look (D-186): grey on a good not held, red on the one
+ * held for the next visit, stabbing in as it's held and as the shelf it came back to opens. With
+ * no pins to set (`toggles` off: the last shop, or the first job) the held good keeps its red pin
+ * as a mark. None on a service or a sold good. No hooks, so a test can call it in place.
+ */
+export function HoldPin({
+  o,
+  can,
+  toggles,
+}: {
+  o: OfferView;
+  can: Availability;
+  toggles: boolean;
+}) {
+  if (o.offer.kind === 'service' || isSold(o)) return null;
+  if (!toggles) {
+    if (!o.held) return null;
+    return (
+      <span class="hold-pin is-held is-mark" role="img" aria-label={BACK_TIP} data-tip={BACK_TIP}>
+        <Icon name="pin" class="pin-on" />
+      </span>
+    );
+  }
+  const on = !!o.held;
+  return (
+    <button
+      type="button"
+      class={`hold-pin ${on ? 'is-held' : ''}`}
+      aria-pressed={on}
+      aria-label={
+        on ? `Held for the next shop: let ${o.name} go` : `Hold ${o.name} for the next shop`
+      }
+      data-tip={can.ok ? (on ? HELD_TIP : HOLD_TIP) : can.reason}
+      disabled={!can.ok}
+      onMouseDown={noFocus}
+      onClick={() => holdAt(o.i, can)}
+    >
+      {/* Grey, or red under the pointer and once held (shop.css). */}
+      <Icon name="pinOff" class="pin-off" />
+      <Icon name="pin" class="pin-on" />
+    </button>
+  );
+}
+
+/**
+ * D-196: why the good held at the last visit isn't back: the run owns it now, or (a special
+ * piece) its type is at its limit.
+ */
+export function droppedText(dropped: NonNullable<ShopVisit['dropped']>): string {
+  const good = dropped.good as GoodRef;
+  const name =
+    good.kind === 'piece' || good.kind === 'fixture' ? definite(goodName(good)) : goodName(good);
+  return dropped.why === 'owned'
+    ? `Your hold on ${name} is gone: you own it now.`
+    : `Your hold on ${name} is gone: your house has as many as it can take.`;
+}
+
 /** Buy's label: Buy, Full (its reason is at the shelf's tag), or what the budget is short by. */
 function buyLabel(o: OfferView, short: number): string {
   if (fullReason(o) !== null) return 'Full';
@@ -220,6 +386,9 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
   const short = shortBy(o, run.value.budget);
   const alert = cardReason(o) ?? undefined;
   const service = o.offer.kind === 'service' ? o.offer.service : null;
+  // D-196: its pushpin, unless no shop follows this one (or it's the first job, which has none).
+  const hold = rules.canHold(run.value, o.i);
+  const toggles = shown.value.hold && hold.reason !== HOLD_REASONS.lastShop;
   return (
     <Card
       class={`offer kind-${o.offer.kind} ${o.onSale ? 'on-sale' : ''} ${sold ? 'sold' : ''} ${justBought.value === o.i ? 'just-bought' : ''}`}
@@ -242,6 +411,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
       {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" ref={rareRef} />}
+      <HoldPin o={o} can={hold} toggles={toggles} />
       {o.onSale && !sold && (
         <span class="sale-tag">
           <Tip term="sale">Sale</Tip>
@@ -249,6 +419,8 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       )}
       {o.offer.kind === 'fixture' && !sold && <Worth id={o.offer.id} />}
       {o.offer.kind === 'blueprint' && !sold && <Plan id={o.offer.id} />}
+      {o.offer.kind === 'piece' && !sold && <PieceLine id={o.offer.id} />}
+      {o.offer.kind === 'tool' && !sold && <ToolLine id={o.offer.id} />}
       <footer class="offer-foot">
         {sold ? (
           <span class="sold-stamp">Sold</span>
@@ -361,6 +533,7 @@ function CrateOption({
       {rarity === 'rare' && <span class="offer-shine" aria-hidden="true" />}
       {good.kind === 'fixture' && <Worth id={good.id} />}
       {good.kind === 'blueprint' && <Plan id={good.id} />}
+      {good.kind === 'piece' && <PieceLine id={good.id} />}
       <footer class="offer-foot">
         <Button
           size="sm"
@@ -587,6 +760,12 @@ export function ShopScreen() {
       </header>
       <Notes docked />
       <div class={`panel-body shop-body ${stage === 'gift' ? 'gift-only' : ''}`}>
+        {visit.dropped && (
+          <p class="shop-dropped" role="note">
+            <Icon name="pinOff" />
+            <span>{droppedText(visit.dropped)}</span>
+          </p>
+        )}
         <div class="shelves">
           {shelves.map(({ id, ...shelf }, k) => (
             <Section key={id} {...shelf} full={full[k]!} />

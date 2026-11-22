@@ -1,7 +1,8 @@
 // The household on the board (D-177): who is drawn, a member with a room standing in its doorway
 // clear of the walls and in front of the furniture, the others waiting at the front door or the
 // kerb side by side, sorted in with the furniture by their feet, and the walk up from the street
-// around what stands in the yard, and when it plays.
+// around what stands in the yard, and when it plays. D-185: standing, they breathe, and an adult
+// reads or takes a call now and then, every frame of it clear of the walls and the furniture.
 
 import { readFileSync } from 'node:fs';
 import fc from 'fast-check';
@@ -25,7 +26,7 @@ import { paintWalls, type Pixels } from '../art/house-paint.ts';
 import { itemRows, roomItems, type Item } from '../art/rooms.ts';
 import { yardModel } from '../art/yard.ts';
 import { FEEL } from '../fx/feel.ts';
-import { CELL, spriteFrames, spritePos } from '../sprites.ts';
+import { CELL, spriteFrames, spritePos, type SpriteId } from '../sprites.ts';
 import { floorTop, hallLinks, houseModel, type HouseModel, type Rect } from './house-model.ts';
 import {
   CAST,
@@ -39,8 +40,11 @@ import {
   besideWaiting,
   doorSpots,
   householdBoxes,
+  isPerson,
   kerbSpots,
+  looks,
   overLine,
+  pace,
   people,
   personItem,
   roomPeople,
@@ -56,14 +60,45 @@ import { walkNow } from './PeopleLayer.tsx';
 
 const png = decodePng(readFileSync(new URL('../../../assets/atlas.png', import.meta.url)), 'atlas');
 
-/** Whether pixel (x, y) of an atlas sprite or one of our drawings is drawn. */
-function opaque(id: ArtId, x: number, y: number): boolean {
+/** Whether pixel (x, y) of an atlas sprite or one of our drawings is drawn, in frame `k`. */
+function opaque(id: ArtId, x: number, y: number, k = 0): boolean {
   if (isDrawing(id)) {
     const d = drawingPixels(id);
-    return d.data[(y * d.w * d.frames + x) * 4 + 3]! > 0;
+    return d.data[(y * d.w * d.frames + k * d.w + x) * 4 + 3]! > 0;
   }
   const s = spritePos(id);
-  return png.rgba[((s.y + y) * png.width + s.x + x) * 4 + 3]! > 0;
+  const at = s.x + k * (spriteFrames(id)?.stride ?? 0) + x;
+  return png.rgba[((s.y + y) * png.width + at) * 4 + 3]! > 0;
+}
+
+/** Every frame a member shows standing (D-185): each of their looks' frames, as [sprite, k]. */
+function framesOf(cast: Person['cast']): (readonly [SpriteId, number])[] {
+  return looks(cast).flatMap((id) =>
+    Array.from({ length: spriteFrames(id)?.frames ?? 1 }, (_, k) => [id, k] as const),
+  );
+}
+
+const shapes = new Map<Person['cast'], (readonly [SpriteId, number])[]>();
+
+/**
+ * framesOf's frames with a shape of their own, the first of each: two frames that draw the same
+ * pixels (a breath's first and last, a book held still) are covered alike.
+ */
+function shapesOf(cast: Person['cast']): (readonly [SpriteId, number])[] {
+  let out = shapes.get(cast);
+  if (!out) {
+    const seen = new Set<string>();
+    out = framesOf(cast).filter(([id, k]) => {
+      const { w, h } = spritePos(id);
+      let key = '';
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) key += opaque(id, x, y, k) ? 1 : 0;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    shapes.set(cast, out);
+  }
+  return out;
 }
 
 type Spec = readonly [PieceId, number, number, Rot?];
@@ -133,18 +168,19 @@ function wallAlpha(walls: Pixels | null, x: number, y: number): number {
 /**
  * How many of a member's pixels their room's furniture covers, as the board draws it: a piece
  * after them in the room's items (withPeople) covers them where both are drawn, and a piece's rows
- * on the overhang (above the walls) cover every row of theirs under the walls.
+ * on the overhang (above the walls) cover every row of theirs under the walls. D-185: in frame
+ * `frame` of `look`, one of the strips they show standing (their stand's first by default).
  */
-function coveredPixels(m: HouseModel, p: Person): number {
+function coveredPixels(m: HouseModel, p: Person, look: SpriteId = p.cast.stand, frame = 0): number {
   const me = personItem(m, p);
   const items = withPeople(roomItems(m, p.uid), [me]);
   const at = items.indexOf(me);
   const myTop = itemRows(me).top;
-  const { w, h } = artSize(me.sprite);
+  const { w, h } = artSize(look);
   let n = 0;
   for (let j = 0; j < h; j++) {
     for (let i = 0; i < w; i++) {
-      if (!opaque(me.sprite, i, j)) continue;
+      if (!opaque(look, i, j, frame)) continue;
       const raised = myTop !== null && j < myTop[1];
       const hit = items.some((it, k) => {
         if (k === at) return false;
@@ -164,13 +200,16 @@ function coveredPixels(m: HouseModel, p: Person): number {
   return n;
 }
 
-/** A figure's outermost columns' pixels, its arms: what a piece flush with a door's clear floor may cover. */
-function arms(p: Person): number {
-  const { w, h } = artSize(p.cast.stand);
+/**
+ * A figure's outermost columns' pixels, its arms: what a piece flush with a door's clear floor may
+ * cover. In frame `k` of `look` (D-185).
+ */
+function arms(look: SpriteId, k = 0): number {
+  const { w, h } = artSize(look);
   let n = 0;
   for (let j = 0; j < h; j++) {
-    if (opaque(p.cast.stand, 0, j)) n++;
-    if (opaque(p.cast.stand, w - 1, j)) n++;
+    if (opaque(look, 0, j, k)) n++;
+    if (opaque(look, w - 1, j, k)) n++;
   }
   return n;
 }
@@ -179,8 +218,9 @@ function arms(p: Person): number {
  * What a member in a room must be: their feet on its floor, below its north walls' faces; no
  * pixel of the walls canvas (drawn over the rooms' items: the bands, and a doorway's threshold)
  * under the figure below the line it rises over, and that line above their legs; no more of them
- * covered by the room's furniture than their arms; and near one of the room's doors, within a
- * cell and a half of the floor it keeps clear.
+ * covered by the room's furniture than their arms, in every frame they show standing (D-185: a
+ * breath, a book, a phone); and near one of the room's doors, within a cell and a half of the
+ * floor it keeps clear.
  */
 function checkInRoom(m: HouseModel, p: Person): void {
   const room = m.rooms.get(p.uid)!;
@@ -209,9 +249,12 @@ function checkInRoom(m: HouseModel, p: Person): void {
       ).toBe(0);
     }
   }
-  expect(coveredPixels(m, p), `${room.defId}: furniture in front of them`).toBeLessThanOrEqual(
-    arms(p),
-  );
+  for (const [look, k] of shapesOf(p.cast)) {
+    expect(
+      coveredPixels(m, p, look, k),
+      `${room.defId}: furniture in front of them (${look} frame ${k})`,
+    ).toBeLessThanOrEqual(arms(look, k));
+  }
   const clears = [
     ...m.doors.filter((d) => d.a === p.uid || d.b === p.uid).map((d) => d.clear),
     ...m.exits.filter((e) => e.uid === p.uid).map((e) => e.clear),
@@ -233,15 +276,132 @@ describe('the cast', () => {
     expect(new Set(CASTED)).toEqual(new Set(members.filter((id) => id !== 'twins')));
     for (const id of CASTED) {
       const cast = CAST[id]!;
-      for (const sprite of [cast.stand, cast.walk]) {
+      for (const sprite of [...looks(cast), cast.walk]) {
         const { w, h } = spritePos(sprite);
         expect([w, h], sprite).toEqual([FIGURE.w, FIGURE.h]);
       }
-      expect(spriteFrames(cast.stand), cast.stand).toBeNull();
+      // D-185: standing, the sheet's idle; an adult's book and phone, loops of their own.
+      expect(spriteFrames(cast.stand)?.frames, cast.stand).toBe(6);
       expect(spriteFrames(cast.walk)?.frames, cast.walk).toBe(6);
       expect(spritePos(cast.suitcase).h, cast.suitcase).toBeLessThan(FIGURE.h);
       expect(spritePos(cast.suitcase).w, cast.suitcase).toBe(SUITCASE_W);
     }
+    // Every adult reads and takes a call; Ivy's kids' parts have neither.
+    for (const id of ['grandma', 'renfield', 'nana', 'rowan'] as const) {
+      expect(spriteFrames(CAST[id]!.read!)?.frames, id).toBe(12);
+      expect(spriteFrames(CAST[id]!.phone!)?.frames, id).toBe(6);
+    }
+    expect(looks(CAST.ivy!)).toEqual([CAST.ivy!.stand]);
+  });
+});
+
+describe('standing (D-185)', () => {
+  /** FNV-1a of a sprite's frame `k`, its RGBA: what the board draws of it. */
+  function frameHash(id: SpriteId, k: number): string {
+    const s = spritePos(id);
+    const x0 = s.x + k * (spriteFrames(id)?.stride ?? 0);
+    let h = 0x811c9dc5;
+    for (let y = 0; y < s.h; y++) {
+      for (let x = 0; x < s.w; x++) {
+        const i = ((s.y + y) * png.width + x0 + x) * 4;
+        for (let c = 0; c < 4; c++)
+          h = Math.imul(h ^ (png.rgba[i + 3] ? png.rgba[i + c]! : 0), 0x01000193);
+      }
+    }
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+
+  it('starts on the figure standing still, as it always was', () => {
+    // The stands' first frames, pinned: D-177's standing cuts, pixel for pixel, so a still board
+    // (Reduce motion) and anything drawn from a sprite's first frame (a room's drop) look the same.
+    const STILL: Readonly<Partial<Record<ArrivalId, string>>> = {
+      grandma: '61ce2139',
+      renfield: 'be07ab16',
+      nana: '98cd92df',
+      rowan: 'dcea7d37',
+      ivy: '2bc919f2',
+    };
+    for (const id of CASTED) expect(frameHash(CAST[id]!.stand, 0), id).toBe(STILL[id]);
+  });
+
+  it('breathes a pixel at most, and no frame is cut off at the top', () => {
+    const top = (id: SpriteId, k: number) => {
+      for (let y = 0; y < FIGURE.h; y++) {
+        for (let x = 0; x < FIGURE.w; x++) if (opaque(id, x, y, k)) return y;
+      }
+      return FIGURE.h;
+    };
+    for (const id of CASTED) {
+      const cast = CAST[id]!;
+      const still = top(cast.stand, 0);
+      // The idle rises a pixel, and comes back down.
+      const tops = Array.from({ length: 6 }, (_, k) => top(cast.stand, k));
+      expect(Math.min(...tops), id).toBe(still - 1);
+      expect(Math.max(...tops), id).toBe(still);
+      // Every frame of every strip keeps its top row clear: none was cropped by its cut.
+      for (const [look, k] of framesOf(cast)) {
+        expect(top(look, k), `${look} frame ${k}`).toBeGreaterThan(0);
+        expect(top(look, k), `${look} frame ${k}`).toBeGreaterThanOrEqual(still - 1);
+      }
+    }
+  });
+
+  it('keeps its pace by the run and who it is, never by chance', () => {
+    const f = FEEL.household;
+    const seeds = Array.from({ length: 40 }, (_, i) => `seed-${i}`);
+    for (const id of CASTED) {
+      const cast = CAST[id]!;
+      const paces = seeds.map((s) => pace(id, cast, s));
+      // The same run shows the same.
+      expect(pace(id, cast, 'seed-0')).toEqual(paces[0]);
+      for (const p of paces) {
+        expect(p.idleMs).toBe(f.idleFrameMs);
+        expect(p.busyMs).toBe(f.busyFrameMs);
+        expect(p.delayMs).toBeLessThanOrEqual(0);
+        if (!cast.read) {
+          // Ivy only breathes: somewhere in her idle's loop.
+          expect(p.turnsMs).toBe(0);
+          expect(-p.delayMs).toBeLessThan(6 * f.idleFrameMs);
+          continue;
+        }
+        // Two turns, each between FEEL's ends and whole loops of the book and the phone, so
+        // each opens on its first frame; they start somewhere in them.
+        const turn = p.turnsMs / 2;
+        expect(turn).toBeGreaterThanOrEqual(f.turnMs[0]);
+        expect(turn).toBeLessThanOrEqual(f.turnMs[1]);
+        for (const look of [cast.read, cast.phone!]) {
+          expect(turn % ((spriteFrames(look)?.frames ?? 1) * f.busyFrameMs)).toBe(0);
+        }
+        expect(-p.delayMs).toBeLessThan(p.turnsMs);
+      }
+      // Runs differ: not everyone in step.
+      expect(new Set(paces.map((p) => p.delayMs)).size, id).toBeGreaterThan(30);
+      if (cast.read) expect(new Set(paces.map((p) => p.turnsMs)).size, id).toBeGreaterThan(2);
+    }
+  });
+
+  it('is drawn with every look and the same pace at the door and in their room', () => {
+    const before = setUp('vladislav', ['renfield'], houseOf([['livingRoom', 4, 6]]));
+    const [door] = people(before.state, before.model);
+    expect(door!.pace).toEqual(pace('renfield', CAST.renfield!, before.state.setup.seed));
+    const after = setUp(
+      'vladislav',
+      ['renfield'],
+      houseOf([
+        ['livingRoom', 4, 6],
+        ['renfieldsRoom', 6, 6],
+      ]),
+    );
+    const [inRoom] = people(after.state, after.model);
+    expect(inRoom!.place).toBe('room');
+    expect(inRoom!.pace).toEqual(door!.pace);
+    const item = personItem(after.model, inRoom!);
+    expect(isPerson(item)).toBe(true);
+    expect(item.sprite).toBe(CAST.renfield!.stand);
+    expect(item.looks).toEqual([CAST.renfield!.stand, CAST.renfield!.read, CAST.renfield!.phone]);
+    expect(item.pace).toBe(inRoom!.pace);
+    // The room's own furniture isn't anyone.
+    expect(roomItems(after.model, 2).some(isPerson)).toBe(false);
   });
 });
 
@@ -430,7 +590,9 @@ describe('in their room', () => {
       ]);
       expect(model.exits.some((e) => e.uid === p.uid)).toBe(false);
       checkInRoom(model, p);
-      expect(coveredPixels(model, p), `${id}: covered`).toBe(0);
+      for (const [look, k] of shapesOf(p.cast)) {
+        expect(coveredPixels(model, p, look, k), `${id}: covered (${look} frame ${k})`).toBe(0);
+      }
     }
   });
 
@@ -574,6 +736,7 @@ describe('someone else at the door (D-182)', () => {
     uid: 0,
     x,
     y,
+    pace: pace('grandma', CAST.grandma!, 'people'),
   });
 
   it('counts what each waiting member covers, their suitcase too, and nobody in a room', () => {

@@ -9,7 +9,8 @@
 // it with every crew and client.
 //
 // It picks a kind of action first and an action of that kind second, so a kind with many
-// listed actions (a placement at every spot, a strike per hand card) can't crowd out the rest.
+// listed actions (a placement at every spot, a strike or a pin per hand card, a hold per shop
+// good) can't crowd out the rest.
 // Now and then it picks a kind it hasn't used yet this run. Its cheats keep the run going: in
 // a phase's last week (and each overtime week) an addScore covers the shortfall most of the
 // time, a rare one mid-phase opens early completion, addBudget keeps it shopping, and giveGood
@@ -175,6 +176,8 @@ function buildGroups(
     { kind: 'reroll', weight: 10, actions: of((a) => a.t === 'reroll') },
     // D-157: a strike from the hand, when it holds one and the card's row is above its floor.
     { kind: 'strike', weight: 10, actions: of((a) => a.t === 'strikeCard') },
+    // D-186: a pin on a hand card for next week, moved, or taken off.
+    { kind: 'pin', weight: 8, actions: of((a) => a.t === 'pin') },
     { kind: 'completeEarly', weight: 10, actions: of((a) => a.t === 'completeEarly') },
     { kind: 'demolish', weight: 10, actions: of((a) => a.t === 'demolish') },
     {
@@ -257,6 +260,8 @@ function shopGroups(rules: Rules, s: RunState, rng: Rng, steps: number): Group[]
     ...[...byKind].map(([kind, actions]): Group => ({ kind, weight: 20, actions })),
     { kind: 'sell', weight: 4, actions: sells },
     { kind: 'refreshShop', weight: 6, actions: legal.filter((a) => a.t === 'refreshShop') },
+    // D-196: a hold on a good for the next visit, moved, or let go.
+    { kind: 'hold', weight: 6, actions: legal.filter((a) => a.t === 'hold') },
     { kind: 'leaveShop', weight: steps >= SHOP_STEPS ? 100_000 : 8, actions: [{ t: 'leaveShop' }] },
     {
       kind: null,
