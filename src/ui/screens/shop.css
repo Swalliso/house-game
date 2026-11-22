@@ -399,8 +399,11 @@
 .offer.on-sale {
   --card-band: var(--wood-deep);
 }
-/* The name keeps clear of the tag. */
+/* The name keeps clear of the tag: beside it, and under it, since in the pixel font the tag is
+   wider than the room kept beside the name, and its foot and shadow hung 2 UI px over the
+   name's first line ("Remodel Plans: Suite" lost the top of its l; D-204). */
 .offer.on-sale .pcard-head {
+  padding-top: calc(var(--px) * 2);
   padding-right: calc(var(--px) * 28);
 }
 .sale-tag {
