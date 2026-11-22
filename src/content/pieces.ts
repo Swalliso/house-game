@@ -141,7 +141,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     perHouse: 1, // D-165: A living room or two's "at most one Dining Room"
     effects: [
-      { kind: 'aura', match: { piece: ['kitchen', 'livingRoom'] }, scope: 'adjacent', pct: 50 },
+      // D-201: every Social piece it touches, where it named the Kitchen and the Living Room: a
+      // Patio, a Hot Tub or a Fire Pit by its wall too.
+      { kind: 'aura', match: { tag: 'Social' }, scope: 'adjacent', pct: 50 },
       WHILE_SUNNY(2),
     ],
   },
@@ -356,7 +358,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
       // doesn't block placement, and touching only a Hallway doesn't count.
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
-      { kind: 'neighbor', match: { piece: ['livingRoom', 'kitchen'] }, amount: 2 },
+      // D-201: every Social room, where it named the Living Room and the Kitchen: a Dining Room
+      // too. The Hot Tub and the Fire Pit are Social but aren't rooms.
+      { kind: 'neighbor', match: { all: [{ tag: 'Social' }, { property: 'room' }] }, amount: 2 },
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
       BACK_YARD,
     ],
@@ -428,7 +432,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // It can be built anywhere, but earns only inside a fenced yard.
       { kind: 'requires', condition: { in: 'fencedYard' }, blocksPlacement: false },
       { kind: 'steady', amount: 1 },
-      { kind: 'neighbor', match: { piece: 'lawn' }, amount: 1 },
+      // D-201: anything Green it touches, where it named the Lawn: a Sapling, a Flower Bed, a Herb
+      // Garden, a Greenhouse, or a Tree (a Sapling's, once it grows). One tile touches four at most.
+      { kind: 'neighbor', match: { tag: 'Green' }, amount: 1 },
       BACK_YARD,
     ],
   },
