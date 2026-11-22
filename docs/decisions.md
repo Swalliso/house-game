@@ -959,6 +959,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Changed by D-186 (2026-11-20; Accepted 2026-11-20, the user's playtest):* every hand card has a pushpin in its top corner, beside a swapped-in card's die: grey at rest, red once pinned, and the card it keeps wears a Kept tag the week after. A click on the pin never picks the card. The controls strip gains P ("pin" among its extras, "pin it" with a hand card picked).
 
+**2026-11-22 (D-204, Proposed):** on a sale card the good's name starts 2 UI px lower, under the Sale tag: in the pixel font the tag's foot and shadow hung over the name's first line.
+
 ### D-099 · M5a lot defaults: the terrain in Modern Exteriors
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's lot track, stage 2, and its merge into the phase branch; held up in playtest 5a, confirmed by the team). Implementation details within D-049 and D-097; §12 Art's Rendering bullets describe them.
 **Decision:**
@@ -2202,6 +2204,8 @@ What's still short:
 *Changed by D-167 (2026-11-12; Accepted 2026-11-13, playtest 8):* the score panel keeps to its equation on every window, at rest as well as while a play is looked at. Its sets row and checklist row come in for a tally only, sliding in as it starts and away once it ends, and count as above. The fold row's tip, every set a line, is the Comfort plaque's tip now, and Charm's tip says how much comes from sets and how much from checklist lines. The budget line is as it was.
 
 **2026-11-16 (D-182, Proposed):** the open note on client portraits is answered on the board rather than on these screens: at each milestone met but the last, the client comes to the front door as a figure from Modern Interiors' character generator, with thought bubbles over them and over the pieces they wished for. The job board, the change order and the end screen still show no face; the pack has no portraits.
+
+**2026-11-22 (D-204, Proposed):** picking a tool scrolls Inspect's body to its end, so its Use button, which ends the body above the foot, is in view on a short window too, and the player can scroll back up to the tool's words. In the pixel font at 1280×720, 1366×768 and 1440×900 (2×), a picked Remodel Plans' Use sat under the foot, out of view.
 
 ### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
@@ -4987,6 +4991,28 @@ What the columns mean:
 - **A long hold takes a fresh good's place at every shop** until it's let go (Considered).
 - **The rules allow a hold in a first job;** only the UI hides it, as with the hand's pin (D-186).
 - **The bot's hold is a guess at a player's:** it holds only what it couldn't afford as it leaves, never to save for a good it could buy now, so the trial says what holds do for greedy, not for a person.
+
+### D-204 · Two layout fixes from a browser check: a picked tool's Use comes into view, and the Sale tag clears the good's name
+**Status:** Proposed · 2026-11-22, a fix pull request (`fix/browser-check-layout`) from a browser check of develop (`0e9dc37`) at a phone's, a small tablet's, a laptop's and a wide desktop's sizes, of the screens recent pull requests list as not looked at: the shop's value lines (D-193), Your goods, and the end screen's photos (D-136).
+**Decision:**
+- **Picking a tool scrolls Inspect's body to its end, where Use is** (`useUseInView` in `Inspect.tsx`), once a pick, so the player can scroll back up to the tool's words. A tool's Use button ends the body, above the foot (D-110), and on a short window the words filled the body, so "Use it now" sat out of view under the foot while the controls strip said only Esc. In the pixel font a picked Remodel Plans hid it by 174 px at 1280×720, 126 at 1366×768 and 28 at 1440×900 (2×), and a Weekend Crew by 96 and 48 px at the first two; in the readable font, and from 1536×864 (1.25×) up, it showed. The plank and the foot stay in view either way.
+- **On a sale card, the good's name starts under the Sale tag** (`.offer.on-sale .pcard-head` gains 2 UI px at its top). In the pixel font the tag is wider than the 28 UI px kept beside the name, and its foot and shadow hung 2 UI px over the name's first line at every size ("Remodel Plans: Suite" lost the top of its l).
+
+**Why:** each hid something the player needs, the one way to use a picked tool and the top of a good's name, and each is a small fix in the UI alone.
+
+**Considered:**
+- *Use in Inspect's foot, beside "This week":* always in view, but D-110 (Accepted) puts it at the body's end. The scroll keeps D-110's layout.
+
+**Changes:** none to an Accepted decision: both fixes keep the layouts D-110 and D-098 set, and each has a dated note there. No rules or content change.
+
+**Checked:** in headless Chromium on Vite's dev server, with run codes that reach a late shop with a sale, a crate, Your goods, and a won and a lost end screen (the Hendersons, the Barkers, Dale): Use in view after a pick at 1280×720, 1366×768, 1440×900 (2×), 1536×864 (1.25×), 1728×963 (2×), 1920×1080 and 2560×1440 in both fonts, for Remodel Plans and Weekend Crew (develop hid it at the first three in the pixel font); the Sale tag clear of the name at the same sizes in both fonts. No console errors at any size. `npm test` (164 files; 2,769 tests pass and 1 is skipped), `npm run typecheck`, `npm run format:check`.
+
+**Known gaps:** the check's other findings, none fixed here:
+- **Your goods' value line** (D-193's known gap): pointing at a good there, Inspect's line is below the fold at 1280×720, 1366×768 and 1440×900 (2×). Room for it would change D-110: the user's call, as D-153's note says of a card's sets.
+- **A phone held sideways and a tablet held upright get "Play anyway"** (D-047, D-148), and the game isn't usable there: at 844×390 the shop's body is 28 px tall, and at 768×1024 the panels overlap. Copy link alone on short windows too would change D-148.
+- **The end screen at 1366×768 and 1440×900:** the "It's a house." sign covers the top of the house, as the camera keeps the player's last view.
+- **Below 1280 px wide** (a 1024×768 tablet held sideways, where no notice shows): playable but cramped, with one shop card a row and the photos' captions cut to three letters.
+- Not checked: touch, Firefox, Safari, a real phone.
 
 ### D-192 · The shelf stocks for the house: what can pay in it counts 3 times in its pick, and Waterfront leans on the water
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/shop-for-your-house`, #119) for the user's playtest: the backlog's S22 (`docs/backlog/s22-shop-for-your-house.md`), first in the 2026-11-20 review of the goods people rarely use (https://claude.ai/artifact/VF9nL6jQ4sVpgYri86rm1X), which the user asked for because they find the shop's goods unexciting. Part of the rules batch: it reports its own paired-seed trial and leaves the targets alone; the batch is fitted once, by D-169's method, when the user has picked its stories. It changes Accepted D-013, D-051 and D-143, as the story's Decision log lists, with a dated note on each, and adds a line to D-089's report. A rules and content change: `contentHash(CONTENT)` goes from `4c677dcf` to `1a9d1308` on the develop it was built on, from `bf0c1515` to `ca633fa2` once D-194 merged in, from `4fc924f8` to `5372948b` once D-195 did, and from `77b091aa` to `1c176da1` once D-197 did, so runs in progress drop when it merges, and an old run code plays the same up to its first shop whose shelf the lean changes.

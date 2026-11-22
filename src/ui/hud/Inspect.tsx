@@ -11,6 +11,7 @@
 // type that go with it, a placement that goes too, or why it can't be struck.
 
 import type { ComponentChildren } from 'preact';
+import { useEffect } from 'preact/hooks';
 import {
   cardText,
   CONTENT,
@@ -522,12 +523,29 @@ function BudgetChange({ before, after }: { before: number; after: number }) {
   );
 }
 
+/**
+ * Picking a tool scrolls Inspect's body to its end, where Use is: it ends the body, above the
+ * foot (D-110), and on a short window the tool's words filled the body, so the button sat out of
+ * view under the foot while the controls strip said only Esc. At 1280×720, 1366×768 and 1440×900
+ * a picked Remodel Plans showed no way to use it (D-204). Once per pick, so the player can
+ * scroll back up to the words; the plank and the foot stay in view either way.
+ */
+function useUseInView(id: ToolId, i: number): void {
+  useEffect(() => {
+    const body = document
+      .querySelector<HTMLElement>('.inspect .use-tool')
+      ?.closest<HTMLElement>('.panel-body');
+    if (body && body.scrollHeight > body.clientHeight) body.scrollTop = body.scrollHeight;
+  }, [id, i]);
+}
+
 /** A selected tool: what it does, what using it would do this week, and Use (or how to aim it). */
 function ToolInfo({ id, i }: { id: ToolId; i: number }) {
   const def = CONTENT.tools[id];
   const use = def.use.kind;
   const p = toolPreview.value;
   const aimed = use === 'copy' || use === 'move';
+  useUseInView(id, i);
   const how =
     use === 'copy'
       ? 'Click a piece twice to copy it into your reserve.'
