@@ -5009,7 +5009,7 @@ What the columns mean:
 
 **Known gaps:** the check's other findings, none fixed here:
 - **Your goods' value line** (D-193's known gap): pointing at a good there, Inspect's line is below the fold at 1280×720, 1366×768 and 1440×900 (2×). Room for it would change D-110: the user's call, as D-153's note says of a card's sets.
-- **A phone held sideways and a tablet held upright get "Play anyway"** (D-047, D-148), and the game isn't usable there: at 844×390 the shop's body is 28 px tall, and at 768×1024 the panels overlap. Copy link alone on short windows too would change D-148.
+- **A phone held sideways and a tablet held upright get "Play anyway"** (D-047, D-148), and the game isn't usable there: on an iPhone 14 held sideways (a 750×340 page, as Playwright emulates it) the shop's body is 28 px tall, and on an iPad Mini held upright (768×1024) the panels overlap. Copy link alone on short windows too would change D-148.
 - **The end screen at 1366×768 and 1440×900:** the "It's a house." sign covers the top of the house, as the camera keeps the player's last view.
 - **Below 1280 px wide** (a 1024×768 tablet held sideways, where no notice shows): playable but cramped, with one shop card a row and the photos' captions cut to three letters.
 - Not checked: touch, Firefox, Safari, a real phone.
