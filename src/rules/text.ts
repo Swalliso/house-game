@@ -32,6 +32,7 @@ import type {
   UpgradeDef,
 } from './index.ts';
 import { SCORE_LABELS } from '../content/labels.ts';
+import { reachOf } from './layout.ts';
 import { matchesFeature } from './selectors.ts';
 
 const PROPERTY_NOUNS: Record<Property, [one: string, many: string]> = {
@@ -55,6 +56,11 @@ const REGION_TEXT: Record<Region, string> = {
 /** "in the front yard", "in the sun". */
 export function regionText(region: Region): string {
   return REGION_TEXT[region];
+}
+
+/** A landmark's reach (D-199): "within 2 tiles", "within 1 tile". */
+export function withinText(r: number): string {
+  return `within ${r} ${r === 1 ? 'tile' : 'tiles'}`;
 }
 
 /**
@@ -389,6 +395,19 @@ function fencedYardText(content: Content, min: number): string {
   );
 }
 
+/**
+ * What a landmark's reach changes (D-199), as the subject of its line: "Social pieces", "Quiet
+ * rooms", "Bedrooms", and tags read as one noun's adjectives, "Outdoor and Pretty pieces".
+ */
+function reachSubject(content: Content, sel: Selector, phrasing: Phrasing = 'every'): string {
+  const tags =
+    sel !== 'all' && 'any' in sel && sel.any.every((s) => s !== 'all' && 'tag' in s)
+      ? sel.any.map((s) => (s as { tag: Tag }).tag)
+      : null;
+  if (tags) return `${joinWords(tags, phrasing === 'every' ? 'and' : 'or')} pieces`;
+  return selectorText(content, sel, phrasing).replace(/\bneighbors\b/g, 'pieces');
+}
+
 export function effectText(content: Content, effect: Effect): string {
   switch (effect.kind) {
     case 'steady':
@@ -407,6 +426,11 @@ export function effectText(content: Content, effect: Effect): string {
       if (effect.scope === 'region') {
         const subject = who.replace(/\bneighbors\b/, 'pieces');
         return `${subject.charAt(0).toUpperCase() + subject.slice(1)} in the fenced yard it borders ${parts.join(' and ')}`;
+      }
+      // D-199: "Social pieces within 2 tiles earn +25%".
+      if (effect.scope !== 'adjacent') {
+        const subject = reachSubject(content, effect.match);
+        return `${subject.charAt(0).toUpperCase() + subject.slice(1)} ${withinText(effect.scope.within)} ${parts.join(' and ')}`;
       }
       return `Touching ${who} ${parts.join(' and ')}`;
     }
@@ -501,6 +525,9 @@ function conditionTags(cond: PieceCondition, out: Set<Tag>, props: Set<Property>
 }
 
 function effectTags(e: Effect, out: Set<Tag>, props: Set<Property>): void {
+  // A landmark's reach (D-199) changes pieces only, so the lot's Trees or street get no note
+  // ("Trees are Green." read as if they'd count for the Henhouse).
+  if (e.kind === 'aura' && typeof e.scope === 'object') return;
   if (e.kind === 'neighbor' || e.kind === 'aura') selectorTags(e.match, out, props);
   else if (e.kind === 'served') selectorTags(e.by, out, props);
   else if (e.kind === 'requires') conditionTags(e.condition, out, props);
@@ -622,9 +649,14 @@ export function cardText(content: Content, def: PieceDef): CardText {
   };
 }
 
-/** The glossary term an effect's line links: a change into a Tree links the Tree (D-195). */
+/**
+ * The glossary term an effect's line links: a change into a Tree links the Tree (D-195), and a
+ * landmark's reach its "within 2 tiles" (D-199).
+ */
 function effectTerm(e: Effect): Term | null {
-  return e.kind === 'transform' && 'feature' in e.into && e.into.feature === 'tree' ? 'tree' : null;
+  if (e.kind === 'transform' && 'feature' in e.into && e.into.feature === 'tree') return 'tree';
+  if (e.kind === 'aura' && typeof e.scope === 'object') return 'reach';
+  return null;
 }
 
 /** D-165: the most of a card's type a house holds, from the type's own card (an L-Kitchen's is the Kitchen's). */
@@ -731,6 +763,16 @@ function handEffectText(content: Content, effect: Effect): string {
       const pieces = (text: string) => text.replace(/\bneighbors\b/, 'pieces');
       if (effect.scope === 'region') {
         return `${to} fenced ${pieces(selectorText(content, sel, 'every'))}`;
+      }
+      // D-199: a landmark's reach is "nearby" in a hand card's few words: "+25% to Social pieces
+      // nearby", "+10% to Outdoor or Pretty nearby". Its full card says how far ("within 2
+      // tiles"), and the board shades it while the card is picked.
+      if (effect.scope !== 'adjacent') {
+        const what = reachSubject(content, sel, 'some');
+        const line = `${to} ${what} nearby`;
+        return line.length <= HAND_LINE_CHARS
+          ? line
+          : `${to} ${what.replace(/ pieces$/, '')} nearby`;
       }
       if (oneKind(sel)) return `${to} touching ${selectorText(content, sel, 'every')}`;
       // A list of rooms, one of each: "Kitchen or Living Room".
@@ -960,6 +1002,33 @@ function treeText(content: Content): string {
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * A landmark's reach (D-199), for the glossary tip on its lines, from the content: how far the
+ * landmarks reach (the most common `within`; 2 today) and which they are. Its title is the words
+ * the lines say ("within 2 tiles"), so the tip lands on them (Tip.tsx withTerm).
+ */
+function reachTerm(content: Content): { title: string; text: string } {
+  const landmarks = Object.values(content.pieces)
+    .filter((p) => !p.countsAs && !p.member)
+    .map((p) => ({ name: p.name, r: reachOf(p) }))
+    .filter((l) => l.r > 0);
+  const count = new Map<number, number>();
+  for (const l of landmarks) count.set(l.r, (count.get(l.r) ?? 0) + 1);
+  const r = [...count].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? 2;
+  const names = landmarks.filter((l) => l.r === r).map((l) => plural(l.name));
+  const away = `${r} ${r === 1 ? 'tile' : 'tiles'} away`;
+  return {
+    title: capitalize(withinText(r)),
+    text:
+      `Every piece with a tile up to ${away} from one of this piece’s, across or diagonally ` +
+      `(a square around it), rooms and yard alike, touching or not.` +
+      (names.length > 0
+        ? ` ${capitalize(joinWords(names, 'and'))} reach this far: the board shades the ` +
+          `square while you place one, or point at one.`
+        : ''),
+  };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1327,6 +1396,7 @@ export type Term =
   | 'fencedYard'
   | 'sunny'
   | 'tree'
+  | 'reach'
   | 'requirement'
   | 'link'
   | 'timer';
@@ -1512,6 +1582,9 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     // D-195: what a Sapling grows into, linked from its card.
     tree: { title: 'Tree', text: treeText(content) },
+    // D-199: a landmark's reach, linked from its lines ("Social pieces within 2 tiles earn
+    // +25%"); the title is the words the lines say, so the tip lands on them.
+    reach: reachTerm(content),
     requirement: {
       title: 'Requirements',
       text:

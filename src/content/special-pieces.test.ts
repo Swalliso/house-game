@@ -164,7 +164,9 @@ describe('Playroom', () => {
 
   it('costs other Quiet pieces nothing, and it’s a Kid neighbor', () => {
     // A Library with three Quiet Bedrooms: 2 × 3, and the Playroom above it takes nothing (its
-    // aura took 2 until D-195). The Closet beside the Playroom has no tags.
+    // aura took 2 until D-195). Each Bedroom gets 3, +1 for touching the Library and +1 within
+    // its reach (D-199); the Playroom, Loud, loses 1 to the Library, from nothing. The Closet
+    // beside the Playroom has no tags.
     const t = tally(open, [
       ['library', 2, 2],
       ['bedroom', 0, 2],
@@ -173,7 +175,7 @@ describe('Playroom', () => {
       ['playroom', 2, 0],
       ['closet', 4, 0],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([6, 4, 4, 4, 0, 1]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([6, 5, 5, 5, 0, 1]);
     expect(t.pieces[0]!.lines.map((l) => l.label)).toEqual(['Touching 3 Bedrooms']);
     // A Treehouse by a Tree gets its +2 per Kid neighbor: 2 + 2, and +1 out back (D-166).
     expect(
@@ -190,15 +192,25 @@ describe('Playroom', () => {
 
 describe('Library', () => {
   it('+2 per touching Quiet neighbor (up to 3), Trees included', () => {
-    expectCard('library', 'indoor', ['Quiet'], ['+2 per touching Quiet neighbor (up to 3)']);
+    expectCard(
+      'library',
+      'indoor',
+      ['Quiet'],
+      [
+        'Quiet rooms within 2 tiles get +1',
+        'Loud pieces within 2 tiles get −1',
+        '+2 per touching Quiet neighbor (up to 3)',
+      ],
+    );
     expect(earned(open, [['library', 0, 0]])).toEqual([0]);
-    // Next to a Bedroom: 2, and the Bedroom gets +1 for a Quiet neighbor.
+    // Next to a Bedroom: 2, and the Bedroom gets +1 for a Quiet neighbor, and +1 within the
+    // Library's reach (D-199).
     expect(
       earned(open, [
         ['library', 0, 0],
         ['bedroom', 2, 0],
       ]),
-    ).toEqual([2, 4]);
+    ).toEqual([2, 5]);
     // Four Trees touch it (Trees are Quiet); three count: 6.
     const rows = ['.TT...', 'T.....', 'T.....', ...emptyRows(6, 3)];
     const t = tally(rows, [['library', 1, 1]]);
@@ -259,7 +271,13 @@ describe('Pool', () => {
       'pool',
       'yard',
       ['Wet', 'Sunny', 'Loud'],
-      ['+12 every 3rd week', '−2 per touching Tree (up to 3)', '+1 every week in the back yard'],
+      [
+        'Social pieces within 2 tiles earn +25%',
+        'Bedrooms within 2 tiles get −1',
+        '+12 every 3rd week',
+        '−2 per touching Tree (up to 3)',
+        '+1 every week in the back yard',
+      ],
     );
     const house = houseFrom(CONTENT, emptyRows(8, 8), [['pool', 2, 2]]);
     expect(earnedOver(house, [1, 2, 3, 4, 5, 6])).toEqual([0, 0, 12, 0, 0, 12]);
@@ -278,7 +296,8 @@ describe('Pool', () => {
     expect(tally(rows, [['pool', 1, 1]], 3).pieces[0]!.earned).toBe(6);
     // Two Trees: 12 − 4.
     expect(earned(['.T...', 'T....', ...emptyRows(5, 3)], [['pool', 1, 1]], 3)).toEqual([8]);
-    // A Bedroom beside it loses 2 for a Loud neighbor. The Pool is out back: +1 (D-166).
+    // A Bedroom beside it loses 2 for a Loud neighbor, and 1 within its reach (D-199): 3 − 3.
+    // The Pool is out back: +1 (D-166).
     expect(
       earned(
         emptyRows(8, 8),
@@ -288,7 +307,7 @@ describe('Pool', () => {
         ],
         3,
       ),
-    ).toEqual([13, 1]);
+    ).toEqual([13, 0]);
   });
 });
 
@@ -444,29 +463,30 @@ describe('Fire Pit and the lot (D-145)', () => {
 });
 
 describe('Henhouse', () => {
-  it('1 budget every 2nd week, and +1 per touching Herb Garden or Flower Bed', () => {
+  it('1 budget every 2nd week, and +1 to the Green pieces within 2 tiles (D-199)', () => {
     expectCard(
       'henhouse',
       'outbuilding',
       ['House'],
       [
+        'Green pieces within 2 tiles get +1',
         '+1 budget every 2nd week',
-        '+1 per touching Herb Garden or Flower Bed',
         '+2 if touching the Old Shed',
       ],
     );
     const alone = houseFrom(CONTENT, open, [['henhouse', 0, 0]]);
     expect([1, 2, 3, 4].map((w) => tallyOf(alone, w).pieces[0]!.budget)).toEqual([0, 1, 0, 1]);
     expect(tallyOf(alone, 2)).toMatchObject({ budget: 1, total: 0 });
-    // A Flower Bed (1, +2 in the front yard) and an Herb Garden beside it: 1 + 1. The Herb
-    // Garden is in the Henhouse's shade (D-120), so it earns nothing itself.
+    // A Flower Bed (1, +2 in the front yard) and an Herb Garden beside it get +1 each from it
+    // (D-199: until then the Henhouse took +1 for each). The Herb Garden is in the Henhouse's
+    // shade (D-120), so that +1 is all it earns.
     expect(
       earned(open, [
         ['henhouse', 2, 0],
         ['flowerBed', 1, 0],
         ['herbGarden', 2, 1],
       ]),
-    ).toEqual([2, 3, 0]);
+    ).toEqual([0, 4, 1]);
     // Beside the Old Shed (D-145): +2, once, however many of the shed's tiles it touches.
     const shed = ['SS....', 'SS....', '......', '......'];
     expect(earned(shed, [['henhouse', 0, 2]])).toEqual([2]);

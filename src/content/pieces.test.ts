@@ -115,6 +115,8 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   birdhouse: 1,
   // D-145's late piece: an aura to place well.
   porch: 2,
+  // D-199's landmark of the draw: a reach to place well.
+  fountain: 2,
   // Member rooms (M4b): never drawn, so only Appendix A's labels: the Nursery's timer is a 2.
   // Their tests are in households.test.ts.
   nursery: 2,
@@ -147,10 +149,10 @@ describe('the base pool', () => {
   it('has a test below for every card, each with its Appendix A complexity', () => {
     expect(Object.keys(COMPLEXITY).sort()).toEqual(Object.keys(CONTENT.pieces).sort());
     // The base pool is the drawable cards; special pieces (weight 0) come from the shop. The
-    // Sunroom left them for the draw at half weight (D-120), and the Birdhouse, the Fire Pit and
-    // the Porch arrive late at half weight (D-145).
+    // Sunroom left them for the draw at half weight (D-120), the Birdhouse, the Fire Pit and
+    // the Porch arrive late at half weight (D-145), and the Fountain from Framing (D-199).
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(base).toHaveLength(25);
+    expect(base).toHaveLength(26);
     // The two packs (D-106) took the weight of the two cards each one replaced, 20, until the
     // draw's two rows (D-121): in a two-card Layout row they draw at 10, like every card. The
     // Sapling joined them at its own weight (D-195). The Sunroom, in the Rooms row, draws at
@@ -158,7 +160,7 @@ describe('the base pool', () => {
     // holds one of each (D-160). The Long Hallway, which the stock never brings, and the
     // Driveway keep 10.
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['sapling', 'fence', 'driveway']);
-    const half = ['sunroom', 'birdhouse', 'firePit', 'porch', 'hallway', 'fence'];
+    const half = ['sunroom', 'birdhouse', 'firePit', 'porch', 'fountain', 'hallway', 'fence'];
     for (const def of base) expect(def.drawWeight, def.id).toBe(half.includes(def.id) ? 5 : 10);
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);

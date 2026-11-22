@@ -273,7 +273,7 @@ describe('the shelf leans toward them', () => {
     const others = (on['piece:playroom']! + on['piece:pool']! + on['piece:hotTub']!) / 3;
     expect(on['piece:library']! / others).toBeGreaterThan(0.25);
     expect(on['piece:library']! / others).toBeLessThan(0.45);
-    // The Showroom (3 of the 10 special pieces) never shows it while 9 others can fill it.
+    // The Showroom (3 of the 11 special pieces) never shows it while 10 others can fill it.
     for (let k = 0; k < 300; k++) {
       const opts = crateOptions(capped, withSeed(s, `room/${k}`), 'showroom', 'crate/2/0/7');
       expect(opts).toHaveLength(3);
@@ -281,7 +281,7 @@ describe('the shelf leans toward them', () => {
     }
     // With all but two at their limit, it shows those two and one of the rest.
     const SPECIAL: PieceId[] = ['playroom', 'library', 'mudroom', 'pool', 'sunroom'];
-    const SPECIAL2: PieceId[] = ['hotTub', 'firePit', 'henhouse', 'birdhouse', 'porch'];
+    const SPECIAL2: PieceId[] = ['hotTub', 'firePit', 'henhouse', 'birdhouse', 'porch', 'fountain'];
     /** Content where these special pieces can't go down at all (a cap of 0). */
     const shut = (ids: readonly PieceId[]) =>
       leaning(withPieces(Object.fromEntries(ids.map((id) => [id, { perHouse: 0 }]))));

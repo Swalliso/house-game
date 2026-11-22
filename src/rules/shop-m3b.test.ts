@@ -689,8 +689,9 @@ describe('crates', () => {
     const special = defs
       .filter((d) => d.drawWeight === 0 && !d.member && !d.addition)
       .map((d) => d.id);
-    expect(garden).toHaveLength(16); // 11 yard pieces (2 of them packs) and 5 outbuildings
-    expect(special).toHaveLength(10); // the test content's Porch is weight 0 (D-145)
+    expect(garden).toHaveLength(17); // 12 yard pieces (2 of them packs) and 5 outbuildings
+    // The test content's Porch (D-145) and Fountain (D-199) are weight 0.
+    expect(special).toHaveLength(11);
     const cases: [CrateId, PieceId[]][] = [
       ['gardenCenter', garden],
       ['showroom', special],

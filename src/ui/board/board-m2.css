@@ -56,6 +56,17 @@
   stroke-dasharray: 6 4;
   stroke-linecap: butt;
 }
+/* D-199: a landmark's reach, in the same wash, with a solid edge: the square it reaches. */
+.reach-tint {
+  z-index: var(--z-yard-tint);
+}
+.reach-tint .fill {
+  fill: var(--side-tint-fill);
+}
+.reach-tint .edge {
+  stroke: var(--side-tint-edge);
+  stroke-width: 2;
+}
 .yard-tint .edge {
   stroke: var(--yard-tint-edge);
   stroke-width: 2;

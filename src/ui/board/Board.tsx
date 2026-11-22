@@ -23,6 +23,7 @@ import {
   type DemolishPreview,
   type Lot,
   type PieceId,
+  type ReachOf,
   type Rot,
   type SetScore,
   type SourceRef,
@@ -140,7 +141,7 @@ import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx
 import { people as placePeople, roomPeople, walkObstacles } from './people.ts';
 import { PeopleLayer } from './PeopleLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
-import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
+import { Outline, ReachTint, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import { TimelapseLayer, timelapseOn } from './TimelapseLayer.tsx';
 import './board-m2.css';
 import './labels.css';
@@ -979,6 +980,20 @@ export function Board() {
         : { kind: 'fixture', id: picked.id };
     return yardsRead(CONTENT, card);
   }, [building, picked?.kind, picked?.id]);
+  // D-199: a landmark's reach (the rules work out the square): around the ghost while its card is
+  // picked, or around a placed piece Inspect shows (held, or pointed at) while nothing is.
+  const reachOf: ReachOf | null = (() => {
+    if (!building) return null;
+    if (ghostCells) {
+      return ghostCells.grows === undefined
+        ? { defId: ghostCells.defId, cells: ghostCells.cells }
+        : null;
+    }
+    if (selected.value !== null || tentative.value) return null;
+    const shown = inspected.value;
+    const uid = heldPiece.value ?? (shown?.kind === 'piece' ? shown.uid : null);
+    return uid === null ? null : { uid };
+  })();
 
   // How far the view reaches past the board: the road and the creeks run on there, the lot's
   // life (D-155) has that much room to come and go in, and the houses on the street stand in
@@ -1073,6 +1088,7 @@ export function Board() {
           <WeatherLayer run={state.setup} house={house} model={model} yard={yard} scale={scale} />
           <YardTint state={state} scale={scale} />
           {sides.length > 0 && <SideTint state={state} yards={sides} scale={scale} />}
+          {reachOf && <ReachTint state={state} of={reachOf} scale={scale} />}
           {floorLayer}
           {itemsLayer}
           {wallsLayer}

@@ -22,6 +22,8 @@
 //   rest); fenced yards (flood fill over non-wall tiles, bounded by indoor tiles, Fences, and
 //   the lot edge; fenced if it doesn't touch the street edge, has `fencedYardMin` tiles, and
 //   borders a Fence and the house).
+// - Reach (D-199): the pieces with a tile within r tiles of one of a piece's own, across or
+//   diagonally, rooms and yard alike (piecesWithin), worked out once per layout and piece.
 // - Layout modifiers (M3), from fixtures (on their host) and the run (blueprints), resolved in
 //   §4's order: own and layout tags first; then grantTag, then removeTag, with targets matched
 //   against those tags only; then countsAs (type identity); then grantView, which gives the
@@ -32,6 +34,7 @@
 import type {
   Cell,
   Content,
+  Effect,
   FeatureId,
   HouseState,
   Lot,
@@ -713,6 +716,67 @@ export function fencedYardsBordered(layout: Layout, uid: number): number[] {
 /** The largest single fenced yard's tiles (for "a fenced yard of 12 tiles"). */
 export function largestFencedYard(layout: Layout): number {
   return layout.fencedSizes.reduce((a, b) => Math.max(a, b), 0);
+}
+
+// ---------------------------------------------------------------------------------------
+// D-199: a landmark's reach. Tiles are the measure, not the house's rooms: 74% of room pairs
+// are within 2 steps of each other, so a reach through the rooms would be nearly house-wide.
+
+/** The `within` of an aura, or 0 for one that doesn't reach (adjacent, region). */
+export function auraReach(e: Effect): number {
+  return e.kind === 'aura' && typeof e.scope === 'object' ? e.scope.within : 0;
+}
+
+/** A piece's reach (D-199): the widest `within` among its auras, a conditional's too; 0 for none. */
+export function reachOf(def: PieceDef): number {
+  let r = 0;
+  for (const e of def.effects) {
+    r = Math.max(r, auraReach(e), e.kind === 'conditional' ? auraReach(e.effect) : 0);
+  }
+  return r;
+}
+
+/**
+ * The lot's tiles within `r` tiles of any of `cells`, across or diagonally (a square around each
+ * one), as lot indexes (y × width + x) in reading order. The cells themselves are left out.
+ */
+export function tilesWithin(lot: Lot, cells: readonly Cell[], r: number): number[] {
+  const { width: w, height: h } = lot;
+  const own = new Set(cells.map((c) => cellIndex(w, c.x, c.y)));
+  const out = new Set<number>();
+  for (const c of cells) {
+    for (let y = Math.max(0, c.y - r); y <= Math.min(h - 1, c.y + r); y++) {
+      for (let x = Math.max(0, c.x - r); x <= Math.min(w - 1, c.x + r); x++) {
+        const i = cellIndex(w, x, y);
+        if (!own.has(i)) out.add(i);
+      }
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+const withinCache = new WeakMap<Layout, Map<number, readonly number[]>>();
+
+/**
+ * The other pieces with a tile within `r` tiles of one of this piece's (tilesWithin), in
+ * placement order (by uid). Worked out once per layout, piece and reach, and kept: the tally runs
+ * for every preview and every play the bots weigh.
+ */
+export function piecesWithin(layout: Layout, uid: number, r: number): readonly number[] {
+  let perLayout = withinCache.get(layout);
+  if (!perLayout) withinCache.set(layout, (perLayout = new Map()));
+  const key = uid * 8 + r;
+  let list = perLayout.get(key);
+  if (!list) {
+    const uids = new Set<number>();
+    for (const i of tilesWithin(layout.house.lot, layout.cells.get(uid) ?? [], r)) {
+      const other = layout.occupant[i]!;
+      if (other >= 0 && other !== uid) uids.add(other);
+    }
+    list = [...uids].sort((a, b) => a - b);
+    perLayout.set(key, list);
+  }
+  return list;
 }
 
 export type LayoutOf = (house: HouseState, mods?: readonly LayoutModifier[]) => Layout;

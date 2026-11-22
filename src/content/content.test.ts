@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Content, DrawRow, PlaceAction } from '../rules/index.ts';
+import type { Content, DrawRow, PieceId, PlaceAction, Term } from '../rules/index.ts';
 import { cardText, createRules, featureWantedText, glossary, rules } from '../rules/index.ts';
 import { drawWeights, rowOf } from '../rules/draw.ts';
 import { computeLayout } from '../rules/layout.ts';
@@ -81,17 +81,18 @@ describe('content', () => {
     });
   });
 
-  it('has the base pool: 23 piece types as 25 cards, nine sets, and seven milestones', () => {
+  it('has the base pool: 24 piece types as 26 cards, nine sets, and seven milestones', () => {
     // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
     // The Sunroom left them for the draw (D-120), then the Birdhouse and the Fire Pit, which
-    // arrive late with the Porch (D-145).
+    // arrive late with the Porch (D-145). The Fountain (D-199) is drawn from Framing.
     const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(defs).toHaveLength(25);
+    expect(defs).toHaveLength(26);
     const types = new Set(defs.map((d) => d.countsAs ?? d.id));
-    expect(types.size).toBe(23);
+    expect(types.size).toBe(24);
     const count = (cat: string) =>
       new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
-    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([10, 9, 4]);
+    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([10, 10, 4]);
+    expect(CONTENT.pieces.fountain.fromPhase).toBe(2);
     // The late arrivals (D-145), by the milestone they join the draw at (0-based).
     expect(
       defs.filter((d) => d.fromPhase >= 3).map((d) => [d.id, d.fromPhase, d.drawWeight]),
@@ -169,9 +170,16 @@ describe('content', () => {
     const sapling = cardText(CONTENT, CONTENT.pieces.sapling);
     expect(sapling.effects).toEqual(['+1 every week', 'Each tile becomes a Tree after 4 weeks']);
     expect(sapling.terms).toEqual([null, 'tree']);
-    // No other card links a term yet.
+    // The landmarks' reach lines link "within 2 tiles" (D-199); no other card links a term yet.
+    const LINKED: Partial<Record<PieceId, readonly (Term | null)[]>> = {
+      sapling: [null, 'tree'],
+      library: ['reach', 'reach', null],
+      pool: ['reach', 'reach', null, null, null],
+      henhouse: ['reach', null, null],
+      fountain: ['reach', null, null],
+    };
     for (const p of Object.values(CONTENT.pieces)) {
-      if (p.id !== 'sapling') expect(cardText(CONTENT, p).terms, p.id).toBeUndefined();
+      expect(cardText(CONTENT, p).terms, p.id).toEqual(LINKED[p.id]);
     }
   });
 
@@ -214,10 +222,11 @@ describe('content', () => {
       'doghouse',
       'treehouse',
       'greenhouse',
-      // The late arrivals (D-145).
+      // The late arrivals (D-145), and the Fountain (D-199).
       'firePit',
       'birdhouse',
       'porch',
+      'fountain',
       'sprinkler',
       'pergola',
       'gardenLights',
