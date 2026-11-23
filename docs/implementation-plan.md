@@ -354,7 +354,7 @@ interface RunState {
   phaseStartScore: number
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
-  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160), the wrong delivery's piece (surprise, D-188) and the lot's wish's prize (wish, D-205)
+  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160), the wrong delivery's piece (surprise, D-188), a company upgrade's (upgrade: the Storage Unit's, D-209) and the lot's wish's prize (wish, D-205)
   stocked?: true                       // D-163: the standing stock has come (without `refill`, it comes once)
   wishFilled?: TerrainId               // D-205: the feature whose wish has paid (once a run); the screen still names it once the Old Shed is gone
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
@@ -435,7 +435,7 @@ type Action =
 - `wishFilled` (D-205: the lot's wish paid, once a run: its feature, the spot its beat plays at, the reward, and the pieces that filled it). A week's play fills it before its `tally`, so the prize earns nothing that week
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
 - `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`, `extended` (D-168)
-- `delivered` (D-160: the client's cards, the standing stock's top-up, D-171 the crew's own card, and D-188 the wrong delivery's piece, `from: 'surprise'`) and `crewTool` (D-171: the crew's tool came, or was sold with the supplies full)
+- `delivered` (D-160: the client's cards, the standing stock's top-up, D-171 the crew's own card, D-188 the wrong delivery's piece, `from: 'surprise'`, and D-209 a company upgrade's piece, `from: 'upgrade'` with the upgrade), `crewTool` (D-171: the crew's tool came, or was sold with the supplies full) and `upgradeTool` (D-209: an upgrade's tool came, or was sold with the supplies full)
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -826,7 +826,11 @@ type ToolUse =                                         // one small function per
   | { kind: 'reward'; reward: Reward }                 // Dumpster
   | { kind: 'levelSet'; set: SetId }                   // Remodel Plans: +1 level for a set type, for the rest of the run
 
-interface UpgradeDef { id: UpgradeId; name; tier; price: number; modifiers: Modifier[] }   // `rule` modifiers, permanent
+interface UpgradeDef { id: UpgradeId; name; tier; price: number; modifiers: Modifier[]; delivers?: UpgradeDelivery }   // `rule` modifiers, permanent
+type UpgradeDelivery =                                 // D-209: what it brings to fill its slot
+  | { kind: 'specialPiece' }                           // Storage Unit: a special piece into the reserve's extra slots, each milestone
+  | { kind: 'tool'; rarity: Rarity }                   // Tool Belt: a tool of that rarity into the supplies, each milestone
+  | { kind: 'blueprintPick'; rarity: Rarity; options: number }   // Drafting Table: pick 1 of `options` blueprints as it's bought
 
 interface CrateDef {                                   // a pack: open it, see 3 options, keep 1
   id: CrateId; name; tier; price: number
@@ -947,7 +951,8 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   | `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` | A strike's new card for the row's k-th slot (D-157): n is the hand's draw, m the run's struck types with this one. It isn't a draw. |
   | `shop/<phase>/<refresh>` | Shop offers |
   | `co/<phase>` | The two change orders offered, in the order shown (D-144) |
-  | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate) |
+  | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate, and D-209's Drafting Table pick, `<slot>` its id) |
+  | `upgrade/<id>` | D-209: the order a company upgrade brings its goods in, drawn once a run (the Storage Unit's special pieces, the Tool Belt's tools) |
   | `find/<x>,<y>` | A find's random reward |
   | `bot/<phase>/<screen>/<n>` | Sim bots only |
 
@@ -1612,7 +1617,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
     - Then a door tree from the entry, public rooms first, reaches every room with as few doors as it takes, through a set door where one reaches the room, never adding a second doorway between two rooms, and into a suite through its Bedroom, so bedrooms keep their walls for furniture. Doors keep to side walls, low on them (furniture stands against the north walls, so a side wall's south part is free in both rooms), and to the ends of north walls.
     - Windows go about one per two cells of outside wall (one per cell in a Sunroom), never in closets, garages or hallways.
   - several LimeZu furniture sprites per room, laid out by rules per room type and footprint, never rotated (they're drawn in 3/4 view), varying by piece (`src/ui/art/rooms.ts`):
-    - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). In a room with a set door, a kitchen's range and its counter stand against a south wall instead where that keeps more of them than any north wall does, never the range alone or with the Fireplace (D-202). A fixture's own sprite goes through all its slots before anything stands in for it.
+    - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). In a room with a set door, a kitchen's range and its counter stand against a south wall instead where that keeps more of them than any north wall does, never the range alone or with the Fireplace (D-202). Where the counter still finds no room beside the range, it can stand on its own, elsewhere on a north wall or against any stretch of south wall: the kitchen is laid out with it before its table and after it as well, and keeps the layout that shows the most of its fixture, range, counter, table and sink, in that order, but never one that costs it the table or the fridge (D-208). A fixture's own sprite goes through all its slots before anything stands in for it.
     - A Kitchen's run is the range and the counter with the sink (a plain counter where the sink won't fit), then the fridge where it still fits (on an L-Kitchen's other arm, or beside the run). A Dining Room's table keeps room for a chair each side: in the middle of the floor, else against the north wall's face, else over a door's walkway (never its opening), and the chairs keep out of the walkway. In each of those, a table with chairs first tries spots that keep its chairs out of the doorways' walkways, so beside a door low in a side wall it moves over and keeps them (D-202). The hutch arrangement's narrow cabinet stands in for the hutch where an opening leaves too little wall, unless it would cost a chair. A Home Office too narrow or shallow for its desks gets a small writing desk.
     - The members' rooms (D-103) have their own floors, wallpapers and furniture (D-111, `art/limezu/members.json`): the twins' crib, a low dresser and a teddy in the Nursery; two children's beds, a toy box and a toy train in the Kids' Room; a bed with a vanity, or a curio cabinet where the vanity won't fit, and a standard lamp in Grandma's Room; a cot, two flickering candles and a spider on its thread in Renfield's Room; a bed beside the dogs' bed (our own drawing) in Nana's Room; an easel, a stool, a pot of paint and a painting in Rowan's Studio; a child's bed, a school desk and a globe in Ivy's Room. Renfield's Room and Rowan's Studio are one cell across, so their pieces are at most 22 × 26 px or come in a second shape (an upright or side-on cot, an easel without its finial). Bunk Beds stand in the crib's or the bed's place in a member's 2×2 room (a badge in the two narrow ones), and when the Nursery grows into the Kids' Room its art changes with it.
     - A piece against a north wall stands with its back on the floor's top edge, under the wall's face. A tall one (a fridge, a bookcase, a plant) rises over the wall band, never past its top edge nor off its own room's cells: all of an outside band, only its room's half of a band between two rooms, so a wall between rooms always shows. Its rows above the band are drawn on the overhang layer, over the walls.
@@ -1805,10 +1810,10 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171), the wrong delivery's piece (D-188) and the lot's wish's prize (D-205) use extra slots (D-103, D-160).
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171), the wrong delivery's piece (D-188), the Storage Unit's (D-209) and the lot's wish's prize (D-205) use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
-  - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
+  - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table), and each brings something to fill it (D-209, below).
 - **Blueprints:**
   - active from the next tally, and apply to existing pieces
   - Good Bones counts from purchase, capped
@@ -1851,6 +1856,10 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **The standing stock** (D-160, D-162, D-163): in week 1 the reserve's extra slots are filled to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`), once: `refill: false` (D-163). With `refill: true` they're topped up again at the start of each later milestone (never in overtime), as D-160 had it. A card of the type already in an extra slot counts (the Landscaper's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's comes in Foundation's third week (`firstJobPhase`, `firstJobSlot`). Placing one doesn't use the week (D-163), and a strike of the type leaves the stock alone.
 - **Deliveries** (D-160): `ClientDef.deliveries` land at the start of their phase's first week, after the arrivals, marked `client`, in extra slots: Dale's Home Office and the Barkers' Doghouse in week 1. A delivery isn't a household member: it moves no Room for everyone and isn't in `arrived`.
 - **The wrong delivery** (D-188): once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse lands free in the reserve's extra slots, marked `surprise`, after the stock and the crew's card (`surpriseDelivery` in `balance.ts`: the phase and the pieces, all special pieces; the draw deals the Henhouse from Framing too, D-200). Which one comes from the seed alone: the first, in an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the client; if none fits, nothing comes. Never in a first job or an overtime week; a struck type still comes, as the stock does.
+- **What the company upgrades bring** (D-209): from the first milestone after the shop that sold it, at each milestone's start (its first week, never an overtime week), after the wrong delivery and the crew's tool:
+  - the **Storage Unit** adds a special piece to the reserve's extra slots, marked `upgrade`: the first, in an order drawn once a run from `upgrade/storageUnit`, that the house doesn't have yet, built or waiting in Your goods, and whose type isn't at a limit; with every one there, the first a house can hold two of (a second Pool, never a second Library), then the first not at a limit; with none, nothing. So it brings a different one each milestone, and skips the wrong delivery's.
+  - the **Tool Belt** adds a Common tool to the supplies: the milestone's in its order (`upgrade/toolBelt`, the offered Common tools), passing over one already there and one that can't pay in the house as it stands (D-192), or sells it at once for half its price when the supplies are full, as the crew's tool is (`upgradeTool`).
+  - the **Drafting Table** opens a pick of 3 Common blueprints as it's bought, as shop 1's Housewarming crate does, on its own stream (`crate/<shop>/<refresh>/draftingTable`), for the slot it adds. With every Common blueprint owned, no pick opens. The debug panel's gift opens none.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her A compact house (D-160's name): 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
@@ -2078,9 +2087,9 @@ The model is Balatro's vouchers: one per visit, pricier, and permanent for the r
 
 | Upgrade | Encoding |
 |---|---|
-| Storage Unit | `rule reserveSlots +1` |
-| Tool Belt | `rule supplySlots +1` |
-| Drafting Table | `rule blueprintSlots +1` |
+| Storage Unit | `rule reserveSlots +1`; `delivers specialPiece` (D-209): a special piece in Your goods each milestone |
+| Tool Belt | `rule supplySlots +1`; `delivers tool common` (D-209): a Common tool in the supplies each milestone |
+| Drafting Table | `rule blueprintSlots +1`; `delivers blueprintPick common 3` (D-209): pick 1 of 3 Common blueprints as it's bought |
 | Bigger Truck | `rule roomsRow +1`: 3 Rooms cards and 2 Layout cards a week (D-121) |
 | Foreman | `rule rerollsPerPhase +1` |
 | Supplier Discount | `rule shopPricePct −25` (not services or the refresh) |

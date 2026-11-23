@@ -875,7 +875,29 @@ export interface UpgradeDef {
   price: number;
   /** `rule` modifiers, permanent for the run. */
   modifiers: readonly Modifier[];
+  /** D-209: what it brings besides its rule, each milestone or as it's bought. */
+  delivers?: UpgradeDelivery;
 }
+
+/**
+ * D-209: what a company upgrade brings (S26). The first two come at the start of each milestone
+ * from the first after the shop that sold it (its first week, never an overtime week); the pick
+ * opens as it's bought.
+ * - `specialPiece`: a special piece in Your goods' extra slots, marked with the upgrade: the first
+ *   in an order drawn once a run from `upgrade/<id>` that the house doesn't have yet (built or
+ *   waiting in Your goods) and whose type isn't at a limit; with every one there, the first
+ *   whose type isn't at a limit; with none, nothing.
+ * - `tool`: an offered tool of `rarity` in the supplies, or sold at once when they're full: the
+ *   milestone's in an order drawn once a run from `upgrade/<id>`, as the crew's own card is
+ *   (D-171), passing over one already in the supplies and one that can't pay in the house as it
+ *   stands (D-192: Remodel Plans for a set it isn't near).
+ * - `blueprintPick`: a pick of `options` offered blueprints of `rarity`, as shop 1's
+ *   Housewarming gift is, for the slot the upgrade adds.
+ */
+export type UpgradeDelivery =
+  | { kind: 'specialPiece' }
+  | { kind: 'tool'; rarity: Rarity }
+  | { kind: 'blueprintPick'; rarity: Rarity; options: number };
 
 export interface CrateDef {
   id: CrateId;
@@ -1245,8 +1267,8 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
 /**
  * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
  * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b),
- * the client's or the standing stock's (D-160), or the wrong delivery's (D-188). shop.ts'
- * inExtraSlot says which.
+ * the client's or the standing stock's (D-160), the wrong delivery's (D-188), or a company
+ * upgrade's (D-209). shop.ts' inExtraSlot says which.
  */
 export interface ReservePiece {
   id: PieceId;
@@ -1265,6 +1287,8 @@ export interface ReservePiece {
   surprise?: true;
   /** D-205: the lot's wish paid it (Reward.piece), in an extra slot. */
   wish?: true;
+  /** D-209: the company upgrade that brought it (UpgradeDef.delivers), in an extra slot. */
+  upgrade?: UpgradeId;
 }
 
 export interface OwnedBlueprint {
@@ -1308,9 +1332,13 @@ export interface ShopVisit {
  */
 export type HoldDrop = 'owned' | 'limit';
 
-/** An opened crate waiting for a choice: only `pick` (or -1 to discard) and `sell` until then. */
+/**
+ * An opened crate waiting for a choice: only `pick` (or -1 to discard) and `sell` until then.
+ * Its source is a bought crate, shop 1's Housewarming gift, or (D-209) the company upgrade
+ * whose pick it is (UpgradeDef.delivers: the Drafting Table's).
+ */
 export interface CratePick {
-  source: CrateId | 'housewarming';
+  source: CrateId | 'housewarming' | UpgradeId;
   options: readonly PickOption[];
 }
 
@@ -2039,20 +2067,29 @@ export type GameEvent =
   /**
    * D-160: cards went into the reserve's extra slots at the start of a week, after any arrival
    * and before the draw: what the client brought ('client'), the standing stock's top-up,
-   * (D-171) the card from the crew's own stock ('crew'), or (D-188) the wrong delivery's piece,
-   * once a run ('surprise'), in that order.
+   * (D-171) the card from the crew's own stock ('crew'), (D-188) the wrong delivery's piece,
+   * once a run ('surprise'), or (D-209) a company upgrade's special piece ('upgrade', naming
+   * it), in that order.
    */
   | {
       t: 'delivered';
-      from: 'client' | 'stock' | 'crew' | 'surprise';
+      from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade';
       phase: number;
       cards: readonly PieceId[];
+      /** D-209: the upgrade that brought them, with `from: 'upgrade'`. */
+      upgrade?: UpgradeId;
     }
   /**
    * D-171: the crew's tool came (CrewDef.orderTool), at the start of a milestone that follows
    * a change order. `sold`: the supplies were full, so it was sold for this much at once.
    */
   | { t: 'crewTool'; tool: ToolId; phase: number; sold?: number }
+  /**
+   * D-209: a company upgrade's tool came (UpgradeDef.delivers, the Tool Belt's), at the start of
+   * a milestone, after the crew's. `sold`: the supplies were full, so it was sold for this much
+   * at once.
+   */
+  | { t: 'upgradeTool'; upgrade: UpgradeId; tool: ToolId; phase: number; sold?: number }
   /**
    * M4b, D-144: change orders are offered, two as a rule; the 'changeOrder' screen waits for
    * one to be picked.
@@ -2591,6 +2628,7 @@ export {
   struckText,
   sunSideText,
   toolText,
+  deliveryText,
   upgradeText,
 } from './text.ts';
 export type { HintTerm, Term } from './text.ts';
@@ -2599,7 +2637,7 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
-export { HOLD_REASONS, inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
+export { giftRarity, HOLD_REASONS, inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 export { isFinished } from './finished.ts';

@@ -97,10 +97,11 @@ function possessive(name: string): string {
 
 /**
  * Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods and Inspect say
- * it: its slot's tag ("Crew", "Twins", "Dale", "Stock", "Mix-up", "Pond"), whose it is
- * mid-sentence for the slot's tip (" (with the twins)"), and Inspect's line ("Came with the
+ * it: its slot's tag ("Crew", "Twins", "Dale", "Stock", "Mix-up", "Storage", "Pond"), whose it
+ * is mid-sentence for the slot's tip (" (with the twins)"), and Inspect's line ("Came with the
  * twins"), or the whole of Inspect's note where it says more (a refilled stock's, the wrong
- * delivery's). Null for a card in the reserve's own slots (bought, picked or copied).
+ * delivery's, a company upgrade's). Null for a card in the reserve's own slots (bought, picked or
+ * copied).
  */
 export function extraSlotWords(
   clientId: ClientId,
@@ -160,6 +161,17 @@ export function extraSlotWords(
       whose: ' (delivered by mistake)',
       from: 'Delivered by mistake',
       note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
+    };
+  }
+  if (r.upgrade !== undefined) {
+    // D-209: a company upgrade's piece (the Storage Unit's), one each milestone. Its tag is the
+    // upgrade's first word, and its note is the stock's length (16).
+    const name = CONTENT.upgrades[r.upgrade].name;
+    return {
+      tag: name.split(' ')[0]!,
+      whose: ` (from your ${name})`,
+      from: `From your ${name}`,
+      note: `From your ${name}: an extra slot, not one of your reserve’s. Another comes each milestone.`,
     };
   }
   if (r.wish && wishFrom) {

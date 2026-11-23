@@ -7,6 +7,10 @@
 | Branch | `phase/upgrades-deliver` |
 | Needs first | The user's playtest of S16 (D-188). It replaces S15 |
 
+*2026-11-23: built as D-209 (`phase/upgrades-deliver`), before S16's playtest at the user's
+pick. Greedy's wins don't move (55.7% to 55.8% on 600 paired seeds), and the bot now buys the
+Storage Unit in 14% of the runs whose shops offer it and the Tool Belt in 40%.*
+
 ## Story
 
 The three slot upgrades bring something you can see. The Storage Unit adds a slot, and a
@@ -77,9 +81,9 @@ opens a pick of three Common blueprints the moment you buy it.
 
 ## Done when
 
-- [ ] Each of the three delivers as its card says, from the first milestone after it's bought.
-- [ ] The Tool Belt's tool is sold at once when the supplies are full, and the event says so.
-- [ ] The paired-seed result is in the log entry, and the targets are untouched.
+- [x] Each of the three delivers as its card says, from the first milestone after it's bought.
+- [x] The Tool Belt's tool is sold at once when the supplies are full, and the event says so.
+- [x] The paired-seed result is in the log entry, and the targets are untouched.
 
 ## How to check
 
