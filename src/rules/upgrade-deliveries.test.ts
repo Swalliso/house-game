@@ -2,8 +2,8 @@
 // sold it, at each milestone's start (its first week, never an overtime week, before the draw):
 // - the Storage Unit adds a special piece to Your goods' extra slots, marked with it: the first
 //   in its run's order (`upgrade/storageUnit`) that the house doesn't have yet, built or waiting,
-//   and whose type isn't at a limit; with every one there, the first whose type isn't at a limit;
-//   with none, nothing;
+//   and whose type isn't at a limit; with every one there, the first a house can hold two of, then
+//   the first whose type isn't at a limit; with none, nothing;
 // - the Tool Belt adds a tool of its rarity to the supplies: the milestone's in its run's order
 //   (`upgrade/toolBelt`), passing over one already there and one that can't pay in the house as
 //   it stands, or sells it at once when they're full, and the event says so.
@@ -27,7 +27,7 @@ import { stream } from './rng.ts';
 import { decodeRunCode, encodeRunCode } from './runcode.ts';
 import { createRules, type Rules } from './run.ts';
 import { crateOptions, inExtraSlot, reserveUsed, SERVICES, sellPrice } from './shop.ts';
-import { setup, TEST_CONTENT, withClient } from './testing.ts';
+import { setup, TEST_CONTENT, withClient, withPieces } from './testing.ts';
 import { UPGRADES } from '../content/upgrades.ts';
 
 /** Four two-week phases with targets of 0, and the slot upgrades delivering as the real ones. */
@@ -204,6 +204,15 @@ describe('the Storage Unit (D-209): a special piece each milestone', () => {
       reserve: SPECIALS.map((id) => ({ id, stock: true as const })),
     };
     expect(fromUpgrades(playUntil(full, at(1)).events)[0]!.cards).toEqual([all[0]]);
+    // A room the house holds one of (D-165) waits its turn: the first it can hold two of comes.
+    const capped = createRules(
+      withPieces(Object.fromEntries(all.slice(0, 2).map((id) => [id, { perHouse: 1 }])), C),
+    );
+    const s1 = {
+      ...give(capped, capped.newRun(setup(seed)), 'storageUnit'),
+      reserve: full.reserve,
+    };
+    expect(fromUpgrades(playUntil(s1, at(1), capped).events)[0]!.cards).toEqual([all[2]]);
     const none = atLimit(SPECIALS);
     const s = give(none, none.newRun(setup(seed)), 'storageUnit');
     const run = playUntil(s, at(1), none);

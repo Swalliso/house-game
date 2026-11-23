@@ -1531,8 +1531,10 @@ export function createRules(content: Content): Rules {
    * The special piece an upgrade brings this milestone: the first in its run's order
    * (`upgrade/<id>`) that the house doesn't have yet, built or waiting in Your goods, and whose
    * type isn't at a limit for the client (the checklist's ceilings and the per-house caps, as
-   * the wrong delivery reads them); with every one there, the first whose type isn't at a limit.
-   * So it brings a different one each milestone, and a second Pool only once all six are in.
+   * the wrong delivery reads them). With every one there, the first a house can hold two of
+   * (a second Pool, never a second Library: D-165's one of each special room), and only failing
+   * that the first whose type isn't at a limit. So it brings a different one each milestone, and
+   * a second Pool only once all six are in.
    */
   function upgradePiece(s: RunState, id: UpgradeId): PieceId | null {
     const full = typesAtLimit(limitsOf(s));
@@ -1544,7 +1546,8 @@ export function createRules(content: Content): Rules {
       ...s.house.pieces.map((p) => root(p.defId)),
       ...s.reserve.map((r) => root(r.id)),
     ]);
-    return open.find((p) => !have.has(root(p))) ?? open[0] ?? null;
+    const holdsTwo = (p: PieceId) => (perHouseOf(content, content.pieces[p]) ?? Infinity) > 1;
+    return open.find((p) => !have.has(root(p))) ?? open.find(holdsTwo) ?? open[0] ?? null;
   }
 
   /**
