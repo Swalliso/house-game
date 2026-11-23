@@ -78,6 +78,7 @@
 import {
   CONTENT,
   isFinished,
+  type Cell,
   type ClientId,
   type FixtureId,
   type HouseState,
@@ -335,6 +336,43 @@ function floorIn(m: HouseModel, room: Room): Pick<Geo, 'ix0' | 'iy0' | 'ix1' | '
   };
 }
 
+/**
+ * The straight stretches of `cells` along each row, of the cells `keep` keeps: each one's row
+ * (`y`), its columns west to east, and its extent inside the side walls (lot art px).
+ */
+function stretches(
+  m: HouseModel,
+  cells: readonly Cell[],
+  keep: (x: number, y: number) => boolean,
+): { y: number; cols: number[]; x0: number; x1: number }[] {
+  const rows = new Map<number, number[]>();
+  for (const c of cells) {
+    if (!keep(c.x, c.y)) continue;
+    const list = rows.get(c.y);
+    if (list) list.push(c.x);
+    else rows.set(c.y, [c.x]);
+  }
+  const out: { y: number; cols: number[]; x0: number; x1: number }[] = [];
+  for (const [y, xs] of rows) {
+    xs.sort((a, b) => a - b);
+    for (let i = 0; i < xs.length;) {
+      let j = i;
+      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
+      const cols = xs.slice(i, j + 1);
+      const first = cols[0]!;
+      const last = cols[cols.length - 1]!;
+      out.push({
+        y,
+        cols,
+        x0: first * CELL + inset(m, first, y, 'W'),
+        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
+      });
+      i = j + 1;
+    }
+  }
+  return out;
+}
+
 function analyze(m: HouseModel, room: Room): Geo {
   const { cells } = room;
   const g: Geo = {
@@ -351,66 +389,32 @@ function analyze(m: HouseModel, room: Room): Geo {
   };
 
   // North wall runs: each row's cells with a face, in straight stretches.
-  const runs: Run[] = [];
-  const rows = new Map<number, number[]>();
-  for (const c of cells) {
-    if (!hasFace(m, c.x, c.y)) continue;
-    const list = rows.get(c.y);
-    if (list) list.push(c.x);
-    else rows.set(c.y, [c.x]);
-  }
-  for (const [y, xs] of rows) {
-    xs.sort((a, b) => a - b);
-    for (let i = 0; i < xs.length;) {
-      let j = i;
-      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
-      const cols = xs.slice(i, j + 1);
-      const first = cols[0]!;
-      const last = cols[cols.length - 1]!;
-      let bottom = y;
-      while (cols.every((x) => inRoom(g, x, bottom + 1))) bottom++;
-      runs.push({
-        x0: first * CELL + inset(m, first, y, 'W'),
-        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
-        yb: Math.max(...cols.map((x) => y * CELL + inset(m, x, y, 'N'))),
-        top: y * CELL,
-        shared: cols.some((x) => edge(m, x, y, 'N') === EDGE.inner),
-        rb: (bottom + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, bottom, 'S'))),
-        row: y,
-      });
-      i = j + 1;
-    }
-  }
+  const runs: Run[] = stretches(m, cells, (x, y) => hasFace(m, x, y)).map(({ y, cols, x0, x1 }) => {
+    let bottom = y;
+    while (cols.every((x) => inRoom(g, x, bottom + 1))) bottom++;
+    return {
+      x0,
+      x1,
+      yb: Math.max(...cols.map((x) => y * CELL + inset(m, x, y, 'N'))),
+      top: y * CELL,
+      shared: cols.some((x) => edge(m, x, y, 'N') === EDGE.inner),
+      rb: (bottom + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, bottom, 'S'))),
+      row: y,
+    };
+  });
   // The widest first, then the northmost, then the westmost.
   runs.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || p.row - q.row || p.x0 - q.x0);
   g.runs = runs;
   // South wall runs: each row's cells with a wall on their south edge (not where a hall opens on
   // into the next, D-159), in straight stretches; the widest first, then the southmost.
-  const south: SouthRun[] = [];
-  const souths = new Map<number, number[]>();
-  for (const c of cells) {
-    if (edge(m, c.x, c.y, 'S') === EDGE.none) continue;
-    const list = souths.get(c.y);
-    if (list) list.push(c.x);
-    else souths.set(c.y, [c.x]);
-  }
-  for (const [y, xs] of souths) {
-    xs.sort((a, b) => a - b);
-    for (let i = 0; i < xs.length;) {
-      let j = i;
-      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
-      const cols = xs.slice(i, j + 1);
-      const first = cols[0]!;
-      const last = cols[cols.length - 1]!;
-      south.push({
-        x0: first * CELL + inset(m, first, y, 'W'),
-        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
-        yt: (y + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, y, 'S'))),
-        row: y,
-      });
-      i = j + 1;
-    }
-  }
+  const south: SouthRun[] = stretches(m, cells, (x, y) => edge(m, x, y, 'S') !== EDGE.none).map(
+    ({ y, cols, x0, x1 }) => ({
+      x0,
+      x1,
+      yt: (y + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, y, 'S'))),
+      row: y,
+    }),
+  );
   south.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || q.row - p.row || p.x0 - q.x0);
   g.south = south;
   const doors = m.doors.filter((d) => d.a === room.uid || d.b === room.uid);
