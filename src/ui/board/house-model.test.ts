@@ -1,5 +1,6 @@
 // The house model (D-097, D-093): walls on every edge between two pieces, Hallways' doors from
-// the rules' links (once a room a corridor, D-184), a front door that faces the street, a door tree that reaches every room,
+// the rules' links (once a room a corridor, D-184), a held set's rooms opening into each other
+// (D-176), a front door that faces the street, a door tree that reaches every room,
 // windows in outside walls, and the same answer every time.
 
 import fc from 'fast-check';
@@ -17,6 +18,7 @@ import { isBlocked, lotFromRows } from '../../rules/lot.ts';
 import { CELL } from '../sprites.ts';
 import {
   EDGE,
+  OPENING,
   WALL,
   edge,
   hallLinks,
@@ -25,6 +27,8 @@ import {
   overlaps,
   pieceModel,
   roomAt,
+  type Doorway,
+  type HeldSets,
   type HouseModel,
   type Rect,
 } from './house-model.ts';
@@ -688,7 +692,7 @@ const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
 );
 const YARD: readonly PieceId[] = ['patio', 'driveway', 'fence', 'lawn', 'hotTub', 'doghouse'];
 
-function randomHouse(seed: number): HouseState {
+function randomHouse(seed: number, kinds: readonly PieceId[] = INDOOR): HouseState {
   let s = seed >>> 0 || 1;
   const rand = (n: number) => {
     s = (Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) >>> 0;
@@ -732,7 +736,7 @@ function randomHouse(seed: number): HouseState {
     }
   };
   const rooms = 4 + rand(12);
-  for (let i = 0; i < rooms; i++) tryPlace(INDOOR[rand(INDOOR.length)]!, true);
+  for (let i = 0; i < rooms; i++) tryPlace(kinds[rand(kinds.length)]!, true);
   for (let i = 0; i < 4; i++) tryPlace(YARD[rand(YARD.length)]!, true);
   return { lot, pieces, nextUid: pieces.length + 1 };
 }
@@ -926,24 +930,31 @@ describe('any house', () => {
   });
 });
 
+/** A run's state with this house, as the board has it. */
+function runWith(h: HouseState) {
+  return {
+    ...rules.newRun({
+      seed: 'house',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    }),
+    house: h,
+  };
+}
+
+/** The board's model: the rules' Hallway links and held sets, and those sets. */
+function boardModel(h: HouseState): { m: HouseModel; sets: string[]; held: HeldSets } {
+  const state = runWith(h);
+  const held = heldSets(state);
+  return {
+    m: houseModel(h, hallLinks(state), null, undefined, held),
+    sets: held.map((s) => s.set),
+    held,
+  };
+}
+
 describe('a corridor’s doors (D-184)', () => {
-  /** The board's model: the rules' Hallway links and held sets. */
-  function boardModel(h: HouseState): { m: HouseModel; sets: string[] } {
-    const state = {
-      ...rules.newRun({
-        seed: 'house',
-        clientId: 'hendersons',
-        crewId: 'generalContractor',
-        mode: 'standard',
-      }),
-      house: h,
-    };
-    const sets = heldSets(state);
-    return {
-      m: houseModel(h, hallLinks(state), null, undefined, sets),
-      sets: sets.map((s) => s.set),
-    };
-  }
   const hallDoors = (m: HouseModel, uid: number) =>
     m.doors.filter((d) => d.why === 'hall' && (d.a === uid || d.b === uid));
   /** Each Hallway's corridor (the Hallways open into it with no wall), by its first piece. */
@@ -1043,5 +1054,271 @@ describe('a corridor’s doors (D-184)', () => {
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+describe('set doors (D-176)', () => {
+  /** How wide a doorway is along its wall. */
+  const width = (d: Doorway) => (d.dir === 'v' ? d.gap.h : d.gap.w);
+  /** Each two rooms' doorways, by the pair: why each is there, and whether it's an opening or a door. */
+  function doorways(m: HouseModel): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (const d of m.doors) {
+      const k = `${Math.min(d.a, d.b)}-${Math.max(d.a, d.b)}`;
+      (out[k] ??= []).push(`${d.why} ${width(d) > WALL.door ? 'opening' : 'door'}`);
+    }
+    return out;
+  }
+  /** The stretch of wall two rooms share along a doorway's line, in art px: [start, end). */
+  function sharedWall(m: HouseModel, d: Doorway): [number, number] {
+    const line = (d.dir === 'v' ? d.gap.x + d.gap.w / 2 : d.gap.y + d.gap.h / 2) / CELL;
+    const along: number[] = [];
+    for (let i = 0; i < Math.max(m.width, m.height); i++) {
+      const [a, b] =
+        d.dir === 'v'
+          ? [roomAt(m, line - 1, i), roomAt(m, line, i)]
+          : [roomAt(m, i, line - 1), roomAt(m, i, line)];
+      if (a === d.a && b === d.b) along.push(i);
+    }
+    return [Math.min(...along) * CELL, (Math.max(...along) + 1) * CELL];
+  }
+  /** The house turned a quarter clockwise on its square lot, each piece with it. */
+  function turned(h: HouseState): HouseState {
+    const n = h.lot.width;
+    const key = (cells: readonly { x: number; y: number }[]) =>
+      cells
+        .map((c) => `${c.x},${c.y}`)
+        .sort()
+        .join(' ');
+    const pieces = h.pieces.map((p) => {
+      const shape = CONTENT.pieces[p.defId].shape;
+      const cells = placedCells(shape, p.x, p.y, p.rot).map((c) => ({ x: n - 1 - c.y, y: c.x }));
+      const x0 = Math.min(...cells.map((c) => c.x));
+      const y0 = Math.min(...cells.map((c) => c.y));
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        const own = placedCells(shape, 0, 0, rot);
+        const x = x0 - Math.min(...own.map((c) => c.x));
+        const y = y0 - Math.min(...own.map((c) => c.y));
+        if (key(placedCells(shape, x, y, rot)) === key(cells)) return { ...p, x, y, rot };
+      }
+      throw new Error(`${p.defId} doesn't turn`);
+    });
+    return { ...h, pieces };
+  }
+  /** The house after the rules demolish the piece on (x, y). */
+  const demolished = (h: HouseState, x: number, y: number) =>
+    rules.apply(runWith(h), { t: 'demolish', x, y }).state.house;
+
+  const SUITE: Spec[] = [
+    ['bedroom', 1, 1],
+    ['bathroom', 3, 1],
+    ['closet', 3, 2],
+  ];
+  // A walk-through Closet: the Bathroom has no wall on the Bedroom.
+  const WALK_THROUGH: Spec[] = [
+    ['bedroom', 1, 1],
+    ['closet', 3, 1],
+    ['bathroom', 4, 1],
+  ];
+  const JACK_AND_JILL: Spec[] = [
+    ['bedroom', 1, 1],
+    ['bathroom', 3, 1],
+    ['bedroom', 4, 1],
+  ];
+  // A Kitchen and a Dining Room side by side on two cells of wall, and a Living Room below both:
+  // two cells of the Kitchen's wall, one of the Dining Room's.
+  const ENTERTAINER: Spec[] = [
+    ['kitchen', 1, 1],
+    ['diningRoom', 3, 1],
+    ['livingRoom', 1, 3, 1],
+  ];
+
+  it('open a Suite’s Bedroom into its Bathroom and its Closet', () => {
+    const { m, sets } = boardModel(house(SUITE));
+    expect(sets).toEqual(['suite']);
+    const [bed, bath, closet] = [1, 2, 3];
+    expect(doorways(m)).toEqual({ '1-2': ['set door'], '1-3': ['set door'] });
+    // The Bathroom and the Closet share a wall, but each opens off the Bedroom.
+    expect(doorBetween(m, bath, closet)).toBeUndefined();
+    expect(doorBetween(m, bed, bath)?.why).toBe('set');
+    expect(reachable(m).size).toBe(m.rooms.size);
+  });
+
+  it('open a Suite’s back room with no wall on its Bedroom off the other: a walk-through Closet', () => {
+    const { m, sets } = boardModel(house(WALK_THROUGH));
+    expect(sets).toEqual(['suite']);
+    // Bedroom to Closet, Closet to Bathroom.
+    expect(doorways(m)).toEqual({ '1-2': ['set door'], '2-3': ['set door'] });
+    expect(reachable(m).size).toBe(m.rooms.size);
+  });
+
+  it('open each Bedroom of a Jack-and-Jill into the Bathroom they share', () => {
+    const { m, sets } = boardModel(house(JACK_AND_JILL));
+    expect(sets).toEqual(['jackAndJill']);
+    expect(doorways(m)).toEqual({ '1-2': ['set door'], '2-3': ['set door'] });
+    expect(reachable(m).size).toBe(m.rooms.size);
+  });
+
+  it('open the Entertainer’s rooms into each other about a cell wide, or by a door on one cell of wall', () => {
+    const { m, sets } = boardModel(house(ENTERTAINER));
+    expect(sets).toEqual(['entertainer']);
+    const [kitchen, dining, living] = [1, 2, 3];
+    expect(doorways(m)).toEqual({
+      '1-2': ['set opening'],
+      '1-3': ['set opening'],
+      '2-3': ['set door'],
+    });
+    for (const [a, b] of [
+      [kitchen, dining],
+      [kitchen, living],
+    ] as const) {
+      const d = doorBetween(m, a, b)!;
+      expect(width(d)).toBe(OPENING.width);
+      // A stub of wall at each end of the stretch, so each room still reads as its own.
+      const [start, end] = sharedWall(m, d);
+      const [g0, g1] = d.dir === 'v' ? [d.gap.y, d.gap.y + d.gap.h] : [d.gap.x, d.gap.x + d.gap.w];
+      expect(g0 - start, `${a}-${b}`).toBeGreaterThanOrEqual(OPENING.stub);
+      expect(end - g1, `${a}-${b}`).toBeGreaterThanOrEqual(OPENING.stub);
+    }
+    expect(width(doorBetween(m, dining, living)!)).toBeLessThanOrEqual(WALL.door);
+    expect(reachable(m).size).toBe(m.rooms.size);
+  });
+
+  it('are none between rooms the rules join only through a Hallway: its own doors stay', () => {
+    // The Suite's Bathroom and Closet across a Hallway from its Bedroom.
+    const h = house([
+      ['bedroom', 1, 1],
+      ['hallway', 3, 1, 1],
+      ['bathroom', 4, 1],
+      ['closet', 4, 2],
+    ]);
+    const { m, sets } = boardModel(h);
+    expect(sets).toEqual(['suite']);
+    expect(m.doors.filter((d) => d.why === 'set')).toEqual([]);
+    expect(doorways(m)).toEqual({
+      '1-2': ['hall door'],
+      '2-3': ['hall door'],
+      '2-4': ['hall door'],
+    });
+    expect(reachable(m).size).toBe(m.rooms.size);
+  });
+
+  it('are the same at every turn of the house', () => {
+    for (const specs of [SUITE, WALK_THROUGH, JACK_AND_JILL, ENTERTAINER]) {
+      let h = house(specs);
+      const { m, sets } = boardModel(h);
+      const first = doorways(m);
+      // Every doorway in these houses is a set door.
+      expect(
+        Object.values(first)
+          .flat()
+          .every((k) => k.startsWith('set ')),
+        sets[0],
+      ).toBe(true);
+      for (let turn = 1; turn < 4; turn++) {
+        h = turned(h);
+        const next = boardModel(h);
+        const at = `${specs.map(([id]) => id).join(' ')}, turn ${turn}`;
+        expect(next.sets, at).toEqual(sets);
+        expect(doorways(next.m), at).toEqual(first);
+        expect(reachable(next.m).size, at).toBe(next.m.rooms.size);
+      }
+    }
+  });
+
+  it('go back to the tree’s doors when a demolition breaks the set', () => {
+    const h = demolished(house(ENTERTAINER), 1, 4); // the Living Room
+    const { m, sets } = boardModel(h);
+    expect(sets).toEqual([]);
+    // The Kitchen and the Dining Room: one door from the tree, a door's width, where the
+    // opening was.
+    expect(doorways(m)).toEqual({ '1-2': ['tree door'] });
+  });
+
+  it('move when a demolition makes a set match differently', () => {
+    // A second Dining Room east of the Living Room, reached through the first by the tree.
+    const h = house([...ENTERTAINER, ['diningRoom', 4, 3]]);
+    const before = boardModel(h);
+    expect(before.held.map((s) => [s.set, [...s.members].sort()])).toEqual([
+      ['entertainer', [1, 2, 3]],
+    ]);
+    expect(doorways(before.m)).toEqual({
+      '1-2': ['set opening'],
+      '1-3': ['set opening'],
+      '2-3': ['set door'],
+      '2-4': ['tree door'],
+    });
+    // Without the first Dining Room the second one is the Entertainer's: the Living Room opens
+    // into it.
+    const after = boardModel(demolished(h, 3, 1));
+    expect(after.held.map((s) => [s.set, [...s.members].sort()])).toEqual([
+      ['entertainer', [1, 3, 4]],
+    ]);
+    expect(doorways(after.m)).toEqual({ '1-3': ['set opening'], '3-4': ['set opening'] });
+    expect(reachable(after.m).size).toBe(after.m.rooms.size);
+  });
+
+  /** Rooms a held set opens into each other, and Hallways to join them only through. */
+  const SET_ROOMS: readonly PieceId[] = [
+    'bedroom',
+    'bedroom',
+    'bathroom',
+    'closet',
+    'kitchen',
+    'lKitchen',
+    'diningRoom',
+    'livingRoom',
+    'hallway',
+  ];
+  const typeOf = (m: HouseModel, uid: number) => {
+    const def = CONTENT.pieces[m.rooms.get(uid)!.defId];
+    return def.countsAs ?? def.id;
+  };
+  const sharesWall = (m: HouseModel, a: number, b: number) =>
+    m.rooms
+      .get(a)!
+      .cells.some((c) => WALL_SIDES.some(([, dx, dy]) => roomAt(m, c.x + dx, c.y + dy) === b));
+
+  it('in any house: a set door only between a held set’s rooms, one for each pair it calls for, and never a second doorway', () => {
+    let doors = 0;
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
+        const { m, held } = boardModel(randomHouse(seed, SET_ROOMS));
+        const at = `seed ${seed}`;
+        if (m.exits.length > 0) expect(reachable(m).size, at).toBe(m.rooms.size);
+        const pairs = Object.entries(doorways(m));
+        for (const [k, ds] of pairs) expect(ds, `${at}: ${k}`).toHaveLength(1);
+        // Each set door joins two rooms of one held set, and each opening is the Entertainer's.
+        for (const d of m.doors) {
+          if (d.why !== 'set') continue;
+          doors++;
+          const of = held.find((s) => s.members.includes(d.a) && s.members.includes(d.b));
+          expect(of, `${at}: ${d.a}-${d.b}`).toBeDefined();
+          if (width(d) > WALL.door) {
+            expect(of!.set, at).toBe('entertainer');
+            expect(width(d), at).toBeLessThanOrEqual(OPENING.width);
+          }
+        }
+        // Each pair the sets call for that shares a wall has one: each two of the Entertainer's
+        // rooms, a Jack-and-Jill's Bedrooms and their Bathroom, a Suite's Bedroom and its back rooms.
+        for (const s of held) {
+          const rooms = s.members.filter((u) => m.rooms.has(u));
+          for (const a of rooms) {
+            for (const b of rooms) {
+              if (a >= b || !sharesWall(m, a, b)) continue;
+              const types = [typeOf(m, a), typeOf(m, b)].sort().join(' ');
+              const calls =
+                s.set === 'entertainer' ||
+                (s.set === 'jackAndJill' && types === 'bathroom bedroom') ||
+                (s.set === 'suite' && (types === 'bathroom bedroom' || types === 'bedroom closet'));
+              if (calls) expect(doorBetween(m, a, b)?.why, `${at}: ${s.set} ${a}-${b}`).toBe('set');
+            }
+          }
+        }
+      }),
+      { numRuns: 300 },
+    );
+    // The houses hold sets often enough to mean something.
+    expect(doors).toBeGreaterThan(100);
   });
 });
