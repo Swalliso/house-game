@@ -310,13 +310,14 @@ export const fxHooks: {
 let nextId = 1;
 /** D-188: the state the showing delivery pop was taken from, so a week's deliveries pop together. */
 let deliveredAfter: RunState | null = null;
-/**
- * D-209: the state the showing note of a milestone's goods (the crew's tool, an upgrade's piece
- * or tool) was set for, so a week's notes share one flash, and its supplies pop together.
- */
+/** D-209: the state a milestone's goods (the crew's tool, an upgrade's piece or tool) came in. */
 let goodsNoteAfter: RunState | null = null;
-/** D-209: the tools that went into the supplies with that note, so they pop together. */
+/** D-209: the tools that went into the supplies in that state, so they pop together. */
 let suppliedNow = 0;
+/** D-209: the neutral notes the action playing now brings, in order (`noteFlash`). */
+let noteBuffer: { text: string; goods: boolean }[] = [];
+/** D-209: the later of an action's notes, waiting their turn. */
+let noteTimers: ReturnType<typeof setTimeout>[] = [];
 let skipping = false;
 let holding = false;
 let accelerator = 0;
@@ -1692,7 +1693,7 @@ function swapBeat(e: GameEvent): void {
     names.length <= 2
       ? names.join(' and ')
       : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
-  flash.value = { id: nextId++, text: `Swapped out ${list}: nowhere to go`, tone: 'note' };
+  noteFlash(`Swapped out ${list}: nowhere to go`);
 }
 
 /**
@@ -1732,13 +1733,7 @@ function shopBeat(e: GameEvent): void {
       audio.play('rotate', { rate: 1.2 });
       break;
     case 'shopClosed':
-      if (e.skipReward > 0) {
-        flash.value = {
-          id: nextId++,
-          text: `+${e.skipReward} budget for saving up`,
-          tone: 'note',
-        };
-      }
+      if (e.skipReward > 0) noteFlash(`+${e.skipReward} budget for saving up`);
       break;
     default:
       break;
@@ -1815,14 +1810,9 @@ function toolOrPiece(name: string): string {
  * the tools it brought are the supplies' last.
  */
 function goodsNote(text: string, after: RunState, supplied = false): void {
-  const same = goodsNoteAfter === after && flash.value !== null;
   if (goodsNoteAfter !== after) suppliedNow = 0;
   goodsNoteAfter = after;
-  flash.value = {
-    id: nextId++,
-    text: same ? `${flash.value!.text} · ${text}` : text,
-    tone: 'note',
-  };
+  noteFlash(text, true);
   if (!supplied) return;
   suppliedNow++;
   const n = after.supplies.length;
@@ -1832,6 +1822,38 @@ function goodsNote(text: string, after: RunState, supplied = false): void {
   setTimeout(() => {
     if (justSupplied.value?.id === pop.id) justSupplied.value = null;
   }, FEEL.delivered.popMs);
+}
+
+/**
+ * D-209: a neutral note over the board. The notes one action brings (the saving-up bonus as the
+ * shop closes, the milestone's goods, a draw's swaps) show one after another, each for its
+ * `targetFlashMs`, in the order they came: set in one moment, the last replaced the others, so
+ * a swap hid the Tool Belt's tool. A milestone's goods share one note (`goods`), " · " between.
+ * The next action drops any of them still waiting.
+ */
+function noteFlash(text: string, goods = false): void {
+  const last = noteBuffer.at(-1);
+  if (goods && last?.goods) {
+    last.text = `${last.text} · ${text}`;
+    return;
+  }
+  if (noteBuffer.length === 0) queueMicrotask(flushNotes);
+  noteBuffer.push({ text, goods });
+}
+
+function flushNotes(): void {
+  const notes = noteBuffer;
+  noteBuffer = [];
+  for (const t of noteTimers) clearTimeout(t);
+  noteTimers = [];
+  const gen = generation;
+  notes.forEach(({ text }, k) => {
+    const show = () => {
+      if (gen === generation) flash.value = { id: nextId++, text, tone: 'note' };
+    };
+    if (k === 0) show();
+    else noteTimers.push(setTimeout(show, k * FEEL.targetFlashMs));
+  });
 }
 
 /**
@@ -2147,6 +2169,9 @@ onEvents((events, before, after) => {
   finishStrike();
   // D-186: so does a deal, and a hand drawn around a kept card deals in.
   finishDeal();
+  // D-209: the last action's notes still waiting give way to this one.
+  for (const t of noteTimers) clearTimeout(t);
+  noteTimers = [];
   let struck = false;
   for (const e of events) {
     if (e.t === 'cardPinned') pinBeat(e);
@@ -2174,6 +2199,10 @@ onEvents((events, before, after) => {
 onRunReset(() => {
   generation++;
   skipping = true;
+  // D-209: the last run's notes still to come go with it.
+  for (const t of noteTimers) clearTimeout(t);
+  noteTimers = [];
+  noteBuffer = [];
   // D-157: a strike's beat and its words go with the run, and D-186's deal.
   finishStrike();
   finishDeal();
