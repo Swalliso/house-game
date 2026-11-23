@@ -31,8 +31,8 @@ import {
   countedSelector,
   countingMod,
   DRAW_ROWS,
-  inExtraSlot,
   matchesDef,
+  reserveUsed,
   rowOf,
   ruleValue,
   SHOP_REASONS,
@@ -332,8 +332,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
         case 'storageUnit': {
           // Only bought pieces fill the slots: a crew's, an arrival's, the client's and the
           // stock's cards sit in extra ones (D-160), and so do its own (D-209).
-          const used = s.reserve.filter((r) => !inExtraSlot(r)).length;
-          return (used >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5) + brings;
+          return (reserveUsed(s) >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5) + brings;
         }
         case 'toolBelt':
           return (

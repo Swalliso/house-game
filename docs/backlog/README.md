@@ -123,7 +123,7 @@ reading the code, not from building anything.
 | [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Built 2026-11-23 (D-205, #143); waiting on the user's playtest on /dev/ |
 | [S18](s18-neighbors-ask.md) | A neighbor asks for Fence along their side | L | Rules and content | The batch | Built 2026-11-23 (D-206, `phase/neighbors-ask`): at Roofing's start on about 2 runs in 3, 5 Fence tiles along their side pay an overtime week; waiting on the user's playtest |
 | [S19](s19-one-scored-visitor.md) | One visitor's wish, shown in the last shop | L | Rules and content | S01 landed | Not started |
-| [S20](s20-the-bigsbys.md) | A client whose family keeps arriving | L | Content and a little rules | A played spike | Not started |
+| [S20](s20-the-bigsbys.md) | A client whose family keeps arriving | L | Content and a little rules | A played spike | Spike built 2026-11-23 (D-219, `phase/the-bigsbys`), steps 1 to 8 at a placeholder target; waiting on the user's play before step 9's fit |
 | [S21](s21-house-already-on-the-lot.md) | Some lots start with a tired cottage | L | Rules, content and art | D-174's and D-145's verdicts | Not started; D-174 Accepted 2026-11-18, D-145 still Proposed |
 | [S22](s22-shop-for-your-house.md) | The shelf leans toward goods that can pay in your house | M | Rules and content | Before S27 | Built 2026-11-20 (D-192, #119); waiting on the user's playtest |
 | [S23](s23-every-good-shows-its-worth.md) | Every piece and tool on the shelf says what it's worth | M to L | Rules views and UI | | Built 2026-11-20 (D-193, `phase/every-good-shows-its-worth`); waiting on the user's playtest |
@@ -211,5 +211,6 @@ alongside.
     `phase/closet-by-neighbor`), reading only the rooms built before it; waiting on the user's
     playtest.*
   - A stepping-stone walk from the front doormat to the kerb, as art only.
-  - A Play button in the photo viewer that flips through the milestone polaroids.
+  - A Play button in the photo viewer that flips through the milestone polaroids. *Built
+    2026-11-20 with S10 (D-187), stage 1.*
   - A second click on the ghost builds the piece, the outside tester's ask.
