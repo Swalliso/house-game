@@ -1256,11 +1256,12 @@ export function Inspect() {
     body = t ? (
       <>
         <h2>{CONTENT.features[t].name}</h2>
+        {/* D-205: the wish first, so a short Inspect panel still shows it. */}
+        <WishNote feature={t} />
         <p>
           {(t === 'boulder' || t === 'oldShed') && <>{featureWantedText(CONTENT, t)} </>}
           {FEATURE_TEXT[protectedTerrain(CONTENT, s.house.lot).has(t) ? 'keptTree' : t]}
         </p>
-        <WishNote feature={t} />
         {where}
       </>
     ) : (
