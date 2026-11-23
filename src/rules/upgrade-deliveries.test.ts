@@ -27,7 +27,7 @@ import type {
 import { stream } from './rng.ts';
 import { decodeRunCode, encodeRunCode } from './runcode.ts';
 import { createRules, type Rules } from './run.ts';
-import { crateOptions, inExtraSlot, reserveUsed, SERVICES, sellPrice } from './shop.ts';
+import { crateOptions, giftRarity, inExtraSlot, reserveUsed, SERVICES, sellPrice } from './shop.ts';
 import {
   drawnBefore,
   emptyRows,
@@ -486,6 +486,64 @@ describe('the Drafting Table (D-209): a pick of three Common blueprints as it’
     expect(r.slots(gift.state).blueprints).toBe(C.balance.rules.blueprintSlots + 1);
     expect(gift.events.map((e) => e.t)).not.toContain('crateOpened');
     expect(gift.state.offers?.pick).toBeUndefined();
+  });
+
+  it('a pick of another rarity, and another size, offers just those (giftRarity)', () => {
+    const delivers = { kind: 'blueprintPick', rarity: 'uncommon', options: 2 } as const;
+    const UC: Content = {
+      ...C,
+      upgrades: { ...C.upgrades, draftingTable: { ...C.upgrades.draftingTable, delivers } },
+    };
+    expect(giftRarity(UC, 'draftingTable')).toBe('uncommon');
+    expect(giftRarity(UC, 'housewarming')).toBe('common');
+    for (const crate of Object.keys(UC.crates) as (keyof typeof UC.crates)[]) {
+      expect(giftRarity(UC, crate), crate).toBeNull();
+    }
+    const ru = createRules(UC);
+    const atShop = playUntil(ru.newRun(setup('drafting')), inShop(1), ru).state;
+    const { state } = ru.apply(shelf(atShop, [{ kind: 'upgrade', id: 'draftingTable' }]), {
+      t: 'buy',
+      i: 0,
+    });
+    const options = state.offers?.pick?.options ?? [];
+    expect(state.offers?.pick?.source).toBe('draftingTable');
+    expect(options).toHaveLength(2);
+    for (const o of options) {
+      expect(o.kind).toBe('blueprint');
+      expect(UC.blueprints[o.id as BlueprintId].rarity, o.id).toBe('uncommon');
+    }
+  });
+});
+
+describe('two upgrades that bring pieces (D-209)', () => {
+  it('come in the order bought, each on its own order, the second passing over the first’s', () => {
+    // The Bigger Truck brings a special piece too, here.
+    const two = createRules({
+      ...C,
+      upgrades: {
+        ...C.upgrades,
+        biggerTruck: { ...C.upgrades.biggerTruck, delivers: { kind: 'specialPiece' } },
+      },
+    });
+    // A seed whose two orders start on the same piece, so the second must pass over it.
+    let seed = '';
+    for (let k = 0; k < 200 && !seed; k++) {
+      const a = order(`two ${k}`, 'upgrade/storageUnit', SPECIALS);
+      const b = order(`two ${k}`, 'upgrade/biggerTruck', SPECIALS);
+      if (a[0] === b[0]) seed = `two ${k}`;
+    }
+    expect(seed).not.toBe('');
+    const firsts = (id: UpgradeId) => order(seed, `upgrade/${id}`, SPECIALS);
+    for (const bought of [
+      ['storageUnit', 'biggerTruck'],
+      ['biggerTruck', 'storageUnit'],
+    ] as const) {
+      let s = two.newRun(setup(seed));
+      for (const id of bought) s = give(two, s, id);
+      const e = fromUpgrades(playUntil(s, at(1), two).events);
+      expect(e.map((x) => x.upgrade)).toEqual(bought);
+      expect(e.map((x) => x.cards)).toEqual([[firsts(bought[0])[0]], [firsts(bought[1])[1]]]);
+    }
   });
 });
 
