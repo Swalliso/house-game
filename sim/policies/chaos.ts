@@ -35,7 +35,7 @@ import type {
   ShopOffer,
   UseToolAction,
 } from '../../src/rules/index.ts';
-import { inExtraSlot, shapeCells } from '../../src/rules/index.ts';
+import { reserveUsed, shapeCells } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 
 export interface ChaosOptions {
@@ -76,7 +76,7 @@ function goodsNow(rules: Rules, s: RunState): Good[] {
       if (!s.blueprints.some((b) => b.id === id)) out.push({ kind: 'blueprint', id });
     }
   }
-  if (s.reserve.filter((r) => !inExtraSlot(r)).length < slots.reserve) {
+  if (reserveUsed(s) < slots.reserve) {
     for (const d of Object.values(c.pieces)) {
       // Special pieces, dealt ones too (D-200); a member's room (M4b) only ever arrives with its
       // member.

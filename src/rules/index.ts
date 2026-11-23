@@ -2739,6 +2739,7 @@ export {
   HOLD_REASONS,
   inExtraSlot,
   reserveSource,
+  reserveUsed,
   SERVICE_NAMES,
   SHOP_REASONS,
 } from './shop.ts';
