@@ -63,8 +63,8 @@ import {
   decodeRunCode,
   encodeRunCode,
   IllegalAction,
-  inExtraSlot,
   placedCells,
+  reserveUsed,
   rowOf,
   rules,
   stream,
@@ -1059,8 +1059,7 @@ class Checker {
         this.fail('supplies over their slots', [s.supplies.length, slots]);
       // A crew's, an arrival's, the client's and the stock's cards sit in extra slots (M4b,
       // D-160).
-      if (s.reserve.filter((r) => !inExtraSlot(r)).length > slots.reserve)
-        this.fail('reserve over its slots');
+      if (reserveUsed(s) > slots.reserve) this.fail('reserve over its slots');
       if (s.blueprints.length > slots.blueprints)
         this.fail('blueprints over their slots', [s.blueprints.length, slots]);
     }
