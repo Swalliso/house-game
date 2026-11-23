@@ -158,10 +158,11 @@ const open = emptyRows(10, 10);
 describe('the base pool', () => {
   it('has a test below for every card, each with its Appendix A complexity', () => {
     expect(Object.keys(COMPLEXITY).sort()).toEqual(Object.keys(CONTENT.pieces).sort());
-    // The base pool is the drawable cards; special pieces (weight 0) come from the shop. The
-    // Sunroom left them for the draw at half weight (D-120), and the Birdhouse, the Fire Pit and
-    // the Porch arrive late at half weight (D-145).
-    const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
+    // The base pool is the drawable cards; special pieces come from the shop. The Sunroom left
+    // them for the draw at half weight (D-120), and the Birdhouse, the Fire Pit and the Porch
+    // arrive late at half weight (D-145). The Henhouse and the Library, dealt from Framing at
+    // half weight too, stay special pieces (D-200; special-pieces.test.ts).
+    const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0 && !d.special);
     expect(base).toHaveLength(25);
     // The two packs (D-106) took the weight of the two cards each one replaced, 20, until the
     // draw's two rows (D-121): in a two-card Layout row they draw at 10, like every card. The

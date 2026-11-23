@@ -82,11 +82,20 @@ describe('content', () => {
   });
 
   it('has the base pool: 23 piece types as 25 cards, nine sets, and seven milestones', () => {
-    // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
-    // The Sunroom left them for the draw (D-120), then the Birdhouse and the Fire Pit, which
-    // arrive late with the Porch (D-145).
-    const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
+    // The base pool is what the weekly draw deals; special pieces come from the shop. The
+    // Sunroom left them for the draw (D-120), then the Birdhouse and the Fire Pit, which arrive
+    // late with the Porch (D-145). The Henhouse and the Library stay special pieces, and the draw
+    // deals them too, from Framing (D-200).
+    const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0 && !d.special);
     expect(defs).toHaveLength(25);
+    expect(
+      Object.values(CONTENT.pieces)
+        .filter((d) => d.drawWeight > 0 && d.special)
+        .map((d) => [d.id, d.fromPhase, d.drawWeight]),
+    ).toEqual([
+      ['library', 2, 5],
+      ['henhouse', 2, 5],
+    ]);
     const types = new Set(defs.map((d) => d.countsAs ?? d.id));
     expect(types.size).toBe(23);
     const count = (cat: string) =>
@@ -190,6 +199,8 @@ describe('content', () => {
       'livingRoom',
       'closet',
       'homeOffice',
+      // The Library, a special piece the draw deals from Framing (D-200).
+      'library',
       // The Sunroom, a room, from Foundation (D-120).
       'sunroom',
       'fireplace',
@@ -214,8 +225,10 @@ describe('content', () => {
       'doghouse',
       'treehouse',
       'greenhouse',
-      // The late arrivals (D-145).
+      // The late arrivals (D-145), and the Henhouse, a special piece the draw deals from
+      // Framing (D-200).
       'firePit',
+      'henhouse',
       'birdhouse',
       'porch',
       'sprinkler',

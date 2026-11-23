@@ -310,7 +310,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
             : Object.values(c.pieces)
                 // A member's room (M4b) is never in a crate.
                 .filter((d) => !d.member)
-                .filter((d) => (crate.pool === 'special' ? d.drawWeight === 0 : true))
+                .filter((d) => (crate.pool === 'special' ? d.special : true))
                 .filter((d) => !crate.filter || d.category !== 'indoor')
                 .map((d) => ({ kind: 'piece', id: d.id }));
       let best = 0;

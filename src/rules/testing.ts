@@ -313,7 +313,8 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
       },
     ],
   }),
-  // Special pieces (weight 0: shop only).
+  // Special pieces (weight 0: shop only). `special` (D-200) marks what weight 0 did here, so the
+  // test content's shop, Showroom and Catalog hold the same ten, the Porch among them.
   playroom: piece({
     id: 'playroom',
     name: 'Playroom',
@@ -321,6 +322,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['##', '##'],
     tags: ['Loud', 'Kid'],
     drawWeight: 0,
+    special: true,
     effects: [
       { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 },
       { kind: 'aura', match: { tag: 'Quiet' }, scope: 'adjacent', amount: -2 },
@@ -333,6 +335,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['##', '##'],
     tags: ['Quiet'],
     drawWeight: 0,
+    special: true,
     effects: [{ kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 }],
   }),
   mudroom: piece({
@@ -342,6 +345,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['##'],
     tags: ['Pet'],
     drawWeight: 0,
+    special: true,
     effects: [
       {
         kind: 'conditional',
@@ -357,6 +361,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['###', '###'],
     tags: ['Wet', 'Sunny', 'Loud'],
     drawWeight: 0,
+    special: true,
     effects: [
       { kind: 'rhythm', every: 3, amount: 12 },
       { kind: 'neighbor', match: { feature: 'tree' }, amount: -2, max: 3 },
@@ -369,6 +374,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['##', '##'],
     tags: ['Sunny'],
     drawWeight: 0,
+    special: true,
     effects: [{ kind: 'perTile', region: 'sunny', amount: 2 }],
   }),
   hotTub: piece({
@@ -378,6 +384,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['#'],
     tags: ['Wet', 'Social'],
     drawWeight: 0,
+    special: true,
     effects: [{ kind: 'neighbor', match: { piece: 'patio' }, amount: 3 }],
   }),
   firePit: piece({
@@ -387,6 +394,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['#'],
     tags: ['Social'],
     drawWeight: 0,
+    special: true,
     effects: [{ kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 }],
   }),
   henhouse: piece({
@@ -396,6 +404,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['##'],
     tags: ['House'],
     drawWeight: 0,
+    special: true,
     effects: [
       { kind: 'economy', budget: 1, every: 2 },
       { kind: 'neighbor', match: { piece: ['herbGarden', 'flowerBed'] }, amount: 1 },
@@ -408,6 +417,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['#'],
     tags: ['House'],
     drawWeight: 0,
+    special: true,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
   }),
   // D-145's late piece. Weight 0 here, so the test content's draws stay as they were.
@@ -418,6 +428,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     shape: ['##'],
     tags: ['Outdoor'],
     drawWeight: 0,
+    special: true,
     complexity: 2,
     effects: [
       { kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 },

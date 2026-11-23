@@ -11,6 +11,9 @@
 // replaces on a stream of its own, `.../<row>/strike<m>/<k>`. A reroll (D-132) leaves out the
 // cards each row holds, and its swaps the cards it replaced, while enough others remain. A
 // member's room (M4b, D-103) is never drawn, not even by the Catalog: it arrives with its member.
+// A special piece (D-200) is the Catalog's in every phase, and the weekly draw's from its
+// `fromPhase` at its own weight (the Henhouse and the Library from Framing), or from week 1 at a
+// client's or crew's.
 
 import type { Card, CardType, Content, DrawRow, Modifier, PieceDef, PieceId } from './index.ts';
 import { stream, type Rng } from './rng.ts';
@@ -93,19 +96,24 @@ export function drawWeights(
   const mods = opts.mods ?? [];
   const out: { card: Card; weight: number }[] = [];
   for (const def of Object.values(content.pieces)) {
-    if (def.fromPhase > phase || def.member || def.addition) continue;
+    if (def.member || def.addition) continue;
+    // D-200: a special piece's `fromPhase` gates only its own weight. Before it, a client's or
+    // crew's weight deals it, as for a special piece at weight 0 (Vladislav's Library), and the
+    // Catalog draws it in every phase.
+    const early = def.fromPhase > phase;
+    if (early && !def.special) continue;
     const card: Card = { kind: 'piece', id: def.id };
     if (opts.row && rowOf(content, card) !== opts.row) continue;
     if (isStruck(content, struck, card)) continue;
     let weight: number;
     if (opts.special) {
-      weight = def.drawWeight === 0 ? 100 : 0;
+      weight = def.special ? 100 : 0;
     } else {
       // Weights in hundredths (drawWeight × percent), so nothing rounds away: a weight-10
       // complexity-3 piece at 5% stays drawable, just rarely (D-055). A standard run's lot
       // cards skip the ramp (D-166).
       const pct = opts.lotCardsFull && isLotCard(content, def) ? 100 : row[def.complexity - 1]!;
-      weight = weighted(def, def.drawWeight, mods) * pct;
+      weight = weighted(def, early ? 0 : def.drawWeight, mods) * pct;
     }
     if (opts.atLimit?.has(rootType(def))) {
       weight = Math.floor((weight * content.balance.drawAtLimitPct) / 100);
@@ -257,7 +265,8 @@ export function strikeCandidates(
  * Every card type that can come up in the weekly draw at some point in the run, by its root
  * type: what a strike can name, and what its floor counts. With `row`, only that row's. With
  * the run's modifiers, a special piece a client or crew puts in the draw counts too (the
- * Architect's Library, D-157); without them, only the base pool's.
+ * Architect's Playroom, D-157); without them, only the base pool's, the Henhouse and the
+ * Library among them (D-200).
  */
 export function drawableTypes(
   content: Content,

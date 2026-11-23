@@ -630,9 +630,10 @@ interface PieceDef {
   perHouse?: number            // D-165: the most of its type a house holds (one Kitchen); a capped card renovates
   shape: string[]              // ASCII rows: '#' filled, '.' empty
   tags: Tag[]
-  drawWeight: number           // 10 = normal; 0 = not in the base pool (special pieces)
+  drawWeight: number           // 10 = normal; 0 = not in the base pool (most special pieces)
   complexity: 1 | 2 | 3        // D-055: 1 = plain earners, 2 = conditions and timers, 3 = build-arounds
-  fromPhase: number            // hard gate, rarely used: earliest phase it can be drawn (fixtures: 1)
+  fromPhase: number            // hard gate, rarely used: earliest phase it can be drawn (fixtures: 1); a special piece's gates only its own weight (D-200)
+  special?: true               // D-200: a special piece, the shop's, the Showroom's and the Catalog's in every phase; it may be dealt too (the Henhouse, the Library)
   effects: Effect[]
 }
 
@@ -1727,7 +1728,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 
   - **complexity 1** (plain earners): Bedroom, Bathroom, Kitchen and L-Kitchen, Dining Room, Living Room, Closet, Lawn, Patio
   - **complexity 2** (a condition, a region, a timer, or a requirement): Flower Bed, Herb Garden, Sapling, Driveway, Garage, Home Office, Treehouse
-  - **complexity 3** (build-arounds): Fence, Hallway, Doghouse, Greenhouse, and every special piece
+  - **complexity 3** (build-arounds): Fence, Hallway, Doghouse, Greenhouse, and the Mudroom; the other special pieces are 1 or 2 (`pieces.ts`), and the two the draw deals from Framing (D-200) ramp like any card: the Library at 1, the Henhouse at 2 (a lot card, so at full weight in a standard run, D-166)
   - Complex pieces can still show up early, just rarely. A client's spec pieces get their +100% on top, so the Hendersons' Fence isn't starved.
   - **A standard run's lot cards skip the ramp** (D-166, `lotCardsFullIn`): every Layout piece but the Hallways and the Fence (the yard pieces, the outbuildings, the Garage) draws at full weight from Groundbreaking. A first job keeps the ramp (D-149), and the Hallways and the Fence keep it everywhere.
   - `fromPhase` stays only as a hard gate where a card can't work yet: fixtures join from phase 2 (M3a).
@@ -1735,7 +1736,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Building over Trees:** allowed and free; the Tree is gone.
 - **Lawn:** a 2×2 piece (was 1×1, so a big lot fills in; D-049), +1 per adjacent Lawn, at most 4. This replaces "per connected Lawn tile", which grows quadratically.
 - **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3). The Doghouse's Green neighbors (D-201) need none: a 1×1 touches four at most.
-- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160). The Hallway and the Fence draw at 5 (D-197), since the standing stock keeps one of each in Your goods; the Long Hallway and the Driveway stay at 10.
+- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces (`special`) arrive through the shop (M3a) or a client or crew (M4a and M4b), at weight 0 but for the Henhouse and the Library, which the draw deals at 5 from Framing too (D-200). A special piece's `fromPhase` gates only its own weight: a client's or crew's weight deals it from week 1, as before (Count Vladislav's Library, the Architect's). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160). The Hallway and the Fence draw at 5 (D-197), since the standing stock keeps one of each in Your goods; the Long Hallway and the Driveway stay at 10.
 
 ### M2
 
@@ -1816,7 +1817,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - Rush Order, Open House Party, and Inspector's Visit last for this week's tally; a `rule` modifier inside a timed effect counts while it's active
   - Fertilizer adds 2 to every piece's `ageBonus`, which Rhythm, economy cadence, Growth, and transforms all count
   - Copy Machine needs a free reserve slot
-  - Catalog counts as a draw (`n + 1`) and doesn't use a reroll; it draws special pieces and fixtures at equal weight, respecting `fromPhase`, and never a shop-only card (the Chandelier)
+  - Catalog counts as a draw (`n + 1`) and doesn't use a reroll; it draws special pieces (in every phase: a special piece's `fromPhase` is the weekly draw's, D-200) and fixtures (from their `fromPhase`) at equal weight, and never a shop-only card (the Chandelier)
 - **Company upgrades:** permanent, no duplicates; Savings Account pays `min(floor(budget / 5), 3)` at each milestone, before the shop.
 - **Finds:** paid once. The Old Shed's random tool goes into supplies, or is sold at once for half its price if supplies are full.
 
@@ -1840,7 +1841,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.
 - **The standing stock** (D-160, D-162, D-163): in week 1 the reserve's extra slots are filled to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`), once: `refill: false` (D-163). With `refill: true` they're topped up again at the start of each later milestone (never in overtime), as D-160 had it. A card of the type already in an extra slot counts (the Landscaper's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's comes in Foundation's third week (`firstJobPhase`, `firstJobSlot`). Placing one doesn't use the week (D-163), and a strike of the type leaves the stock alone.
 - **Deliveries** (D-160): `ClientDef.deliveries` land at the start of their phase's first week, after the arrivals, marked `client`, in extra slots: Dale's Home Office and the Barkers' Doghouse in week 1. A delivery isn't a household member: it moves no Room for everyone and isn't in `arrived`.
-- **The wrong delivery** (D-188): once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse lands free in the reserve's extra slots, marked `surprise`, after the stock and the crew's card (`surpriseDelivery` in `balance.ts`: the phase and the pieces, all of draw weight 0). Which one comes from the seed alone: the first, in an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the client; if none fits, nothing comes. Never in a first job or an overtime week; a struck type still comes, as the stock does.
+- **The wrong delivery** (D-188): once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse lands free in the reserve's extra slots, marked `surprise`, after the stock and the crew's card (`surpriseDelivery` in `balance.ts`: the phase and the pieces, all special pieces; the draw deals the Henhouse from Framing too, D-200). Which one comes from the seed alone: the first, in an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the client; if none fits, nothing comes. Never in a first job or an overtime week; a struck type still comes, as the stock does.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her A compact house (D-160's name): 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
@@ -1963,9 +1964,9 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 | Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105); `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: not counting each other) |
 | Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent`; `neighbor oldShed +4, max 1` (D-145) | M2 |
 
-### Special pieces (shop, clients, crews; weight 0)
+### Special pieces (shop, clients, crews; `special`, weight 0 but for two)
 
-The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six. Once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse also comes free as the wrong delivery (D-188).
+The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six, flagged `special`. Once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse also comes free as the wrong delivery (D-188). The Library and the Henhouse stay special pieces, and the weekly draw deals them too, at 5 from Framing (D-200): the Library in the Rooms row, the Henhouse in the Layout row.
 
 | Item | Encoding | Built in |
 |---|---|---|
