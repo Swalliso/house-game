@@ -991,6 +991,17 @@ export function createRules(content: Content): Rules {
     };
   }
 
+  /**
+   * The house as a play looked at would leave it, for the views that count with one (the
+   * checklist, D-205's wish, D-206's ask): a legal play's on the build screen; otherwise the
+   * house as it stands.
+   */
+  function houseWith(state: RunState, play?: Play): HouseState {
+    if (!play || state.screen !== 'build') return state.house;
+    const check = checkPlay(state, play);
+    return check.legal ? applyPlay(state, play, check).house : state.house;
+  }
+
   /** A play's change to the house (checked here), with its event. */
   function applyPlay(
     state: RunState,
@@ -1450,13 +1461,10 @@ export function createRules(content: Content): Rules {
   const wishViews = new WeakMap<RunState, LotWishView | null>();
   /** D-205: the lot's wish as the screen shows it, as the house stands or with a play. */
   function lotWish(state: RunState, play?: Play): LotWishView | null {
-    let house = state.house;
-    if (play && state.screen === 'build' && !state.wishFilled) {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    } else if (wishViews.has(state)) {
-      return wishViews.get(state)!;
-    }
+    // A play is looked at while the wish is open; otherwise the house's view, kept per state.
+    const looking = !!play && state.screen === 'build' && !state.wishFilled;
+    if (!looking && wishViews.has(state)) return wishViews.get(state)!;
+    const house = looking ? houseWith(state, play) : state.house;
     const wish = wishOf(state, house.lot);
     const view: LotWishView | null = wish && {
       feature: wish.feature,
@@ -1976,11 +1984,7 @@ export function createRules(content: Content): Rules {
   function neighborView(state: RunState, play?: Play): NeighborView | null {
     const n = state.neighbor;
     if (!n) return null;
-    let house = state.house;
-    if (play && n.result === undefined && state.screen === 'build') {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    }
+    const house = n.result === undefined ? houseWith(state, play) : state.house;
     const have = askHave(state, n.side, house);
     return {
       side: n.side,
@@ -4557,12 +4561,7 @@ export function createRules(content: Content): Rules {
   const noun: NounFn = (sel, n) => selectorText(content, sel, n === 1 ? 'one' : 'some');
 
   function checklist(state: RunState, play?: Play): ChecklistLine[] {
-    let house = state.house;
-    if (play && state.screen === 'build') {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    }
-    const layout = layoutFor(state, house);
+    const layout = layoutFor(state, houseWith(state, play));
     const ctx = { phase: state.phase };
     return clientOf(state).specs.map((spec) => ({
       id: spec.id,
