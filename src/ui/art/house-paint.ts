@@ -2,7 +2,8 @@
 // and offline renders read the same pixels. Pure: no DOM.
 //
 // - The floor canvas, under the furniture and the yard's props: the yard's ground (yard.ts: lawns,
-//   pavers, concrete and curb cuts, pools), the house's soft shadow on the lot and on that ground,
+//   pavers, concrete and curb cuts, pools, and the stepping stones from the front door to the kerb,
+//   D-217), the house's soft shadow on the lot and on that ground,
 //   the doormats outside its doors, each room's floor, short north wall faces in the room's
 //   wallpaper, and the floor's shadows under them and beside west walls.
 // - The walls canvas, over the furniture: LimeZu-style bands drawn from a pixel mask (its
@@ -500,10 +501,12 @@ export function paintFloors(
   const indoorPx = (px: number, py: number) =>
     roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) !== 0;
 
-  // The yard's ground first, so the house's shadow falls on it.
+  // The yard's ground first, so the house's shadow falls on it: its pieces', the curb cuts, and
+  // the stepping stones up to the front door (D-217).
   if (yard) {
     for (const l of yard.pieces.values()) paintGround(cv, l.ground, atlas, l.cells);
     paintGround(cv, yard.curbs, atlas);
+    paintGround(cv, yard.path, atlas);
   }
   // The house's shadow: off its cells, where the house shifted down and right would be.
   if (shadow && b) {
