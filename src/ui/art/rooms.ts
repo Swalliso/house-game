@@ -8,6 +8,10 @@
 //   An N piece and the NL/NR pieces listed after it are planned as one group (a bed between its
 //   nightstands), and the group drops members until it fits: the room's fixture is kept first,
 //   then its members in the order they're listed (an earlier one over any number of later ones).
+//   In a room with a set door (D-176), a kitchen's range and its counter (a key marked `south`)
+//   stand against a south wall instead where that keeps more of the group than any north wall
+//   does (D-202): the Entertainer's opening or door can take most of a short north wall. Never
+//   the key alone, and never the Fireplace.
 // - NL/NR: beside what already stands on that run. NW/NE: at a run's west or east end.
 // - C: the free floor below what stands on the north wall. CL/CR: beside the last C piece.
 // - R: a rug or a hall's runner, centered on the floor, under everything else.
@@ -249,6 +253,16 @@ interface Run {
   row: number;
 }
 
+/** A straight run of south wall along one row: a group may stand against it (D-202). */
+interface SouthRun {
+  /** Its extent inside the side walls, in lot art px. */
+  x0: number;
+  x1: number;
+  /** The wall band's top edge: a piece stands with its foot on it. */
+  yt: number;
+  row: number;
+}
+
 interface Geo {
   m: HouseModel;
   room: Room;
@@ -260,6 +274,9 @@ interface Geo {
   /** Where the floor starts below the north faces at the box's top row. */
   floorTop: number;
   runs: readonly Run[];
+  south: readonly SouthRun[];
+  /** D-202: whether a set door (D-176) is in its walls: only then may a group take a south wall. */
+  opened: boolean;
   /** The clear zones of the room's doorways and outside doors: the walkways through them. */
   blocked: readonly Rect[];
   /** Just the openings, a little into the room: a one-cell room's key piece may stand in a walkway, never in the door. */
@@ -316,6 +333,8 @@ function analyze(m: HouseModel, room: Room): Geo {
     room,
     ...floorIn(m, room),
     runs: [],
+    south: [],
+    opened: false,
     blocked: [],
     gaps: [],
     windows: [],
@@ -356,9 +375,39 @@ function analyze(m: HouseModel, room: Room): Geo {
   // The widest first, then the northmost, then the westmost.
   runs.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || p.row - q.row || p.x0 - q.x0);
   g.runs = runs;
+  // South wall runs: each row's cells with a wall on their south edge (not where a hall opens on
+  // into the next, D-159), in straight stretches; the widest first, then the southmost.
+  const south: SouthRun[] = [];
+  const souths = new Map<number, number[]>();
+  for (const c of cells) {
+    if (edge(m, c.x, c.y, 'S') === EDGE.none) continue;
+    const list = souths.get(c.y);
+    if (list) list.push(c.x);
+    else souths.set(c.y, [c.x]);
+  }
+  for (const [y, xs] of souths) {
+    xs.sort((a, b) => a - b);
+    for (let i = 0; i < xs.length;) {
+      let j = i;
+      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
+      const cols = xs.slice(i, j + 1);
+      const first = cols[0]!;
+      const last = cols[cols.length - 1]!;
+      south.push({
+        x0: first * CELL + inset(m, first, y, 'W'),
+        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
+        yt: (y + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, y, 'S'))),
+        row: y,
+      });
+      i = j + 1;
+    }
+  }
+  south.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || q.row - p.row || p.x0 - q.x0);
+  g.south = south;
   const doors = m.doors.filter((d) => d.a === room.uid || d.b === room.uid);
   const exits = m.exits.filter((e) => e.uid === room.uid);
   g.blocked = [...doors.map((d) => d.clear), ...exits.map((e) => e.clear)];
+  g.opened = doors.some((d) => d.why === 'set');
   // The openings, two px wider along their wall: furniture may come up to one, not into it.
   g.gaps = [...doors.map((d) => d.gap), ...exits.map((e) => e.gap)].map((r) =>
     r.w > r.h
@@ -413,8 +462,9 @@ interface Want {
   /** It is the room's fixture: the fixture shows when one of its sprites is placed. */
   fixture?: boolean;
   /**
-   * What stands in for the fixture where none of its sprites fits in any of its slots (the bed
-   * Bunk Beds replace): tried through every slot only after the fixture's own sprites.
+   * What stands in for it where none of its sprites fits in any of its slots (the bed Bunk Beds
+   * replace, the narrow cabinet a hutch gives way to): tried through every slot only after its own
+   * sprites.
    */
   standIn?: readonly ArtId[];
   /** A hall's runner, built from its ends and repeated middles. */
@@ -428,6 +478,18 @@ interface Want {
    * chairs): where the floor's middle can't keep it, it stands against the north wall's face.
    */
   aisle?: number;
+  /**
+   * Its stand-in comes out again where it costs the room another piece: the room is laid out
+   * once more without it, and keeps that layout unless it stands fewer pieces (D-202: the narrow
+   * cabinet a hutch gives way to, never at a chair's cost).
+   */
+  spare?: boolean;
+  /**
+   * D-202: in a room with a set door, an N piece whose group may stand against a south wall
+   * instead, where that keeps more of it than any north wall does (a kitchen's range and its
+   * counter, where the Entertainer's opening or door into the next room takes the north wall).
+   */
+  south?: boolean;
 }
 
 interface Ctx {
@@ -784,14 +846,16 @@ function bedOr(c: Ctx, ...beds: ArtId[]): Want {
 /**
  * A kitchen: the range and a counter with the sink along the north wall (a plain counter where
  * the sink won't fit), then the fridge where it still fits. Where its doors leave no north wall,
- * the range and its counter stand in the middle of the floor. A Fireplace takes the counter's
- * place beside the range; a Kitchen Island stands in the middle (a smaller one in an L-Kitchen's
- * arm, or beside a door's walkway).
+ * the range and its counter stand in the middle of the floor; where the Entertainer's opening or
+ * door into the next room leaves no north wall for the counter beside the range, the two stand
+ * against a south wall that has room for both (D-202). A Fireplace takes the counter's place
+ * beside the range; a Kitchen Island stands in the middle (a smaller one in an L-Kitchen's arm,
+ * or beside a door's walkway).
  */
 function kitchen(c: Ctx): Want[] {
   const isle = c.fixture === 'kitchenIsland';
   return [
-    want('range', 'N', 'C'),
+    { ...want('range', 'N', 'C'), south: true },
     ...fireplace(c, 'NL', 'NR'),
     { sprites: ['counter-sink', 'counter'], slots: ['NL', 'NR', 'CR', 'CL'] },
     ...(isle ? [island(ISLANDS.white)] : []),
@@ -1035,7 +1099,7 @@ function tvRoom(c: Ctx): Want[] {
 function woodKitchen(c: Ctx): Want[] {
   const isle = c.fixture === 'kitchenIsland';
   return [
-    want('range', 'N', 'C'),
+    { ...want('range', 'N', 'C'), south: true },
     ...fireplace(c, 'NL', 'NR'),
     { sprites: ['counter-sink-1', 'counter-1'], slots: ['NR', 'NL', 'CR', 'CL'] },
     ...(isle ? [island(ISLANDS.wood)] : []),
@@ -1057,7 +1121,7 @@ function woodKitchen(c: Ctx): Want[] {
 function blueKitchen(c: Ctx): Want[] {
   const isle = c.fixture === 'kitchenIsland';
   return [
-    want('range', 'N', 'C'),
+    { ...want('range', 'N', 'C'), south: true },
     ...fireplace(c, 'NL', 'NR'),
     { sprites: ['counter-sink-2', 'counter-2'], slots: ['NL', 'NR', 'CR', 'CL'] },
     ...(isle ? [island(ISLANDS.blue)] : []),
@@ -1102,7 +1166,18 @@ function clothDining(c: Ctx): Want[] {
 function hutchDining(c: Ctx): Want[] {
   const fire = c.fixture === 'fireplace';
   return [
-    ...(fire ? [] : [{ sprites: ['hutch', 'sideboard'], slots: ['N'] } satisfies Want]),
+    // D-202: the narrow cabinet where the Entertainer's opening leaves too little wall for the
+    // hutch or the sideboard, unless it would cost the room another piece (a chair).
+    ...(fire
+      ? []
+      : [
+          {
+            sprites: ['hutch', 'sideboard'],
+            slots: ['N'],
+            standIn: ['curio-1'],
+            spare: true,
+          } satisfies Want,
+        ]),
     { sprites: [pick(ROUND_TABLES, c.rank)], slots: ['C'], aisle: 13 - 3 },
     chair(c, 'CL'),
     chair(c, 'CR'),
@@ -1623,8 +1698,6 @@ function choices(members: readonly Want[]): (ArtId | null)[][] {
   const fixture = (c: (ArtId | null)[]) => c.some((sp, i) => sp !== null && members[i]!.fixture);
   const score = (c: (ArtId | null)[]) =>
     c.reduce((s, sp, i) => s + (sp === null ? 0 : members[i]!.sprites.indexOf(sp)), 0);
-  /** Which members it takes, the first member the most significant. */
-  const taken = (c: (ArtId | null)[]) => c.reduce((s, sp) => s * 2 + (sp === null ? 0 : 1), 0);
   return out
     .map((c, i) => ({ c, i }))
     .sort(
@@ -1637,7 +1710,22 @@ function choices(members: readonly Want[]): (ArtId | null)[][] {
     .map(({ c }) => c);
 }
 
-/** Plans an N piece with its NL/NR members on a run, dropping members until it fits. What it placed. */
+/** Which members a choice takes, the first member the most significant. */
+function taken(c: readonly (ArtId | null)[]): number {
+  return c.reduce((s, sp) => s * 2 + (sp === null ? 0 : 1), 0);
+}
+
+/** What only ever stands against a north wall, never a south one: the Fireplace, its flue in the wall. */
+const NORTH_ONLY: ReadonlySet<ArtId> = new Set(['fireplace']);
+
+/** A group's pieces as planned: where each stands, and the north run it stands against (none on a south wall). */
+type Trial = { want: Want; sprite: ArtId; x: number; y: number; run: Run | null }[];
+
+/**
+ * Plans an N piece with its NL/NR members on a run, dropping members until it fits. What it
+ * placed. In a room with a set door (D-202), a `south` key tries a south wall run too, where that
+ * keeps more of its group (the fixture first, then the members in order) than any north wall does.
+ */
 function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
   const done = new Set<Want>();
   const options = choices(members);
@@ -1650,20 +1738,24 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
       options.filter((o) => fixture(o) === withFixture).map((option) => ({ sprite, option })),
     ),
   );
-  for (const { sprite, option } of tries) {
+  /** The pieces west to east: NL members, the key, NR members. */
+  const orderOf = (sprite: ArtId, option: readonly (ArtId | null)[]) => {
+    const chosen = members.map((m, i) => [m, option[i]] as const).filter(([, s]) => s !== null);
+    return [
+      ...chosen.filter(([m]) => m.slots[0] === 'NL').reverse(),
+      [key, sprite] as const,
+      ...chosen.filter(([m]) => m.slots[0] === 'NR'),
+    ] as (readonly [Want, ArtId])[];
+  };
+  const north = (sprite: ArtId, option: readonly (ArtId | null)[]): Trial | null => {
+    const order = orderOf(sprite, option);
+    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
     for (const pass of passes(key)) {
-      const chosen = members.map((m, i) => [m, option[i]] as const).filter(([, s]) => s !== null);
-      const order = [
-        ...chosen.filter(([m]) => m.slots[0] === 'NL').reverse(),
-        [key, sprite] as const,
-        ...chosen.filter(([m]) => m.slots[0] === 'NR'),
-      ] as (readonly [Want, ArtId])[];
-      const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
       for (const r of L.g.runs) {
         if (L.taken.has(r)) continue;
         for (const start of spots(r.x0, r.x1, total)) {
           let x = start;
-          const trial: { want: Want; sprite: ArtId; x: number; y: number }[] = [];
+          const trial: Trial = [];
           const feet: Rect[] = [];
           for (const [w, sp] of order) {
             const y = L.wallY(r, sp, w.lift);
@@ -1672,19 +1764,65 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
             const p = w === key ? pass : { ...pass, walkways: true };
             if (y === null || !L.fitsWall(r, sp, x, y, p, feet)) break;
             const { w: sw, h } = artSize(sp);
-            trial.push({ want: w, sprite: sp, x, y });
+            trial.push({ want: w, sprite: sp, x, y, run: r });
             feet.push({ x, y: Math.max(y, r.yb), w: sw, h: y + h - Math.max(y, r.yb) });
             x += sw;
           }
-          if (trial.length < order.length) continue;
-          for (const t of trial) {
-            L.add(t.want, t.sprite, t.x, t.y, r);
-            done.add(t.want);
-          }
-          return done;
+          if (trial.length === order.length) return trial;
         }
       }
     }
+    return null;
+  };
+  /** The same group with its feet on a south wall's band, all of it on the floor and clear. */
+  const south = (sprite: ArtId, option: readonly (ArtId | null)[]): Trial | null => {
+    const order = orderOf(sprite, option);
+    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
+    for (const r of L.g.south) {
+      for (const start of spots(r.x0, r.x1, total)) {
+        let x = start;
+        const trial: Trial = [];
+        const feet: Rect[] = [];
+        for (const [w, sp] of order) {
+          const { w: sw, h } = artSize(sp);
+          const foot = { x, y: r.yt - h, w: sw, h };
+          if (x < r.x0 - 1 || x + sw > r.x1 + 1) break;
+          if (!onFloor(L.g, foot, false) || !L.free(foot)) break;
+          if (feet.some((f) => overlaps(f, foot))) break;
+          trial.push({ want: w, sprite: sp, x, y: foot.y, run: null });
+          feet.push(foot);
+          x += sw;
+        }
+        if (trial.length === order.length) return trial;
+      }
+    }
+    return null;
+  };
+  let at = -1;
+  let found: Trial | null = null;
+  for (let i = 0; i < tries.length && !found; i++) {
+    found = north(tries[i]!.sprite, tries[i]!.option);
+    if (found) at = i;
+  }
+  if (key.south && L.g.opened) {
+    /** Whether a choice keeps more of the group than another: its fixture, then its members. */
+    const more = (a: (ArtId | null)[], b: (ArtId | null)[]) =>
+      fixture(a) !== fixture(b) ? fixture(a) : taken(a) > taken(b);
+    for (const { sprite, option } of tries) {
+      // The key with some of its group, never alone (it stands in the middle of the floor as
+      // before), and never with a Fireplace: its flue goes up a north wall.
+      if (taken(option) === 0 || option.some((sp) => sp !== null && NORTH_ONLY.has(sp))) continue;
+      if (at >= 0 && !more(option, tries[at]!.option)) continue;
+      const t = south(sprite, option);
+      if (t) {
+        found = t;
+        break;
+      }
+    }
+  }
+  for (const t of found ?? []) {
+    L.add(t.want, t.sprite, t.x, t.y, t.run);
+    done.add(t.want);
   }
   return done;
 }
@@ -1810,18 +1948,28 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
  * One that keeps an aisle each side (a dining table, for its chairs) tries that first: in the
  * middle, then against the north wall's face, then in the middle over a door's walkway (never in
  * the opening: the walkway gives way to the table, and the chairs keep out of it); and only then
- * anywhere.
+ * anywhere. In each of those, a table first tries spots that keep both its aisles out of the
+ * doorways' walkways, as its chairs keep out of them (D-202: beside an opening in a side wall, it
+ * moves over to keep the chairs on that side).
  */
 function placeC(L: Layout, w: Want, sprite: ArtId): boolean {
   const g = L.g;
   const { w: sw, h } = artSize(sprite);
   const aisled = (x: number) =>
     !w.aisle || (x - w.aisle >= g.ix0 - 1 && x + sw + w.aisle <= g.ix1 + 1);
+  /** Whether a table's aisles at (x, y) keep out of the doorways' walkways. */
+  const seated = (x: number, y: number, side = w.aisle ?? 0) =>
+    [
+      { x: x - side, y, w: side, h },
+      { x: x + sw, y, w: side, h },
+    ].every((r) => !g.blocked.some((b) => overlaps(r, b)));
+  // The chairless breakfast table a big kitchen falls back to keeps its aisles only for looks.
+  const seats = w.aisle && TABLE.test(sprite) ? [true, false] : [false];
   const put = (x: number, y: number) => {
     L.lastC = L.add(w, sprite, x, y, null);
     return true;
   };
-  const middle = (aisle: boolean, walkways: boolean) => {
+  const middle = (aisle: boolean, walkways: boolean, seat: boolean) => {
     for (const x of spots(g.ix0, g.ix1, sw)) {
       if (aisle && !aisled(x)) continue;
       const over = (p: Placed) => p.rect && p.item.x < x + sw + 2 && p.item.x + p.rect.w > x - 2;
@@ -1835,6 +1983,7 @@ function placeC(L: Layout, w: Want, sprite: ArtId): boolean {
       for (const d of [0, -1, 1, -2, 2, 3, -3, 4, 5, 6, 8]) {
         const y = want + d;
         const r = { x, y, w: sw, h };
+        if (seat && !seated(x, y)) continue;
         if (y >= top && y + h <= g.iy1 && onFloor(g, r, false) && L.free(r, 0, walkways)) {
           return put(x, y);
         }
@@ -1843,16 +1992,19 @@ function placeC(L: Layout, w: Want, sprite: ArtId): boolean {
     return false;
   };
   if (w.aisle) {
-    if (middle(true, true)) return true;
+    for (const seat of seats) if (middle(true, true, seat)) return true;
     // Against the north wall's face, its back on the face as a north wall piece stands.
     const y = g.floorTop - WALL.face;
-    for (const x of spots(g.ix0, g.ix1, sw)) {
-      const r = { x, y, w: sw, h };
-      if (aisled(x) && y + h <= g.iy1 && onFloor(g, r, true) && L.free(r)) return put(x, y);
+    for (const seat of seats) {
+      for (const x of spots(g.ix0, g.ix1, sw)) {
+        const r = { x, y, w: sw, h };
+        if (!aisled(x) || (seat && !seated(x, y))) continue;
+        if (y + h <= g.iy1 && onFloor(g, r, true) && L.free(r)) return put(x, y);
+      }
     }
-    if (middle(true, false)) return true;
+    for (const seat of seats) if (middle(true, false, seat)) return true;
   }
-  return middle(false, true);
+  return middle(false, true, false);
 }
 
 /**
@@ -2224,7 +2376,7 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
     fixtureShown =
       drawn.length > 0 ? L.placed.some((p) => p.want.fixture) : paintedShown(m, room, f, drape);
   }
-  return {
+  const out: RoomLayout = {
     items,
     fixtureShown,
     ...(drape ? { drape } : {}),
@@ -2232,6 +2384,26 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
     ...(pendant ? { pendant: true as const } : {}),
     ...(cat ? { cat } : {}),
   };
+  // A spare stand-in (D-202) comes out again where the room keeps fewer of its other pieces with
+  // it than without it.
+  const spare = wants.find(
+    (w) => w.spare && L.placed.some((p) => w.standIn?.includes(p.item.sprite)),
+  );
+  if (spare) {
+    const without = layOut(
+      m,
+      uid,
+      wants.map((w) => (w === spare ? { ...w, standIn: undefined } : w)),
+      lit,
+    );
+    if (pieces(without) >= pieces(out)) return without;
+  }
+  return out;
+}
+
+/** How many pieces a layout stands in the room: what lies underfoot and the house cat left out. */
+function pieces(l: RoomLayout): number {
+  return l.items.filter((it) => !UNDERFOOT.test(it.sprite) && !isCat(it.sprite)).length;
 }
 
 /** D-181: the rooms whose light hangs over the table: the kitchens'. */
