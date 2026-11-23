@@ -875,6 +875,52 @@ describe('fixtures', () => {
     }
   });
 
+  it('a Fireplace beside the range leaves a kitchen its counter, on its own against the south wall (D-208)', () => {
+    for (let style = 0; style < arrangements('kitchen'); style++) {
+      const h = restyle(house([['kitchen', 4, 4, 0, 'fireplace']]), style);
+      const uid = h.pieces[0]!.uid;
+      const m = modelOf(h);
+      const layout = roomLayout(m, uid);
+      const sprites = layout.items.map((it) => it.sprite);
+      expect(sprites, `${style}`).toContain('range');
+      expect(sprites, `${style}`).toContain('fireplace');
+      expect(layout.fixtureShown, `${style}`).toBe(true);
+      const box = m.rooms.get(uid)!.box;
+      const counter = layout.items.find((it) => /^counter/.test(it.sprite));
+      expect(counter, `${style}`).toBeDefined();
+      expect(counter!.y + artSize(counter!.sprite).h, `${style}`).toBe(box.y + box.h - WALL.out);
+      expect(problems(m, uid), `${style}`).toEqual([]);
+    }
+  });
+
+  it('an L-Kitchen’s counter stands on its own where its short walls leave none beside the range (D-208)', () => {
+    // Turned so the range's wall is a cell long, with no set doors: the counter stands against the
+    // south wall below it. The wood arrangement's round table stands there instead, and keeps it.
+    const WOOD = 1;
+    for (let style = 0; style < arrangements('lKitchen'); style++) {
+      const h = restyle(house([['lKitchen', 4, 4, 3]]), style);
+      const uid = h.pieces[0]!.uid;
+      const m = modelOf(h);
+      const items = roomItems(m, uid);
+      expect(
+        items.some((it) => it.sprite === 'range'),
+        `${style}`,
+      ).toBe(true);
+      if (style === WOOD) {
+        expect(
+          items.some((it) => /^table-round/.test(it.sprite)),
+          `${style}`,
+        ).toBe(true);
+      } else {
+        const box = m.rooms.get(uid)!.box;
+        const counter = items.find((it) => /^counter/.test(it.sprite));
+        expect(counter, `${style}`).toBeDefined();
+        expect(counter!.y + artSize(counter!.sprite).h, `${style}`).toBe(box.y + box.h - WALL.out);
+      }
+      expect(problems(m, uid), `${style}`).toEqual([]);
+    }
+  });
+
   it('a Fireplace takes a Living Room’s north wall, and the sofa faces the room in front of it', () => {
     const { layout } = only('livingRoom', 'fireplace');
     const fire = layout.items.find((it) => it.sprite === 'fireplace')!;
