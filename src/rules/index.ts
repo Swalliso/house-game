@@ -1003,6 +1003,11 @@ export interface Balance {
     pointsPerTile: number;
     minShared: number;
   };
+  /**
+   * D-211 (backlog S07, stage 2): what a room pays as it becomes finished (`isFinished`: a
+   * fixture, and grown by Extend or Renovate), once. Empty pays nothing.
+   */
+  finishReward: Reward;
   /** A card whose type is at its limit draws at this percent of its weight (D-043, amended). */
   drawAtLimitPct: number;
   /** D-121: how many cards from its row a card with no play is swapped for, at most. */
@@ -1915,6 +1920,11 @@ export type GameEvent =
       /** Weekend Crew's free play: the week goes on. */
       free?: true;
     }
+  /**
+   * D-211: the play just before it (an install, a Renovation or an extension) finished room
+   * `uid`, which paid `reward` (balance.finishReward), once. Before the week's tally, as a find.
+   */
+  | { t: 'roomFinished'; uid: number; defId: PieceId; reward: Reward }
   | { t: 'targetReached'; phase: number; target: number; score: number }
   | { t: 'overtimeUsed'; phase: number; overtimeLeft: number; target: number; score: number }
   | {
@@ -2092,6 +2102,11 @@ export interface Preview {
   renovates?: { uid: number; level: number };
   /** D-168: for an extension, the room that grows, and its tiles once it has. */
   extends?: { uid: number; cells: readonly Cell[] };
+  /**
+   * D-211: the room the play would finish (a fixture, and grown), and what finishing it pays,
+   * once. Absent when the play finishes none, or finishing pays nothing.
+   */
+  finishes?: { uid: number; reward: Reward };
   /** Checklist lines the play would turn on, and off (spec ids). */
   specsGained: readonly string[];
   specsLost: readonly string[];

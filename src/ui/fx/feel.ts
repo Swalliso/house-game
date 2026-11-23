@@ -323,6 +323,12 @@ export const FEEL = {
    * beat, at tally speed.
    */
   lightOn: { flickerMs: 760, dips: [0.2, 0.55], fadeMs: 420, beatMs: 560, burstDelayMs: 60 },
+  /**
+   * D-211: a finished room pays, right after its light comes on: coins from its lamp, its note
+   * `rise` cells above the lamp, and the top bar's budget counting it in (FEEL.budget's coins).
+   * `beatMs` is its beat, at tally speed.
+   */
+  finishPay: { beatMs: 420, rise: 0.7, coins: 0.6 },
 
   /**
    * The client's checklist in the tally (M4a), after the sets: each line held lights its row
