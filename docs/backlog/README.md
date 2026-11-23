@@ -105,7 +105,7 @@ reading the code, not from building anything.
 | Story | What the player gets | Size | Kind | Needs first | Status |
 |---|---|---|---|---|---|
 | [S01](s01-open-house-day.md) | A win brings a crowd to the kerb, hearts and a fanfare | M | UI only | | Accepted 2026-11-18: #94, batch #93 (D-175) |
-| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Stage 1 merged by the user (#102, width B) and Accepted 2026-11-18 (D-176); stage 2 not started |
+| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Stage 1 merged by the user (#102, width B) and Accepted 2026-11-18 (D-176); stage 2 built 2026-11-22 (D-202, #133), with D-208's kitchens after it; waiting on the user's playtest |
 | [S03](s03-household-walks-in.md) | An arriving member walks up and waits at the door | M | UI and art | | Accepted 2026-11-18: #95, batch #93 (D-177) |
 | [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Accepted 2026-11-18: #96, batch #93 (D-178) |
 | [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Accepted 2026-11-18: #97, batch #93 (D-179) |
@@ -207,7 +207,9 @@ alongside.
 - Four small ones from the review's summary. They were rated marginal as pitched, but their
   cut-down versions are about a day each and could be added here:
   - A Closet that dresses by its neighbor: a pantry beside a Kitchen, a laundry beside a
-    Bathroom (`src/ui/art/rooms.ts` only).
+    Bathroom (`src/ui/art/rooms.ts` only). *Built 2026-11-23 (D-216,
+    `phase/closet-by-neighbor`), reading only the rooms built before it; waiting on the user's
+    playtest.*
   - A stepping-stone walk from the front doormat to the kerb, as art only.
   - A Play button in the photo viewer that flips through the milestone polaroids.
   - A second click on the ghost builds the piece, the outside tester's ask.

@@ -991,6 +991,17 @@ export function createRules(content: Content): Rules {
     };
   }
 
+  /**
+   * The house as a play looked at would leave it, for the views that count with one (the
+   * checklist, D-205's wish, D-206's ask): a legal play's on the build screen; otherwise the
+   * house as it stands.
+   */
+  function houseWith(state: RunState, play?: Play): HouseState {
+    if (!play || state.screen !== 'build') return state.house;
+    const check = checkPlay(state, play);
+    return check.legal ? applyPlay(state, play, check).house : state.house;
+  }
+
   /** A play's change to the house (checked here), with its event. */
   function applyPlay(
     state: RunState,
@@ -1303,12 +1314,9 @@ export function createRules(content: Content): Rules {
         (id) => content.tools[id].offered,
       );
       tool = reward.tool === 'random' ? stream(s.setup.seed, key).pick(offered) : reward.tool;
-      if (s.supplies.length < slotsFor(content, s).supplies) {
-        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-      } else {
-        soldTool = sellPrice(content, s, content.tools[tool].price);
-        s = { ...s, budget: s.budget + soldTool, budgetEarned: s.budgetEarned + soldTool };
-      }
+      const took = takeTool(s, tool);
+      s = took.state;
+      soldTool = took.sold;
     }
     if (reward.piece) s = { ...s, reserve: [...s.reserve, { id: reward.piece, wish: true }] };
     if (find) {
@@ -1323,6 +1331,19 @@ export function createRules(content: Content): Rules {
       );
     }
     return s;
+  }
+
+  /**
+   * A tool into the supplies, or sold at once for half its price when they're full: a reward's,
+   * the crew's (D-171) and a company upgrade's (D-209). `sold` is what the sale paid, if it sold.
+   */
+  function takeTool(state: RunState, tool: ToolId): { state: RunState; sold?: number } {
+    if (state.supplies.length < slotsFor(content, state).supplies) {
+      return { state: { ...state, supplies: [...state.supplies, { kind: 'tool', id: tool }] } };
+    }
+    const sold = sellPrice(content, state, content.tools[tool].price);
+    const budget = { budget: state.budget + sold, budgetEarned: state.budgetEarned + sold };
+    return { state: { ...state, ...budget }, sold };
   }
 
   /** A reward without its tool field, so the resolved tool can take its place. */
@@ -1450,13 +1471,10 @@ export function createRules(content: Content): Rules {
   const wishViews = new WeakMap<RunState, LotWishView | null>();
   /** D-205: the lot's wish as the screen shows it, as the house stands or with a play. */
   function lotWish(state: RunState, play?: Play): LotWishView | null {
-    let house = state.house;
-    if (play && state.screen === 'build' && !state.wishFilled) {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    } else if (wishViews.has(state)) {
-      return wishViews.get(state)!;
-    }
+    // A play is looked at while the wish is open; otherwise the house's view, kept per state.
+    const looking = !!play && state.screen === 'build' && !state.wishFilled;
+    if (!looking && wishViews.has(state)) return wishViews.get(state)!;
+    const house = looking ? houseWith(state, play) : state.house;
     const wish = wishOf(state, house.lot);
     const view: LotWishView | null = wish && {
       feature: wish.feature,
@@ -1719,20 +1737,16 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-171: the crew's tool (CrewDef.orderTool), in the first week of each milestone that
-   * follows a change order. Into the supplies, or sold at once when they're full (payReward's
-   * rule for a reward's tool).
+   * follows a change order. Into the supplies, or sold at once when they're full (takeTool, a
+   * reward's tool's rule).
    */
   function crewTool(s: RunState, events: GameEvent[]): RunState {
     const tool = content.crews[s.setup.crewId].orderTool;
     if (!tool || s.overtimeWeek !== 0 || s.slot !== 1) return s;
     if (!b.changeOrderAfter.includes(s.phase)) return s;
-    if (s.supplies.length < slotsFor(content, s).supplies) {
-      events.push({ t: 'crewTool', tool, phase: s.phase });
-      return { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-    }
-    const sold = sellPrice(content, s, content.tools[tool].price);
-    events.push({ t: 'crewTool', tool, phase: s.phase, sold });
-    return { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+    const { state, sold } = takeTool(s, tool);
+    events.push({ t: 'crewTool', tool, phase: s.phase, ...(sold === undefined ? {} : { sold }) });
+    return state;
   }
 
   // -------------------------------------------------------------------------------------
@@ -1813,7 +1827,7 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-209: each upgrade that delivers a tool (the Tool Belt) puts the milestone's in the
-   * supplies, after the crew's, or sells it at once when they're full (crewTool's rule).
+   * supplies, after the crew's, or sells it at once when they're full (takeTool, as the crew's).
    */
   function upgradeTools(state: RunState, events: GameEvent[]): RunState {
     let s = state;
@@ -1821,14 +1835,10 @@ export function createRules(content: Content): Rules {
       const d = content.upgrades[id].delivers;
       const tool = d?.kind === 'tool' ? upgradeTool(s, id, d) : null;
       if (!tool) continue;
-      if (s.supplies.length < slotsFor(content, s).supplies) {
-        events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase });
-        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-        continue;
-      }
-      const sold = sellPrice(content, s, content.tools[tool].price);
-      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, sold });
-      s = { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+      const took = takeTool(s, tool);
+      const sold = took.sold === undefined ? {} : { sold: took.sold };
+      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, ...sold });
+      s = took.state;
     }
     return s;
   }
@@ -1976,11 +1986,7 @@ export function createRules(content: Content): Rules {
   function neighborView(state: RunState, play?: Play): NeighborView | null {
     const n = state.neighbor;
     if (!n) return null;
-    let house = state.house;
-    if (play && n.result === undefined && state.screen === 'build') {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    }
+    const house = n.result === undefined ? houseWith(state, play) : state.house;
     const have = askHave(state, n.side, house);
     return {
       side: n.side,
@@ -4557,12 +4563,7 @@ export function createRules(content: Content): Rules {
   const noun: NounFn = (sel, n) => selectorText(content, sel, n === 1 ? 'one' : 'some');
 
   function checklist(state: RunState, play?: Play): ChecklistLine[] {
-    let house = state.house;
-    if (play && state.screen === 'build') {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    }
-    const layout = layoutFor(state, house);
+    const layout = layoutFor(state, houseWith(state, play));
     const ctx = { phase: state.phase };
     return clientOf(state).specs.map((spec) => ({
       id: spec.id,
