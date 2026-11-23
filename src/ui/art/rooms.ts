@@ -1697,9 +1697,16 @@ function passes(w: Want): readonly Pass[] {
 interface Placed {
   item: Item;
   want: Want;
-  /** Its footprint for collisions: the sprite below the band. Flat pieces have none. */
+  /** Its footprint for collisions: the sprite below the band (footOf). Flat pieces have none. */
   rect: Rect | null;
   run: Run | null;
+}
+
+/** The footprint of `sprite` at (x, y): below the band of the north run it stands against, if any. */
+function footOf(sprite: ArtId, x: number, y: number, run: Run | null): Rect {
+  const { w, h } = artSize(sprite);
+  const top = run ? Math.max(y, run.yb) : y;
+  return { x, y: top, w, h: y + h - top };
 }
 
 class Layout {
@@ -1727,11 +1734,10 @@ class Layout {
   }
 
   add(want: Want, sprite: ArtId, x: number, y: number, run: Run | null, flat = false): Placed {
-    const { w, h } = artSize(sprite);
+    const { w } = artSize(sprite);
     const item: Item = { sprite, x, y };
     if (run && y < run.yb) item.over = run.yb;
-    const top = run ? Math.max(y, run.yb) : y;
-    const p: Placed = { item, want, rect: flat ? null : { x, y: top, w, h: y + h - top }, run };
+    const p: Placed = { item, want, rect: flat ? null : footOf(sprite, x, y, run), run };
     this.placed.push(p);
     if (run) {
       const t = this.taken.get(run);
@@ -1753,20 +1759,11 @@ class Layout {
   }
 
   /** Whether `sprite` fits at (x, y) against run `r`: on the floor, clear, and off its windows if the pass says so. */
-  fitsWall(
-    r: Run,
-    sprite: ArtId,
-    x: number,
-    y: number,
-    pass: Pass,
-    also: readonly Rect[] = [],
-  ): boolean {
-    const { w, h } = artSize(sprite);
+  fitsWall(r: Run, sprite: ArtId, x: number, y: number, pass: Pass): boolean {
+    const { w } = artSize(sprite);
     if (x < r.x0 - 1 || x + w > r.x1 + 1) return false;
-    const top = Math.max(y, r.yb);
-    const foot = { x, y: top, w, h: y + h - top };
+    const foot = footOf(sprite, x, y, r);
     if (!onFloor(this.g, foot, true) || !this.free(foot, 0, pass.walkways)) return false;
-    if (also.some((a) => overlaps(foot, a))) return false;
     return (
       !pass.windows ||
       y >= r.yb ||
@@ -1859,29 +1856,48 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
       ...chosen.filter(([m]) => m.slots[0] === 'NR'),
     ] as (readonly [Want, ArtId])[];
   };
+  /**
+   * The pieces side by side along a wall `span`, from each start in turn (spots: the middle
+   * first): the first line in which each stands where `stand` says (the top of its sprite at x,
+   * or null where it can't stand), clear of the ones before it. Against north run `run`, if any.
+   */
+  const line = (
+    order: readonly (readonly [Want, ArtId])[],
+    span: { x0: number; x1: number },
+    run: Run | null,
+    stand: (w: Want, sprite: ArtId, x: number) => number | null,
+  ): Trial | null => {
+    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
+    for (const start of spots(span.x0, span.x1, total)) {
+      let x = start;
+      const trial: Trial = [];
+      const feet: Rect[] = [];
+      for (const [w, sp] of order) {
+        const y = stand(w, sp, x);
+        if (y === null) break;
+        const foot = footOf(sp, x, y, run);
+        if (feet.some((f) => overlaps(f, foot))) break;
+        trial.push({ want: w, sprite: sp, x, y, run });
+        feet.push(foot);
+        x += foot.w;
+      }
+      if (trial.length === order.length) return trial;
+    }
+    return null;
+  };
   const north = (sprite: ArtId, option: readonly (ArtId | null)[]): Trial | null => {
     const order = orderOf(sprite, option);
-    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
     for (const pass of passes(key)) {
       for (const r of L.g.runs) {
         if (L.taken.has(r)) continue;
-        for (const start of spots(r.x0, r.x1, total)) {
-          let x = start;
-          const trial: Trial = [];
-          const feet: Rect[] = [];
-          for (const [w, sp] of order) {
-            const y = L.wallY(r, sp, w.lift);
-            // Only the key piece may stand in a walkway (a one-cell room's toilet), never what
-            // stands beside it (D-173: a hamper beside the toilet).
-            const p = w === key ? pass : { ...pass, walkways: true };
-            if (y === null || !L.fitsWall(r, sp, x, y, p, feet)) break;
-            const { w: sw, h } = artSize(sp);
-            trial.push({ want: w, sprite: sp, x, y, run: r });
-            feet.push({ x, y: Math.max(y, r.yb), w: sw, h: y + h - Math.max(y, r.yb) });
-            x += sw;
-          }
-          if (trial.length === order.length) return trial;
-        }
+        const trial = line(order, r, r, (w, sp, x) => {
+          const y = L.wallY(r, sp, w.lift);
+          // Only the key piece may stand in a walkway (a one-cell room's toilet), never what
+          // stands beside it (D-173: a hamper beside the toilet).
+          const p = w === key ? pass : { ...pass, walkways: true };
+          return y !== null && L.fitsWall(r, sp, x, y, p) ? y : null;
+        });
+        if (trial) return trial;
       }
     }
     return null;
@@ -1889,24 +1905,14 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
   /** The same group with its feet on a south wall's band, all of it on the floor and clear. */
   const south = (sprite: ArtId, option: readonly (ArtId | null)[]): Trial | null => {
     const order = orderOf(sprite, option);
-    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
     for (const r of L.g.south) {
-      for (const start of spots(r.x0, r.x1, total)) {
-        let x = start;
-        const trial: Trial = [];
-        const feet: Rect[] = [];
-        for (const [w, sp] of order) {
-          const { w: sw, h } = artSize(sp);
-          const foot = { x, y: r.yt - h, w: sw, h };
-          if (x < r.x0 - 1 || x + sw > r.x1 + 1) break;
-          if (!onFloor(L.g, foot, false) || !L.free(foot)) break;
-          if (feet.some((f) => overlaps(f, foot))) break;
-          trial.push({ want: w, sprite: sp, x, y: foot.y, run: null });
-          feet.push(foot);
-          x += sw;
-        }
-        if (trial.length === order.length) return trial;
-      }
+      const trial = line(order, r, null, (_, sp, x) => {
+        const { w: sw, h } = artSize(sp);
+        const foot = { x, y: r.yt - h, w: sw, h };
+        if (x < r.x0 - 1 || x + sw > r.x1 + 1) return null;
+        return onFloor(L.g, foot, false) && L.free(foot) ? foot.y : null;
+      });
+      if (trial) return trial;
     }
     return null;
   };
