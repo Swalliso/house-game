@@ -6,6 +6,7 @@
 
 import {
   CONTENT,
+  eachMilestone,
   rules,
   type ArrivalDef,
   type ArrivalId,
@@ -33,6 +34,15 @@ export function arrivalOf(clientId: ClientId, id: ArrivalId): ArrivalDef | undef
 /** The run's arrivals still to come. */
 export function upcomingArrivals(s: RunState): readonly ArrivalDef[] {
   return arrivalsOf(s.setup.clientId).filter((a) => !s.arrived.includes(a.id));
+}
+
+/**
+ * The arrivals the checklist lists under the household's lines: everyone still to come, or, for a
+ * household that grows each milestone (D-219: the Bigsbys' five), only who's next.
+ */
+export function checklistArrivals(s: RunState): readonly ArrivalDef[] {
+  const coming = upcomingArrivals(s);
+  return eachMilestone(CONTENT.clients[s.setup.clientId].household) ? coming.slice(0, 1) : coming;
 }
 
 /** "The twins" take a plural verb ("the twins arrive"); "Grandma arrives". */

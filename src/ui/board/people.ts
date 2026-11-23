@@ -233,7 +233,7 @@ export function people(
     if (!cast || !def) continue;
     const how = pace(id, cast, state.setup.seed);
     // Their oldest room, if one is built.
-    const room = [...model.rooms.values()].find((r) => def.room.includes(r.defId));
+    const room = [...model.rooms.values()].find((r) => def.room?.includes(r.defId));
     if (room) {
       const at = doorwaySpot(model, room);
       out.push({ arrival: id, cast, place: 'room', uid: room.uid, ...at, pace: how });

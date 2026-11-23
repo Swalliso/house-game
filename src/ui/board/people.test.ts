@@ -141,11 +141,16 @@ const CLIENT_OF: Readonly<Record<ArrivalId, ClientId>> = {
   nana: 'barkers',
   rowan: 'juniper',
   ivy: 'dale',
+  auntBea: 'bigsbys',
+  cousins: 'bigsbys',
+  grandpa: 'bigsbys',
+  newlyweds: 'bigsbys',
+  baby: 'bigsbys',
 };
 
 /** A member's room type: the first their arrival counts. */
 const roomOf = (id: ArrivalId): PieceId =>
-  CONTENT.clients[CLIENT_OF[id]].household.arrivals.find((a) => a.id === id)!.room[0]!;
+  CONTENT.clients[CLIENT_OF[id]].household.arrivals.find((a) => a.id === id)!.room![0]!;
 
 const CASTED = Object.keys(CAST) as ArrivalId[];
 
@@ -269,11 +274,15 @@ function checkInRoom(m: HouseModel, p: Person): void {
 }
 
 describe('the cast', () => {
-  it('has every member but the twins, in sprites the size of a figure', () => {
+  it('has every member with a room of their own but the twins, in sprites the size of a figure', () => {
+    // D-219: the Bigsbys' members bring a plain Bedroom and have no room, and no figure, of
+    // their own (the spike has no new art).
     const members = Object.values(CONTENT.clients).flatMap((c) =>
-      c.household.arrivals.map((a) => a.id),
+      c.household.arrivals.filter((a) => a.room).map((a) => a.id),
     );
     expect(new Set(CASTED)).toEqual(new Set(members.filter((id) => id !== 'twins')));
+    for (const a of CONTENT.clients.bigsbys.household.arrivals)
+      expect(CAST[a.id], a.id).toBeUndefined();
     for (const id of CASTED) {
       const cast = CAST[id]!;
       for (const sprite of [...looks(cast), cast.walk]) {

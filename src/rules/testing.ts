@@ -998,6 +998,7 @@ export const TEST_CLIENTS: Record<ClientId, ClientDef> = {
   barkers: testClient('barkers', 'The Barkers'),
   juniper: { ...testClient('juniper', 'Juniper Vale'), rarity: 'uncommon' },
   dale: testClient('dale', 'Dale'),
+  bigsbys: { ...testClient('bigsbys', 'The Bigsbys'), rarity: 'uncommon' },
 };
 
 export const TEST_LOT_BALANCE: LotBalance = {
@@ -1481,6 +1482,28 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
     modifiers: [
       { kind: 'earn', target: { tag: 'Outdoor' }, pct: 100 },
       { kind: 'earnNothing', target: { piece: 'homeOffice' } },
+    ],
+  },
+  triplets: {
+    id: 'triplets',
+    name: 'It’s triplets!',
+    scope: 'bigsbys',
+    tier: 'core',
+    kind: 'request',
+    text: 'Two new Bedrooms.',
+    condition: { countNew: { piece: 'bedroom' }, min: 2 },
+    reward: { budget: 4 },
+  },
+  familyReunion: {
+    id: 'familyReunion',
+    name: 'The family reunion',
+    scope: 'bigsbys',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Social pieces earn double; Quiet rooms earn half.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Social' }, pct: 100 },
+      { kind: 'earn', target: { all: [ROOMS, { tag: 'Quiet' }] }, pct: -50 },
     ],
   },
 };

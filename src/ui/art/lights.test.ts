@@ -615,7 +615,7 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     ['ivy', 'dale'],
   ];
   const roomOf = (id: ArrivalId, client: ClientId): PieceId =>
-    CONTENT.clients[client].household.arrivals.find((a) => a.id === id)!.room[0]!;
+    CONTENT.clients[client].household.arrivals.find((a) => a.id === id)!.room![0]!;
 
   /** `member` arrived in house `h`, as the board places them: its model, and them as items. */
   function withMember(h: HouseState, member: ArrivalId, client: ClientId) {

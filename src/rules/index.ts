@@ -179,7 +179,7 @@ export type SetId =
 export type CrewId = 'generalContractor' | 'landscaper' | 'architect' | 'handyman';
 
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
-export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
+export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale' | 'bigsbys';
 
 /** Lot traits (D-119, D-166): what a lot has that changes how you'd build there. */
 export type LotTraitId =
@@ -205,8 +205,22 @@ export type BiomeId = 'meadow' | 'lakeside' | 'autumn' | 'dry';
  */
 export type RoomRuleId = 'cozy' | 'bathroomNearby';
 
-/** The household's arrivals (M4b, D-103): who moves in, by client. */
-export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
+/**
+ * The household's arrivals (M4b, D-103): who moves in, by client. D-219: the Bigsbys' five,
+ * one each milestone from Foundation to Finishes.
+ */
+export type ArrivalId =
+  | 'twins'
+  | 'grandma'
+  | 'renfield'
+  | 'nana'
+  | 'rowan'
+  | 'ivy'
+  | 'auntBea'
+  | 'cousins'
+  | 'grandpa'
+  | 'newlyweds'
+  | 'baby';
 
 /**
  * Change orders (M4b, D-011): two offered after each of milestones 2, 4, and 6, to pick one
@@ -238,7 +252,10 @@ export type ChangeOrderId =
   // Dale.
   | 'bigDeadline'
   | 'startedAPodcast'
-  | 'outOfOffice';
+  | 'outOfOffice'
+  // The Bigsbys (D-219).
+  | 'triplets'
+  | 'familyReunion';
 
 /**
  * The checklist's headings: the house rules every client starts with (the household, the
@@ -740,7 +757,8 @@ export interface SpecDef {
  * client, shown from week 1 (the job board), and can't be declined. At the first week of their
  * phase (after transforms, before the draw) their cards go into the reserve's extra slots.
  * From then on Room for everyone counts one more Bedroom at each end of its range and needs
- * one of their rooms.
+ * one of their rooms, if they have one (D-219: a member without one brings a plain Bedroom card
+ * and only raises the range).
  */
 export interface ArrivalDef {
   id: ArrivalId;
@@ -750,8 +768,12 @@ export interface ArrivalDef {
   phase: number;
   /** What lands in the reserve: their room's card, and anything they bring (Grandma's Bathroom). */
   cards: readonly PieceId[];
-  /** The member room types that count as theirs (the Nursery, and the Kids' Room it grows into). */
-  room: readonly PieceId[];
+  /**
+   * The member room types that count as theirs (the Nursery, and the Kids' Room it grows into).
+   * D-219: unset for a member with no room of their own, who brings a plain Bedroom card: Room
+   * for everyone then only counts one more Bedroom.
+   */
+  room?: readonly PieceId[];
   /** One line for the job board: who's coming, and when. */
   text: string;
 }
@@ -2733,12 +2755,14 @@ export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
+export { eachMilestone } from './household.ts';
 export { fitsText } from './fixtures.ts';
 export {
   giftRarity,
   HOLD_REASONS,
   inExtraSlot,
   reserveSource,
+  reserveUsed,
   SERVICE_NAMES,
   SHOP_REASONS,
 } from './shop.ts';
