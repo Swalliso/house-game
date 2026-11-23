@@ -38,6 +38,7 @@ import {
   type PieceDef,
   type PieceId,
   type PieceInfo,
+  type Preview,
   type Region,
   type ReservePiece,
   type SetScore,
@@ -766,6 +767,8 @@ function PlacingInfo() {
           {name} <span class="earns">earns {p.newPiece?.earned ?? 0}</span>
         </h2>
       )}
+      {/* D-211: right under the title, so it's in view while the panel's body is short. */}
+      {p.finishes && <FinishNote finishes={p.finishes} />}
       {fromLine && <p class="muted">{fromLine}</p>}
       {member}
       {p.breaks && <BreaksNote id={p.breaks} />}
@@ -835,6 +838,23 @@ function PlacingInfo() {
 }
 
 /**
+ * D-211: the room a play would finish (a fixture, and grown: its lamp comes on) and what that
+ * pays, once, in one line (D-167's text diet). The rules say which room and how much.
+ */
+function FinishNote({ finishes }: { finishes: NonNullable<Preview['finishes']> }) {
+  const room = run.value.house.pieces.find((q) => q.uid === finishes.uid);
+  const name = room ? CONTENT.pieces[room.defId].name : 'room';
+  return (
+    <p class="set-note find">
+      <Icon name="coin" />
+      <span>
+        Finishes {definite(name)}: {rewardText(CONTENT, finishes.reward)}
+      </span>
+    </p>
+  );
+}
+
+/**
  * What a good would do for your house, from the rules (D-107, D-141, D-193): a blueprint you hold
  * says what it's adding; one on offer, a fixture, a piece in Your goods or on offer, and a tool
  * say what they'd add (in the shop, the next week's). Crates and upgrades have no line, and
@@ -857,7 +877,12 @@ function GoodWorth({ good }: { good: GoodRef }) {
   }
 }
 
-/** A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold. */
+/**
+ * A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold.
+ * Its value line comes first, under the name: pointed at, Inspect keeps a few lines while the
+ * checklist has the room (D-110), and under the good's text the line was out of view from
+ * 1280×720 to 1440×900 (D-204). A shop card keeps it under the text, where it has the room.
+ */
 function ItemInfo({
   good,
   sellAs,
@@ -874,8 +899,8 @@ function ItemInfo({
         {good.kind === 'blueprint' && <Icon name={BLUEPRINT_ICONS[good.id]} class="good-glyph" />}
         {goodName(good)}
       </h2>
-      <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
       <GoodWorth good={good} />
+      <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
       {good.kind === 'blueprint' && sellAs && (
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}

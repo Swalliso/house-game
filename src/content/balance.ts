@@ -239,6 +239,10 @@ export const BALANCE: Balance = {
     pointsPerTile: 2,
     minShared: 2,
   },
+  // D-211 (backlog S07, stage 2): a room pays this as it becomes finished (a fixture, and grown
+  // by Extend or Renovate: D-181's lamp), once. D-090's room-completion option at its smallest:
+  // budget from how you build, beside the milestones' 4.
+  finishReward: { budget: 2 },
   // A type at its limit draws at half weight while it stays there (D-043, amended by D-093).
   drawAtLimitPct: 50,
   // A card with no play is swapped for one from its row, trying up to 3 cards (D-121).

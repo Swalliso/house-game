@@ -1013,6 +1013,11 @@ export interface Balance {
     pointsPerTile: number;
     minShared: number;
   };
+  /**
+   * D-211 (backlog S07, stage 2): what a room pays as it becomes finished (`isFinished`: a
+   * fixture, and grown by Extend or Renovate), once. Empty pays nothing.
+   */
+  finishReward: Reward;
   /** A card whose type is at its limit draws at this percent of its weight (D-043, amended). */
   drawAtLimitPct: number;
   /** D-121: how many cards from its row a card with no play is swapped for, at most. */
@@ -1484,9 +1489,16 @@ export interface RunState {
   /**
    * D-186: the hand card pinned for next week, by its place in `hand`. One at a time, set and
    * taken off by `pin`. It goes with its card (played, struck, or redrawn by a reroll or the
-   * Catalog), and a milestone or Complete early, which empty the hand, drop it.
+   * Catalog). D-207: a milestone or Complete early empties the hand, and the card goes on as
+   * `pinnedOver`; the end of the run drops it.
    */
   pinned?: number;
+  /**
+   * D-207: the card a pin carries past a milestone (its change orders and its shop, after
+   * Complete early too) into the next phase's first week, and `k`, its slot in its row, the slot
+   * it comes back to. The hand is empty until that week's draw takes it in as `kept`.
+   */
+  pinnedOver?: { card: Card; k: number };
   /**
    * D-186: the card last week's pin kept, by its place in `hand`: it took a slot of its row in
    * place of a fresh card. It can't be pinned again this week. A reroll and the Catalog's
@@ -1953,6 +1965,11 @@ export type GameEvent =
       /** Weekend Crew's free play: the week goes on. */
       free?: true;
     }
+  /**
+   * D-211: the play just before it (an install, a Renovation or an extension) finished room
+   * `uid`, which paid `reward` (balance.finishReward), once. Before the week's tally, as a find.
+   */
+  | { t: 'roomFinished'; uid: number; defId: PieceId; reward: Reward }
   | { t: 'targetReached'; phase: number; target: number; score: number }
   | { t: 'overtimeUsed'; phase: number; overtimeLeft: number; target: number; score: number }
   | {
@@ -2145,6 +2162,11 @@ export interface Preview {
   renovates?: { uid: number; level: number };
   /** D-168: for an extension, the room that grows, and its tiles once it has. */
   extends?: { uid: number; cells: readonly Cell[] };
+  /**
+   * D-211: the room the play would finish (a fixture, and grown), and what finishing it pays,
+   * once. Absent when the play finishes none, or finishing pays nothing.
+   */
+  finishes?: { uid: number; reward: Reward };
   /** Checklist lines the play would turn on, and off (spec ids). */
   specsGained: readonly string[];
   specsLost: readonly string[];

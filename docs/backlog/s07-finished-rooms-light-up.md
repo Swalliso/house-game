@@ -4,7 +4,7 @@
 |---|---|
 | Size | Stage 1 is S, a day or two. Stage 2 is M, with the rules batch |
 | Kind | Stage 1 is UI with one read-only rules view. Stage 2 is rules and content |
-| Branch | `phase/finished-rooms` for stage 1 |
+| Branch | `phase/finished-rooms` for stage 1, `phase/finished-room-pays` for stage 2 |
 | Needs first | Stage 2 needs the user to say the lights landed, and it joins the rules batch |
 | Shares files with | S02, S04, S05 and S09: build one at a time |
 
@@ -81,16 +81,16 @@ comes on in it with a small pop. In stage 2, finishing a room also pays 2 budget
 
 **Stage 1**
 
-- [ ] A room with a fixture that has been extended or renovated shows a lit lamp.
-- [ ] The play that finishes it gets the pop, and a loaded run shows the light with no pop.
-- [ ] The helper in `src/rules` is pure and tested, and the content hash is unchanged.
+- [x] A room with a fixture that has been extended or renovated shows a lit lamp.
+- [x] The play that finishes it gets the pop, and a loaded run shows the light with no pop.
+- [x] The helper in `src/rules` is pure and tested, and the content hash is unchanged.
 
 **Stage 2**
 
-- [ ] Finishing a room pays 2 budget once, through `payReward`, and the preview says so.
-- [ ] A rules test in the style of `extend.test.ts` covers all three paths, and a run code
+- [x] Finishing a room pays 2 budget once, through `payReward`, and the preview says so.
+- [x] A rules test in the style of `extend.test.ts` covers all three paths, and a run code
       replays the payouts exactly.
-- [ ] The paired-seed result and the crews' spread are in the log entry.
+- [x] The paired-seed result and the crews' spread are in the log entry.
 
 ## How to check
 

@@ -182,7 +182,8 @@ const KEPT_TIP = 'Kept from last week. It can’t be pinned again.';
  * D-186: a hand card's pushpin, stuck in its top edge. Grey on a card not pinned, so the choice
  * is in view before a card is placed; red on the one pinned for next week, stabbing in as it's
  * pinned. The card last week's pin kept wears a Kept tag instead: it can't be pinned again. Both
- * are read out with the card, and their words are their tips.
+ * are read out with the card, and their words are their tips. D-207: the run's last week has no
+ * week after it, so no pushpins, as the last shop has no holds (D-196); a Kept tag stays.
  */
 function PinMark({ i }: { i: number }) {
   const s = run.value;
@@ -196,6 +197,7 @@ function PinMark({ i }: { i: number }) {
   }
   // The card waiting to be placed goes at End week, and a pin on it with it: none to set.
   if (placingSlot() === i) return null;
+  if (rules.lastWeekOfRun(s)) return null;
   const on = s.pinned === i;
   return (
     <span
@@ -215,7 +217,7 @@ function PinMark({ i }: { i: number }) {
  * The card's top corner: the die of a card swapped in (D-121), and its pushpin (D-186). The pin
  * shows on every card from the start of the week (placing a card ends it), but not in strike
  * mode, whose targets the cards are, on a struck card under its stamp, on the card waiting to
- * be placed, or in the first job.
+ * be placed, in the first job, or in the run's last week (D-207).
  */
 function CardCorner({ i, pin }: { i: number; pin: boolean }) {
   return (

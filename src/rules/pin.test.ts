@@ -3,11 +3,13 @@
 // its row, at the slot it was pinned from, in place of a card of that week's own draw: the draw
 // keeps its keys, so nothing else shifts, and the swaps (D-121) skip it. The card a pin kept
 // can't be pinned again. A pin goes with its card (played, struck, rerolled, or redrawn by the
-// Catalog); a reroll and the Catalog leave the kept card where it is; a milestone's shop and
-// Complete early drop a pin; it carries into an overtime week. Run codes replay it.
+// Catalog); a reroll and the Catalog leave the kept card where it is; it carries into an
+// overtime week. D-207: it carries past a milestone, its change orders and its shop (Complete
+// early's too) into the next phase's first week, and there's none to set in the run's last
+// week, which no week follows. Run codes replay it.
 
 import { describe, expect, it } from 'vitest';
-import type { Action, GameEvent, RunState } from './index.ts';
+import type { Action, Card, GameEvent, RunState } from './index.ts';
 import { rowOf } from './draw.ts';
 import { decodeRunCode, encodeRunCode } from './runcode.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
@@ -16,6 +18,7 @@ import { drawnBefore, keptInto, rowSlot, setup, TEST_CONTENT } from './testing.t
 const C = TEST_CONTENT;
 const rules = createRules(C);
 const KEPT_AGAIN = 'Kept from last week: it can’t be pinned again.';
+const NO_WEEK_AFTER = 'No week comes after this one.';
 
 const J = (x: unknown) => JSON.stringify(x);
 
@@ -192,25 +195,82 @@ describe('next week’s hand (D-186)', () => {
   });
 });
 
-describe('what a pin doesn’t cross (D-186)', () => {
+describe('past a milestone (D-207)', () => {
   /** A run in Groundbreaking's last week with its target met. */
-  function lastWeekMet(seed: string): RunState {
-    return run(rules, rules.newRun(setup(seed)), [
-      { t: 'pass' },
-      { t: 'debug', op: 'addScore', amount: 5 },
-    ]).state;
+  function lastWeekMet(seed: string, r: Rules = rules): RunState {
+    return run(r, r.newRun(setup(seed)), [{ t: 'pass' }, { t: 'debug', op: 'addScore', amount: 5 }])
+      .state;
   }
 
-  it('a milestone and its shop', () => {
-    const s = lastWeekMet('pin-milestone');
-    const out = run(rules, s, [{ t: 'pin', i: 1 }, { t: 'pass' }]);
-    expect(out.events.some((e) => e.t === 'milestone')).toBe(true);
-    expect(out.state.screen).toBe('shop');
-    expect('pinned' in out.state || 'kept' in out.state).toBe(false);
-    const next = rules.apply(out.state, { t: 'leaveShop' });
-    expect(next.state.phase).toBe(1);
-    expect(next.state.kept).toBeUndefined();
-    expect(drawnEvent(next.events).kept).toBeUndefined();
+  /** From past a milestone into the next phase's first week: a crate let go, an order picked. */
+  function intoPhase(r: Rules, s: RunState) {
+    const actions: Action[] = [];
+    for (let x = s; x.screen !== 'build';) {
+      const a: Action =
+        x.screen === 'changeOrder'
+          ? { t: 'answerChangeOrder', i: 0 }
+          : x.offers?.pick
+            ? { t: 'pick', i: -1 }
+            : { t: 'leaveShop' };
+      actions.push(a);
+      x = r.apply(x, a).state;
+    }
+    return run(r, s, actions);
+  }
+
+  /**
+   * The next phase's first hand, with `card` pinned from slot k of its row in the phase's last
+   * week: the hand it deals with no pin, with the card at its slot in place of one of that
+   * draw's cards (or of the duplicate's, as next week's hand does it), and nothing shifted.
+   */
+  function expectKept(
+    withPin: { state: RunState; events: GameEvent[] },
+    plain: { state: RunState; events: GameEvent[] },
+    card: Card,
+    k: number,
+  ) {
+    const want = keptInto(C, drawnBefore(drawnEvent(plain.events)), card, k);
+    expect(drawnBefore(drawnEvent(withPin.events))).toEqual(want.hand);
+    expect(drawnEvent(withPin.events).kept).toBe(want.i);
+    expect(withPin.state.kept).toBe(want.i);
+    expect(withPin.state.hand[want.i]).toEqual(card);
+    expect('pinnedOver' in withPin.state || 'pinned' in withPin.state).toBe(false);
+    expect(clock(withPin.state)).toEqual(clock(plain.state));
+  }
+
+  it('a milestone and its shop: the card waits, and comes back in the next phase’s first week', () => {
+    let checked = 0;
+    for (let n = 0; n < 8; n++) {
+      const s = lastWeekMet(`pin-milestone-${n}`);
+      expect(s.slot).toBe(2);
+      s.hand.forEach((card, i) => {
+        const k = rowSlot(C, s.hand, i);
+        const out = run(rules, s, [{ t: 'pin', i }, { t: 'pass' }]);
+        expect(out.events.some((e) => e.t === 'milestone')).toBe(true);
+        expect(out.state.screen).toBe('shop');
+        expect('pinned' in out.state || 'kept' in out.state).toBe(false);
+        expect(out.state.pinnedOver).toEqual({ card, k });
+        const plain = run(rules, s, [{ t: 'pass' }]);
+        expect('pinnedOver' in plain.state).toBe(false);
+        // The shop's own actions leave it be.
+        const refreshed = rules.apply(out.state, { t: 'refreshShop' }).state;
+        expect(refreshed.pinnedOver).toEqual({ card, k });
+        const next = intoPhase(rules, out.state);
+        expect(next.state.phase).toBe(1);
+        expect(next.state.slot).toBe(1);
+        expectKept(next, intoPhase(rules, plain.state), card, k);
+        // It can't be pinned again; the week after, nothing has shifted.
+        expect(rules.canPin(next.state, next.state.kept!)).toEqual({
+          ok: false,
+          reason: KEPT_AGAIN,
+        });
+        const after = rules.apply(next.state, { t: 'pass' });
+        const plainAfter = rules.apply(intoPhase(rules, plain.state).state, { t: 'pass' });
+        expect(after.state.hand).toEqual(plainAfter.state.hand);
+        checked++;
+      });
+    }
+    expect(checked).toBeGreaterThan(20);
   });
 
   it('Complete early, from the button or Auto', () => {
@@ -219,22 +279,151 @@ describe('what a pin doesn’t cross (D-186)', () => {
       { t: 'pin', i: 2 },
     ]).state;
     expect(met.slot).toBe(1);
+    const card = met.hand[2]!;
+    const k = rowSlot(C, met.hand, 2);
+    const { pinned: _pinned, ...bare } = met;
+    // The button: this week's hand is set aside, and the pinned card goes on.
     const manual = rules.apply(met, { t: 'completeEarly' }).state;
     expect(manual.screen).toBe('shop');
     expect('pinned' in manual || 'kept' in manual).toBe(false);
+    expect(manual.pinnedOver).toEqual({ card, k });
+    const plainManual = rules.apply(bare, { t: 'completeEarly' }).state;
+    expectKept(intoPhase(rules, manual), intoPhase(rules, plainManual), card, k);
+    // Auto, as the week's tally meets the target.
     const auto = run(rules, met, [{ t: 'setAutoComplete', on: true }, { t: 'pass' }]);
     expect(auto.events.some((e) => e.t === 'milestone' && e.result === 'early')).toBe(true);
     expect(auto.state.screen).toBe('shop');
     expect('pinned' in auto.state || 'kept' in auto.state).toBe(false);
+    expect(auto.state.pinnedOver).toEqual({ card, k });
+    const plainAuto = run(rules, bare, [{ t: 'setAutoComplete', on: true }, { t: 'pass' }]).state;
+    expectKept(intoPhase(rules, auto.state), intoPhase(rules, plainAuto), card, k);
   });
 
-  it('the ?debug panel’s shop, opened mid-week', () => {
+  it('an overtime week’s milestone, and a change order before the shop', () => {
+    // Groundbreaking missed in its last week: an overtime week, met there.
+    const overtime = run(rules, rules.newRun(setup('pin-overtime')), [
+      { t: 'pass' },
+      { t: 'pass' },
+      { t: 'debug', op: 'addScore', amount: 5 },
+    ]).state;
+    expect(overtime.overtimeWeek).toBe(1);
+    const i = overtime.kept === 0 ? 1 : 0;
+    const card = overtime.hand[i]!;
+    const out = run(rules, overtime, [{ t: 'pin', i }, { t: 'pass' }]);
+    expect(out.events.some((e) => e.t === 'milestone' && e.result === 'overtime')).toBe(true);
+    expect(out.state.pinnedOver).toEqual({ card, k: rowSlot(C, overtime.hand, i) });
+    expect(intoPhase(rules, out.state).state.hand).toContainEqual(card);
+    // With change orders after the first milestone, the card waits through the pick too.
+    const ordering = createRules({
+      ...C,
+      balance: { ...C.balance, changeOrderAfter: [1] },
+    });
+    const s = lastWeekMet('pin-order', ordering);
+    const card2 = s.hand[1]!;
+    const k2 = rowSlot(C, s.hand, 1);
+    const offered = run(ordering, s, [{ t: 'pin', i: 1 }, { t: 'pass' }]);
+    expect(offered.state.screen).toBe('changeOrder');
+    expect(offered.state.pinnedOver).toEqual({ card: card2, k: k2 });
+    const picked = ordering.apply(offered.state, { t: 'answerChangeOrder', i: 0 }).state;
+    expect(picked.screen).toBe('shop');
+    expect(picked.pinnedOver).toEqual({ card: card2, k: k2 });
+    const plain = run(ordering, s, [{ t: 'pass' }]).state;
+    expectKept(intoPhase(ordering, offered.state), intoPhase(ordering, plain), card2, k2);
+  });
+
+  it('a type struck in the shop (an old run code’s typed strike) takes the card', () => {
+    const s = lastWeekMet('pin-struck');
+    let struck = 0;
+    s.hand.forEach((card, i) => {
+      const shop = { ...run(rules, s, [{ t: 'pin', i }, { t: 'pass' }]).state, budget: 30 };
+      const at = shop.offers!.shop!.offers.findIndex(
+        (o) => o.kind === 'service' && o.service === 'strike',
+      );
+      expect(at).toBeGreaterThanOrEqual(0);
+      const type = { kind: card.kind, id: card.id } as Card;
+      let bought: RunState;
+      try {
+        bought = rules.apply(shop, { t: 'buy', i: at, strike: type }).state;
+      } catch (e) {
+        if (e instanceof IllegalAction) return;
+        throw e;
+      }
+      expect(bought.pinnedOver).toEqual(shop.pinnedOver);
+      const next = intoPhase(rules, bought);
+      expect(next.state.kept).toBeUndefined();
+      expect(drawnEvent(next.events).kept).toBeUndefined();
+      expect(next.state.hand).not.toContainEqual(card);
+      struck++;
+    });
+    expect(struck).toBeGreaterThan(0);
+  });
+
+  it('the ?debug panel’s shop, opened mid-week, deals a fresh hand and takes the pin', () => {
     const s = rules.apply(rules.newRun(setup('pin-forced')), { t: 'pin', i: 0 }).state;
     const shop = rules.apply(s, { t: 'debug', op: 'forceShop' }).state;
-    expect('pinned' in shop).toBe(false);
+    expect('pinned' in shop || 'pinnedOver' in shop).toBe(false);
     const back = rules.apply(shop, { t: 'leaveShop' }).state;
     expect(back.week).toBe(1);
     expect(back.kept).toBeUndefined();
+  });
+});
+
+describe('the run’s last week (D-207)', () => {
+  /** Foundation, the last phase, in its last week, with `overtime` weeks of overtime left. */
+  function lastPhaseLastWeek(seed: string, overtime: number): RunState {
+    let s = run(rules, rules.newRun(setup(seed)), [
+      { t: 'pass' },
+      { t: 'debug', op: 'addScore', amount: 5 },
+      { t: 'pass' },
+      { t: 'leaveShop' },
+      { t: 'pass' },
+    ]).state;
+    expect([s.phase, s.slot]).toEqual([1, 2]);
+    expect(s.overtimeLeft).toBe(2);
+    s = { ...s, overtimeLeft: overtime };
+    return s;
+  }
+
+  it('has no pin to set: no week comes after it', () => {
+    const s = lastPhaseLastWeek('pin-last', 0);
+    expect(rules.lastWeekOfRun(s)).toBe(true);
+    s.hand.forEach((_, i) => {
+      expect(rules.canPin(s, i)).toEqual({ ok: false, reason: NO_WEEK_AFTER });
+      expect(illegal(() => rules.apply(s, { t: 'pin', i })).reason).toBe(NO_WEEK_AFTER);
+    });
+    expect(rules.legalActions(s).some((a) => a.t === 'pin')).toBe(false);
+    // Its tally ends the run, won or lost.
+    expect(rules.apply(s, { t: 'pass' }).state.screen).toBe('lost');
+    expect(rules.apply({ ...s, score: 1000 }, { t: 'pass' }).state.screen).toBe('won');
+  });
+
+  it('with overtime left, a week may follow: a pin carries into the overtime week', () => {
+    const s = lastPhaseLastWeek('pin-last-ot', 1);
+    expect(rules.lastWeekOfRun(s)).toBe(false);
+    expect(rules.canPin(s, 0)).toEqual({ ok: true });
+    const card = s.hand[0]!;
+    const out = run(rules, s, [{ t: 'pin', i: 0 }, { t: 'pass' }]).state;
+    expect(out.overtimeWeek).toBe(1);
+    expect(out.hand[out.kept!]).toEqual(card);
+    // That overtime week is the run's last: none is left after it.
+    expect(out.overtimeLeft).toBe(0);
+    expect(rules.lastWeekOfRun(out)).toBe(true);
+    expect(rules.canPin(out, out.kept === 0 ? 1 : 0).ok).toBe(false);
+  });
+
+  it('a milestone the run ends on keeps nothing', () => {
+    const s = lastPhaseLastWeek('pin-won', 1);
+    const won = run(rules, { ...s, score: 1000 }, [{ t: 'pin', i: 0 }, { t: 'pass' }]).state;
+    expect(won.screen).toBe('won');
+    expect('pinned' in won || 'pinnedOver' in won || 'kept' in won).toBe(false);
+  });
+
+  it('isn’t an earlier phase’s last week, nor the last phase’s earlier weeks', () => {
+    const first = run(rules, rules.newRun(setup('pin-not-last')), [{ t: 'pass' }]).state;
+    expect([first.phase, first.slot]).toEqual([0, 2]);
+    expect(rules.lastWeekOfRun({ ...first, overtimeLeft: 0 })).toBe(false);
+    const s = lastPhaseLastWeek('pin-not-last-2', 0);
+    expect(rules.lastWeekOfRun({ ...s, slot: 1 })).toBe(false);
   });
 });
 
