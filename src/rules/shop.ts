@@ -47,6 +47,7 @@ import type {
   PieceId,
   Rarity,
   ReservePiece,
+  ReserveSource,
   RunState,
   ServiceId,
   ShelfGood,
@@ -114,21 +115,35 @@ export function slotsFor(content: Content, state: RunState): Slots {
 }
 
 /**
- * Whether a reserve piece sits in an extra slot, which doesn't count against the reserve's: a
- * crew's starting piece and an arrival's card (M4b), what the client brought and the standing
- * stock (D-160), the wrong delivery's piece (D-188), a company upgrade's (D-209), or the lot's
- * wish's (D-205).
+ * The marks a reserve card can carry in an extra slot, in the order reserveSource reads them.
+ * Typed as a record of every ReservePiece field but its id, so a new mark doesn't compile until
+ * it's listed here, and the sim's counts, Your goods' tags (household.ts) and the extra slot
+ * all know it from this one list.
  */
+const EXTRA_MARKS = Object.keys({
+  crew: true,
+  arrival: true,
+  client: true,
+  stock: true,
+  surprise: true,
+  upgrade: true,
+  wish: true,
+} satisfies Record<Exclude<ReserveSource, 'own'>, true>) as Exclude<ReserveSource, 'own'>[];
+
+/**
+ * Where a reserve card came from: its extra slot's mark, a crew's starting piece or a card from
+ * its stock and an arrival's card (M4b, D-171), what the client brought and the standing stock
+ * (D-160), the wrong delivery's piece (D-188), a company upgrade's (D-209), or the lot's wish's
+ * (D-205); or `own`, bought, picked or copied into the reserve's own slots.
+ */
+export function reserveSource(r: ReservePiece): ReserveSource {
+  for (const mark of EXTRA_MARKS) if (r[mark] !== undefined) return mark;
+  return 'own';
+}
+
+/** Whether a reserve piece sits in an extra slot, which doesn't count against the reserve's. */
 export function inExtraSlot(r: ReservePiece): boolean {
-  return (
-    !!r.crew ||
-    r.arrival !== undefined ||
-    !!r.client ||
-    !!r.stock ||
-    !!r.surprise ||
-    r.upgrade !== undefined ||
-    !!r.wish
-  );
+  return reserveSource(r) !== 'own';
 }
 
 /** Reserve pieces that count against its slots: bought, picked, and copied ones. */

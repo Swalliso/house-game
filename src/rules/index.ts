@@ -1299,8 +1299,9 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
 /**
  * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
  * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b),
- * the client's or the standing stock's (D-160), the wrong delivery's (D-188), or a company
- * upgrade's (D-209). shop.ts' inExtraSlot says which.
+ * the client's or the standing stock's (D-160), the wrong delivery's (D-188), a company
+ * upgrade's (D-209), or the lot's wish's (D-205). Each extra slot's card carries one mark, named
+ * as its ReserveSource; shop.ts' reserveSource reads it, and inExtraSlot says whether it has one.
  */
 export interface ReservePiece {
   id: PieceId;
@@ -1322,6 +1323,14 @@ export interface ReservePiece {
   /** D-209: the company upgrade that brought it (UpgradeDef.delivers), in an extra slot. */
   upgrade?: UpgradeId;
 }
+
+/**
+ * Where a reserve card came from (D-160): bought, picked or copied (`own`, in the reserve's own
+ * slots), or the mark it carries in an extra slot, named as its ReservePiece field. A new mark
+ * on ReservePiece is a new source here at once, and shop.ts' list of marks fails to compile
+ * until it's read.
+ */
+export type ReserveSource = 'own' | Exclude<keyof ReservePiece, 'id'>;
 
 export interface OwnedBlueprint {
   id: BlueprintId;
@@ -2124,7 +2133,8 @@ export type GameEvent =
    */
   | {
       t: 'delivered';
-      from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade';
+      /** The mark the cards carry (ReserveSource): an arrival's come with `arrived`. */
+      from: Exclude<ReserveSource, 'own' | 'arrival' | 'wish'>;
       phase: number;
       cards: readonly PieceId[];
       /** D-209: the upgrade that brought them, with `from: 'upgrade'`. */
@@ -2723,7 +2733,14 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
-export { giftRarity, HOLD_REASONS, inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
+export {
+  giftRarity,
+  HOLD_REASONS,
+  inExtraSlot,
+  reserveSource,
+  SERVICE_NAMES,
+  SHOP_REASONS,
+} from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 export { isFinished } from './finished.ts';
