@@ -1352,14 +1352,16 @@ interface Theirs {
 /** Rugs, runners and mats lie under the furniture: left out of how much of it a room keeps. */
 const UNDERFOOT = /^(rug-|runner-|mat-|bath-mat)/;
 
-/**
- * How much furniture a layout has: its pieces' area in art px, what lies underfoot left out, and
- * the house cat (D-185), which isn't furniture.
- */
+/** Whether an item is furniture: not what lies underfoot, nor the house cat (D-185). */
+function isFurniture(it: Item): boolean {
+  return !UNDERFOOT.test(it.sprite) && !isCat(it.sprite);
+}
+
+/** How much furniture a layout has (isFurniture): its pieces' area in art px. */
 function furniture(l: RoomLayout): number {
   let n = 0;
   for (const it of l.items) {
-    if (UNDERFOOT.test(it.sprite) || isCat(it.sprite)) continue;
+    if (!isFurniture(it)) continue;
     const { w, h } = artSize(it.sprite);
     n += w * h;
   }
@@ -2551,7 +2553,6 @@ function layOut(
   // (D-210), as in any room: a kitchen's are the plan it keeps, its counter staying where it stood.
   let laid: readonly Want[] = wants.map((w) => (w.alone ? { ...w, alone: undefined } : w));
   if (wants.some((w) => w.alone)) {
-    const shows = (l: RoomLayout, re: RegExp) => l.items.some((it) => re.test(it.sprite));
     const keeps = (l: RoomLayout) => KEPT.every((re) => !shows(out, re) || shows(l, re));
     for (const plan of kitchenPlans(wants)) {
       // The dog lies down in each on free floor only.
@@ -2602,12 +2603,16 @@ function layOut(
 }
 
 /**
- * How many pieces a layout stands in the room: what lies underfoot, the house cat and a Dog
- * Door's dog (D-210) left out.
+ * How many pieces a layout stands in the room: its furniture (isFurniture), a Dog Door's dog
+ * (D-210) left out.
  */
 function pieces(l: RoomLayout): number {
-  return l.items.filter((it) => !UNDERFOOT.test(it.sprite) && !isCat(it.sprite) && it !== l.dog)
-    .length;
+  return l.items.filter((it) => isFurniture(it) && it !== l.dog).length;
+}
+
+/** Whether a layout shows a sprite that `re` matches. */
+function shows(l: RoomLayout, re: RegExp): boolean {
+  return l.items.some((it) => re.test(it.sprite));
 }
 
 /**
@@ -2651,13 +2656,9 @@ const KEPT: readonly RegExp[] = [KITCHEN_TABLE, /^fridge/];
  * without it (D-210).
  */
 function kitchenScore(l: RoomLayout): number[] {
-  const shows = (re: RegExp) => Number(l.items.some((it) => re.test(it.sprite)));
   return [
     Number(l.fixtureShown && !l.dog),
-    shows(/^range/),
-    shows(/^counter/),
-    shows(KITCHEN_TABLE),
-    shows(/^counter-sink/),
+    ...[/^range/, /^counter/, KITCHEN_TABLE, /^counter-sink/].map((re) => Number(shows(l, re))),
     pieces(l),
   ];
 }
