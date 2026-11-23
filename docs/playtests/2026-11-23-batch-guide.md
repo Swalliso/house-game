@@ -85,7 +85,7 @@ The threads that built the batch most wanted your call on these.
 
 ## If a link stops working
 
-The jump links are run codes for this build's content: each is a greedy bot's run from the sim, cut where its feature shows. If a later merge changes the content, a link says "The content has changed since it was made." and may stop early. The seed links always work.
+The jump links are run codes for content `af553691`: each is a greedy bot's run from the sim, cut where its feature shows. They replay the same on develop after #149, #150 and #153 (`e953629`), and on the Bigsbys' branch (#151, content `cc8bff1c`): if that merges, each link says "The content has changed since it was made." and still plays the same. After another content change a link may stop early; the seed links always work.
 
 <!-- The links: seeds first, then the run codes (checked on develop at 52bd80b, content af553691). -->
 
