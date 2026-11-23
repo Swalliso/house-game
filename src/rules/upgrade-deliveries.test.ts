@@ -1,9 +1,9 @@
 // D-209 (S26): what the company upgrades bring. From the first milestone after the shop that
 // sold it, at each milestone's start (its first week, never an overtime week, before the draw):
 // - the Storage Unit adds a special piece to Your goods' extra slots, marked with it: the first
-//   in its run's order (`upgrade/storageUnit`) that the house doesn't have yet, built or waiting,
-//   and whose type isn't at a limit; with every one there, the first a house can hold two of, then
-//   the first whose type isn't at a limit; with none, nothing;
+//   in its run's order (`upgrade/storageUnit`) that the house doesn't have yet, built, waiting or
+//   pinned past the milestone (D-207), and whose type isn't at a limit; with every one there, the
+//   first a house can hold two of, then the first whose type isn't at a limit; with none, nothing;
 // - the Tool Belt adds a tool of its rarity to the supplies: the milestone's in its run's order
 //   (`upgrade/toolBelt`), passing over one already there and one that can't pay in the house as
 //   it stands, or sells it at once when they're full, and the event says so.
@@ -699,6 +699,32 @@ describe('a pin and the Storage Unit at one milestone (D-207, D-209)', () => {
       expect(again.failedAt).toBeUndefined();
       expect(again.state).toEqual(state);
     }
+  });
+
+  it('a special piece the pin carries past the milestone counts as the house’s: the next one comes', () => {
+    // The unit's first piece in the run's order, dealt in the first phase's last week (the
+    // ?debug panel's card, where the real draw deals a Library from Framing, D-200) and pinned:
+    // it comes back in the next phase's first week, so the unit passes over it, as over one
+    // waiting in Your goods.
+    const seed = 'pinned special';
+    const [first, second] = order(seed, 'upgrade/storageUnit', SPECIALS);
+    const card = { kind: 'piece', id: first! } as const;
+    const lastWeek = playUntil(give(r, r.newRun(setup(seed)), 'storageUnit'), at(0, 2)).state;
+    const dealt = r.apply(lastWeek, { t: 'debug', op: 'giveCard', id: first! }).state;
+    const pinned = r.apply(dealt, { t: 'pin', i: dealt.hand.length - 1 }).state;
+    const shop = playUntil(pinned, inShop(1)).state;
+    expect(shop.pinnedOver?.card).toEqual(card);
+    const next = playUntil(shop, at(1));
+    expect(next.state.hand[next.state.kept!]).toEqual(card);
+    expect(fromUpgrades(next.events).map((e) => e.cards)).toEqual([[second]]);
+    expect(next.state.reserve).toEqual([{ id: second, upgrade: 'storageUnit' }]);
+    // Not pinned, the card goes with the hand at the milestone, and the unit brings it.
+    expect(fromUpgrades(playUntil(dealt, at(1)).events).map((e) => e.cards)).toEqual([[first]]);
+    // Its type struck in the shop (an old run code's typed strike, D-207), the card doesn't come
+    // back, and the unit brings it after all.
+    const struck = playUntil({ ...shop, struck: [...shop.struck, card] }, at(1));
+    expect(struck.state.kept).toBeUndefined();
+    expect(fromUpgrades(struck.events).map((e) => e.cards)).toEqual([[first]]);
   });
 });
 
