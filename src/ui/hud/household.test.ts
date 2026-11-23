@@ -1,10 +1,11 @@
 // Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods tags it and
 // Inspect says it: the crew, a household member, the client, the standing stock, (D-188) the
 // wrong delivery, (D-209) a company upgrade, or (D-205) the lot's wish. A card in the reserve's
-// own slots (bought, picked or copied) says nothing.
+// own slots (bought, picked or copied) says nothing. And the overtime weeks of a run lost in them.
 
 import { describe, expect, it } from 'vitest';
-import { extraSlotWords } from './household.ts';
+import { rules, type Action, type RunState } from '../../rules/index.ts';
+import { extraSlotWords, overtimeUsed } from './household.ts';
 
 describe('an extra slot’s words', () => {
   it('tag each card by where it came from', () => {
@@ -99,5 +100,27 @@ describe('an extra slot’s words', () => {
       whose: ' (from the Old Shed)',
       from: 'For keeping the Old Shed company',
     });
+  });
+});
+
+// Overtime weeks used (D-041, D-206), played to a run's end in them: overtime-clocks.test.ts sets
+// the same end up by hand, and neighbor-ask.test.ts counts a run won in its last overtime week.
+describe('overtime weeks used', () => {
+  it('counts the overtime weeks of a run lost in them once', () => {
+    // Nothing built, so the first milestone is missed after both overtime weeks.
+    let s: RunState = rules.newRun({
+      seed: 'overtime',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    for (let k = 0; k < 100 && s.screen !== 'lost'; k++) {
+      const a: Action =
+        s.screen === 'changeOrder' ? { t: 'answerChangeOrder', i: 0 } : { t: 'pass' };
+      s = rules.apply(s, a).state;
+    }
+    expect(s).toMatchObject({ screen: 'lost', overtimeLeft: 0, overtimeWeek: 2 });
+    expect(s.milestones).toMatchObject([{ phase: 0, result: 'failed', overtimeUsed: 2 }]);
+    expect(overtimeUsed(s)).toBe(2);
   });
 });
