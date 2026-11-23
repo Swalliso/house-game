@@ -11,7 +11,7 @@
 // type that go with it, a placement that goes too, or why it can't be struck.
 
 import type { ComponentChildren } from 'preact';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import {
   cardText,
   CONTENT,
@@ -1180,21 +1180,21 @@ export function Inspect() {
   // First, so a placement waiting for End week can't hide it (D-157).
   if (tool.value === 'strike') {
     return (
-      <InspectPanel foot={null}>
+      <InspectPanel subject="strike" foot={null}>
         <StrikeInfo />
       </InspectPanel>
     );
   }
   if (tool.value === 'demolish') {
     return (
-      <InspectPanel foot={playTotals()}>
+      <InspectPanel subject="demolish" foot={playTotals()}>
         <DemolishInfo />
       </InspectPanel>
     );
   }
   if (selected.value !== null) {
     return (
-      <InspectPanel foot={playTotals()}>
+      <InspectPanel subject={`pick:${JSON.stringify(selection.value)}`} foot={playTotals()}>
         <PlacingInfo />
       </InspectPanel>
     );
@@ -1365,6 +1365,7 @@ export function Inspect() {
   }
   return (
     <InspectPanel
+      subject={body === idle ? 'idle' : JSON.stringify(what)}
       idle={body === idle}
       held={(held !== null || heldHouse !== null) && body !== idle}
     >
@@ -1377,13 +1378,22 @@ export function Inspect() {
  * A wood panel whose first heading is its plank (inspect.css). With nothing to inspect it's
  * `is-idle`, so the left column gives its room to the checklist (app.css). A play's week total
  * is its foot, outside the body that scrolls (D-110's note: a short window cut it off).
+ *
+ * Each new thing it shows starts at the top of the body, under its plank. The body is the same
+ * element whatever it shows, so it kept the last thing's scroll: after a tool was picked (which
+ * scrolls down to Use, D-204) and put back, the next long thing pointed at opened part-way
+ * down, its first line under the plank. A layout effect, so a picked tool's own scroll to Use
+ * (a passive effect) still comes after it.
  */
 function InspectPanel({
+  subject,
   idle = false,
   held = false,
   foot = null,
   children,
 }: {
+  /** What it shows (a pick, a pointed or held thing, a mode): a change starts it at the top. */
+  subject: string;
   idle?: boolean;
   /** A piece held there by a click (store.ts heldPiece). */
   held?: boolean;
@@ -1391,9 +1401,15 @@ function InspectPanel({
   children: ComponentChildren;
 }) {
   const cls = ['inspect panel ui', idle && 'is-idle', held && 'is-held'];
+  const body = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (body.current) body.current.scrollTop = 0;
+  }, [subject]);
   return (
     <section class={cls.filter(Boolean).join(' ')} aria-label="Inspect">
-      <div class="panel-body">{children}</div>
+      <div class="panel-body" ref={body}>
+        {children}
+      </div>
       {foot && <TotalLine before={foot.before} after={foot.after} />}
     </section>
   );
