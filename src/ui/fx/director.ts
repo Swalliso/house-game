@@ -315,7 +315,7 @@ let goodsNoteAfter: RunState | null = null;
 /** D-209: the tools that went into the supplies in that state, so they pop together. */
 let suppliedNow = 0;
 /** D-209: the neutral notes the action playing now brings, in order (`noteFlash`). */
-let noteBuffer: { text: string; goods: boolean }[] = [];
+let noteBuffer: string[] = [];
 /** D-209: the later of an action's notes, waiting their turn. */
 let noteTimers: ReturnType<typeof setTimeout>[] = [];
 let skipping = false;
@@ -1804,15 +1804,15 @@ function toolOrPiece(name: string): string {
 
 /**
  * D-209: the neutral flash that names a milestone's goods as they come: the crew's tool (D-171),
- * a company upgrade's piece or tool. A week that brings several says them all in one flash, and
- * a tool that went into the supplies (`supplied`) pops its slot, as the reserve's do. They come
- * as the milestone's first week starts, after anything else that week adds to the supplies, so
- * the tools it brought are the supplies' last.
+ * a company upgrade's piece or tool. A week that brings several names each in turn (`noteFlash`),
+ * and the tools that went into the supplies (`supplied`) pop their slots together, as the
+ * reserve's do. They come as the milestone's first week starts, after anything else that week
+ * adds to the supplies, so the tools it brought are the supplies' last.
  */
 function goodsNote(text: string, after: RunState, supplied = false): void {
   if (goodsNoteAfter !== after) suppliedNow = 0;
   goodsNoteAfter = after;
-  noteFlash(text, true);
+  noteFlash(text);
   if (!supplied) return;
   suppliedNow++;
   const n = after.supplies.length;
@@ -1826,19 +1826,14 @@ function goodsNote(text: string, after: RunState, supplied = false): void {
 
 /**
  * D-209: a neutral note over the board. The notes one action brings (the saving-up bonus as the
- * shop closes, the milestone's goods, a draw's swaps) show one after another, each for its
- * `targetFlashMs`, in the order they came: set in one moment, the last replaced the others, so
- * a swap hid the Tool Belt's tool. A milestone's goods share one note (`goods`), " · " between.
- * The next action drops any of them still waiting.
+ * shop closes, each of the milestone's goods, a draw's swaps) show one after another, each for
+ * its `targetFlashMs`, in the order they came: set in one moment, the last replaced the others,
+ * so a swap hid the Tool Belt's tool. Each is its own note, since two joined ran past the board
+ * at 1728 px in the pixel font. The next action drops any still waiting.
  */
-function noteFlash(text: string, goods = false): void {
-  const last = noteBuffer.at(-1);
-  if (goods && last?.goods) {
-    last.text = `${last.text} · ${text}`;
-    return;
-  }
+function noteFlash(text: string): void {
   if (noteBuffer.length === 0) queueMicrotask(flushNotes);
-  noteBuffer.push({ text, goods });
+  noteBuffer.push(text);
 }
 
 function flushNotes(): void {
@@ -1847,7 +1842,7 @@ function flushNotes(): void {
   for (const t of noteTimers) clearTimeout(t);
   noteTimers = [];
   const gen = generation;
-  notes.forEach(({ text }, k) => {
+  notes.forEach((text, k) => {
     const show = () => {
       if (gen === generation) flash.value = { id: nextId++, text, tone: 'note' };
     };

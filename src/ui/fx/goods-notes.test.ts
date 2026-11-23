@@ -1,8 +1,8 @@
 // D-209: the notes one action brings take turns over the board. Leaving shop 1 without buying,
 // with the Storage Unit and the Tool Belt (given on the ?debug panel in week 1): the saving-up
-// bonus's note first, then, a `targetFlashMs` later, one note for the milestone's goods, the
-// upgrades' piece and tool together. Set in one moment, the last used to replace the others.
-// The next action drops any still waiting.
+// bonus's note first, then, a `targetFlashMs` apart, the Storage Unit's piece and the Tool Belt's
+// tool, each in its own note. Set in one moment, the last used to replace the others. The next
+// action drops any still waiting.
 //
 // The store and the director play a real run here, on the ?debug panel's instant tally, as
 // week-stamp.test.ts does.
@@ -89,7 +89,7 @@ describe('the notes one action brings (D-209)', () => {
     });
   }
 
-  it('the saving-up bonus first, then the milestone’s goods in one note', async () => {
+  it('the saving-up bonus first, then each of the milestone’s goods in turn', async () => {
     await atShop();
     expect(leaveShop()).toBe(true);
     await settle();
@@ -97,14 +97,19 @@ describe('the notes one action brings (D-209)', () => {
     const piece = s.reserve.find((r) => r.upgrade === 'storageUnit')!;
     const tool = s.supplies.at(-1)!;
     expect(tool.kind).toBe('tool');
-    const goods =
-      `Your Storage Unit brought ${phrase(CONTENT.pieces[piece.id].name)} · ` +
-      `Your Tool Belt brought ${phrase(CONTENT.tools[tool.id as keyof typeof CONTENT.tools].name)}`;
-    expect(texts).toEqual([`+${CONTENT.balance.shop.skipReward} budget for saving up`]);
+    const saved = `+${CONTENT.balance.shop.skipReward} budget for saving up`;
+    const toolName = CONTENT.tools[tool.id as keyof typeof CONTENT.tools].name;
+    expect(texts).toEqual([saved]);
     await wait(FEEL.targetFlashMs + 50);
-    expect(texts.slice(0, 2)).toEqual([
-      `+${CONTENT.balance.shop.skipReward} budget for saving up`,
-      goods,
+    expect(texts).toEqual([
+      saved,
+      `Your Storage Unit brought ${phrase(CONTENT.pieces[piece.id].name)}`,
+    ]);
+    await wait(FEEL.targetFlashMs);
+    expect(texts.slice(0, 3)).toEqual([
+      saved,
+      `Your Storage Unit brought ${phrase(CONTENT.pieces[piece.id].name)}`,
+      `Your Tool Belt brought ${phrase(toolName)}`,
     ]);
   });
 
