@@ -38,6 +38,7 @@ import {
   type PieceDef,
   type PieceId,
   type PieceInfo,
+  type Preview,
   type Region,
   type ReservePiece,
   type SetScore,
@@ -761,6 +762,8 @@ function PlacingInfo() {
           {name} <span class="earns">earns {p.newPiece?.earned ?? 0}</span>
         </h2>
       )}
+      {/* D-211: right under the title, so it's in view while the panel's body is short. */}
+      {p.finishes && <FinishNote finishes={p.finishes} />}
       {fromLine && <p class="muted">{fromLine}</p>}
       {member}
       {p.breaks && <BreaksNote id={p.breaks} />}
@@ -826,6 +829,23 @@ function PlacingInfo() {
       <BudgetChange before={p.budgetBefore} after={p.budgetAfter} />
       {hint}
     </>
+  );
+}
+
+/**
+ * D-211: the room a play would finish (a fixture, and grown: its lamp comes on) and what that
+ * pays, once, in one line (D-167's text diet). The rules say which room and how much.
+ */
+function FinishNote({ finishes }: { finishes: NonNullable<Preview['finishes']> }) {
+  const room = run.value.house.pieces.find((q) => q.uid === finishes.uid);
+  const name = room ? CONTENT.pieces[room.defId].name : 'room';
+  return (
+    <p class="set-note find">
+      <Icon name="coin" />
+      <span>
+        Finishes {definite(name)}: {rewardText(CONTENT, finishes.reward)}
+      </span>
+    </p>
   );
 }
 

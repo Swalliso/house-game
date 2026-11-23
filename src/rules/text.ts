@@ -1469,7 +1469,12 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       title: 'Budget',
       text:
         `Spent in the shop between milestones. You earn ${b.milestoneBudget} per milestone met, ` +
-        `${earlyBudget} per week saved by completing early, from ${joinWords(economy, 'and')}, ` +
+        `${earlyBudget} per week saved by completing early, ` +
+        // D-211: a room finished (a fixture, and grown) pays once.
+        (b.finishReward.budget
+          ? `${b.finishReward.budget} for each room you finish (grown, with a fixture), `
+          : '') +
+        `from ${joinWords(economy, 'and')}, ` +
         `${b.shop.skipReward} for leaving the shop without buying, and by selling (half price).` +
         (b.leftoverBudgetWow > 0
           ? ` What you still hold when the last milestone is met pays ${b.leftoverBudgetWow} ${L.total} each.`
