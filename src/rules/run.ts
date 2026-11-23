@@ -135,6 +135,7 @@ import type {
   WeekScore,
 } from './index.ts';
 import {
+  countOnce,
   demolitionsNeeded,
   limitReached,
   meetsHouse,
@@ -438,6 +439,14 @@ export interface Rules {
   estimatePlay(state: RunState, play: PlaceAction, opts?: EstimateOptions): Estimate;
   /** The tile counts of the house's fenced yards. */
   fencedYards(state: RunState): readonly number[];
+  /**
+   * D-212: how many of the house's pieces match a selector, each once, for the end screen's
+   * listing: a member's room is a Bedroom and an L-Kitchen a Kitchen (their cards' countsAs),
+   * and a Bedroom with Bunk Beds is one Bedroom, as a listing counts rooms. The checklist's
+   * counts stay the conditions' own (Bunk Beds count twice there, D-198). Lot features never
+   * count. It reads the house and changes nothing.
+   */
+  countPieces(state: RunState, sel: Selector): number;
   /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
   fencedTiles(state: RunState): readonly number[];
   /**
@@ -4769,6 +4778,7 @@ export function createRules(content: Content): Rules {
       );
     },
     fencedYards: (state) => layoutFor(state).fencedSizes,
+    countPieces: (state, sel) => countOnce(content, layoutFor(state), sel),
     fencedTiles: (state) => {
       const ids = layoutFor(state).fencedId;
       const out: number[] = [];
