@@ -2581,23 +2581,20 @@ function layOut(
   // most makes way for it, and the room keeps the rest of its furniture.
   if (f === 'dogDoor' && !chosen.fixtureShown && !dogWay) {
     const small = /^(plant-|side-|lamp-|nightstand-|nightlamp-)/;
+    const bed = dogBedWant(c);
+    const swaps = inPlaceOf(laid, DOG_BED, small);
     const ways = [
-      ...inPlaceOf(laid, DOG_BED, small),
+      ...swaps,
       // Or the small piece gives way, and the bed goes wherever the floor is free.
-      ...inPlaceOf(laid, DOG_BED, small).map((way) => [
-        ...way.filter((w) => !w.sprites.includes(DOG_BED)),
-        dogBedWant(c),
-      ]),
+      ...swaps.map((way) => [...way.filter((w) => !w.sprites.includes(DOG_BED)), bed]),
     ];
-    for (const way of ways) {
-      const layout = layOut(m, uid, way, lit, true);
-      if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
-    }
     // Else one of the pieces after the key piece's group and any table's makes way: the bed goes
     // down before it, one place earlier at a time, as placesFor puts the Barkers'.
-    const bed = dogBedWant(c);
     for (let i = laid.length - 1; i >= keptBefore(laid); i--) {
-      const layout = layOut(m, uid, [...laid.slice(0, i), bed, ...laid.slice(i)], lit, true);
+      ways.push([...laid.slice(0, i), bed, ...laid.slice(i)]);
+    }
+    for (const way of ways) {
+      const layout = layOut(m, uid, way, lit, true);
       if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
     }
   }
