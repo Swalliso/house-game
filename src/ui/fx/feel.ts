@@ -400,6 +400,26 @@ export const FEEL = {
     outMs: 220,
   },
   /**
+   * D-206: the neighbor's ask (board/NeighborAskLayer.tsx). As it comes the doorbell rings at
+   * `bellRate` (a touch lower than a member's), `afterArrivalMs` after a member's when one moves
+   * in that week; the neighbor walks `walkPx` art px over from their house at `walkPxPerSecond`,
+   * fading in over `fadeMs`, and stands at the lot's edge; their bubble pops `bubbleMs` after,
+   * growing in over `popMs`. At the milestone, met: a heart over them and the gift's words for
+   * `metMs` (the tally waits that long), then they go over `outMs`; missed, a quiet line, in half
+   * the time. With Reduce motion there's no walk and no pop: they're there, and then gone.
+   */
+  neighbor: {
+    bellRate: 0.9,
+    afterArrivalMs: 900,
+    walkPx: 24,
+    walkPxPerSecond: 28,
+    fadeMs: 240,
+    bubbleMs: 150,
+    popMs: 260,
+    metMs: 1300,
+    outMs: 300,
+  },
+  /**
    * A click that hurried the milestone week's tally hurries the tally, not the milestone: its
    * banner still comes up and holds as above, and only a click after it's been up this long
    * takes it down. Steady clicking through the tally used to leave no banner at all.

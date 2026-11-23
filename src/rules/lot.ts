@@ -29,7 +29,7 @@ export function terrainAt(lot: Lot, x: number, y: number): TerrainId | null {
   return lot.terrain[cellIndex(lot.width, x, y)] ?? null;
 }
 
-const isWater = (t: TerrainId | null) => t === 'pond' || t === 'creek' || t === 'lake';
+export const isWater = (t: TerrainId | null) => t === 'pond' || t === 'creek' || t === 'lake';
 /** Tiles nothing can be built on in M1 (only a Driveway crosses the creek, from M2). */
 export const isBlocked = (t: TerrainId | null) => isWater(t) || t === 'boulder' || t === 'oldShed';
 

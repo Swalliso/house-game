@@ -372,6 +372,7 @@ interface RunState {
   upgrades: UpgradeId[]                // company upgrades, permanent for the run
   servicesBought: { reroll: number; demolition: number; strike: number }   // their prices rise per purchase
   changeOrders: ActiveChangeOrder[]    // requests and restrictions being worked on
+  neighbor?: NeighborAsk               // D-206: the neighbor's ask, once a run: its side, the phase it runs through, the tiles asked, and once resolved, met or missed
   timedEffects: { source: ChangeOrderId | ToolId; until: { phase: number } | { week: number }; modifiers: Modifier[] }[]
   lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }   // specsMet in checklist order
   setsRewarded: SetId[]                // sets whose one-time reward has been paid
@@ -438,6 +439,7 @@ type Action =
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
 - `changeOrderOffered` (the orders to pick from), `changeOrderAnswered` (the one picked and the ones passed over, D-144), `changeOrderResolved`
+- `neighborAsked` (D-206: as its phase's first week starts, the side, the phase, the tiles asked and how many stand there) and `neighborResolved` (at that phase's milestone met, after the change orders: the tiles there, met or missed, and the reward paid)
 - `shopOpened`, `bought`, `sold`, `crateOpened`, `picked`; `goodHeld` (D-196: the good, and whether it's now held or let go) and `holdDropped` (D-196: the held good, and why it couldn't come back)
 - `runEnded`
 
@@ -487,7 +489,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188).
+2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188). Last, in Roofing's first week, a neighbor may ask for Fence along their side (D-206), with the stock's Fence already in Your goods.
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
@@ -618,6 +620,7 @@ Each client also has a hand-built **witness layout** in its tests that meets all
 type Tag = 'Quiet' | 'Loud' | 'Social' | 'Wet' | 'Sunny' | 'Outdoor' | 'Green'
          | 'Kid' | 'Pet' | 'Pretty' | 'Dark' | 'House'
 type Region = 'sunny' | 'frontYard' | 'backYard' | 'fencedYard'
+            | 'leftSide' | 'rightSide'   // D-206: the columns along the lot's west and east edges (balance.neighborAsk.depth)
 type Property = 'indoor' | 'yard' | 'outbuilding' | 'room' | 'exterior' | 'interior' | 'view' | 'viewSource'
 
 interface PieceDef {
@@ -687,6 +690,7 @@ type HouseCondition =                             // about the house: specs, req
   | { adjacentPair: [Selector, Selector] }
   | { fencedYardTiles: { min: number } }          // largest single fenced yard
   | { group: Selector; minTiles: number }         // largest connected group of matching tiles
+  | { tilesIn: { of: Selector; region: Region; min: number } }   // D-206: matching pieces' tiles inside the region, however many pieces
   | { set: SetId; min?: number }
   | { demolishedSinceAccepted: { min: number } }
   // M4a, for the house rules (D-101):
@@ -745,7 +749,8 @@ interface SetDef {
 
 interface Reward { score?: number /* a one-time Wow payout */; budget?: number; rerolls?: number; demolitions?: number; overtime?: number
                   tool?: ToolId | 'random' }          // a tool goes into supplies (the Old Shed's 'random')
-// No Core content grants overtime, so D-041's 2 overtime weeks per run hold.
+// D-206: the neighbor's ask is the one Core content that grants overtime (one week, met at Roofing's
+// milestone), so a run holds D-041's 2 overtime weeks, or 3 with the ask met.
 
 type Modifier =
   | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }  // "Dark pieces earn double" → +100
@@ -1612,7 +1617,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
     - Then a door tree from the entry, public rooms first, reaches every room with as few doors as it takes, through a set door where one reaches the room, never adding a second doorway between two rooms, and into a suite through its Bedroom, so bedrooms keep their walls for furniture. Doors keep to side walls, low on them (furniture stands against the north walls, so a side wall's south part is free in both rooms), and to the ends of north walls.
     - Windows go about one per two cells of outside wall (one per cell in a Sunroom), never in closets, garages or hallways.
   - several LimeZu furniture sprites per room, laid out by rules per room type and footprint, never rotated (they're drawn in 3/4 view), varying by piece (`src/ui/art/rooms.ts`):
-    - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). In a room with a set door, a kitchen's range and its counter stand against a south wall instead where that keeps more of them than any north wall does, never the range alone or with the Fireplace (D-202). A fixture's own sprite goes through all its slots before anything stands in for it.
+    - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). In a room with a set door, a kitchen's range and its counter stand against a south wall instead where that keeps more of them than any north wall does, never the range alone or with the Fireplace (D-202). In any kitchen, where the counter still finds no room beside the range (an L-Kitchen's short walls, a Fireplace, a door), it can stand on its own, elsewhere on a north wall or against any stretch of south wall: the kitchen is laid out with it before its table and after it as well, and keeps the layout that shows the most of its fixture, range, counter, table and sink, in that order, but never one that costs it the table or the fridge (D-208). A fixture's own sprite goes through all its slots before anything stands in for it.
     - A Kitchen's run is the range and the counter with the sink (a plain counter where the sink won't fit), then the fridge where it still fits (on an L-Kitchen's other arm, or beside the run). A Dining Room's table keeps room for a chair each side: in the middle of the floor, else against the north wall's face, else over a door's walkway (never its opening), and the chairs keep out of the walkway. In each of those, a table with chairs first tries spots that keep its chairs out of the doorways' walkways, so beside a door low in a side wall it moves over and keeps them (D-202). The hutch arrangement's narrow cabinet stands in for the hutch where an opening leaves too little wall, unless it would cost a chair. A Home Office too narrow or shallow for its desks gets a small writing desk.
     - The members' rooms (D-103) have their own floors, wallpapers and furniture (D-111, `art/limezu/members.json`): the twins' crib, a low dresser and a teddy in the Nursery; two children's beds, a toy box and a toy train in the Kids' Room; a bed with a vanity, or a curio cabinet where the vanity won't fit, and a standard lamp in Grandma's Room; a cot, two flickering candles and a spider on its thread in Renfield's Room; a bed beside the dogs' bed (our own drawing) in Nana's Room; an easel, a stool, a pot of paint and a painting in Rowan's Studio; a child's bed, a school desk and a globe in Ivy's Room. Renfield's Room and Rowan's Studio are one cell across, so their pieces are at most 22 × 26 px or come in a second shape (an upright or side-on cot, an easel without its finial). Bunk Beds stand in the crib's or the bed's place in a member's 2×2 room (a badge in the two narrow ones), and when the Nursery grows into the Kids' Room its art changes with it.
     - A piece against a north wall stands with its back on the floor's top edge, under the wall's face. A tall one (a fridge, a bookcase, a plant) rises over the wall band, never past its top edge nor off its own room's cells: all of an outside band, only its room's half of a band between two rooms, so a wall between rooms always shows. Its rows above the band are drawn on the overhang layer, over the walls.

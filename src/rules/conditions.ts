@@ -25,12 +25,13 @@ import type {
   HouseCondition,
   PieceId,
   ProgressPart,
+  Region,
   Selector,
   SpecDef,
   TypeLimit,
 } from './index.ts';
 import { cellIndex } from './grid.ts';
-import { isRoom, largestFencedYard, pieceDef, type Layout } from './layout.ts';
+import { isRoom, largestFencedYard, pieceDef, tilesIn, type Layout } from './layout.ts';
 import { isType, matchesPiece, rootType } from './selectors.ts';
 import { matchSets } from './sets.ts';
 import { article } from './text.ts';
@@ -222,6 +223,23 @@ function largestGroup(content: Content, layout: Layout, sel: Selector): number {
   return best;
 }
 
+/**
+ * D-206: the tiles of the pieces matching `sel` that lie inside `region`, every piece counted (a
+ * Fence pack is one piece of several tiles), each by its own card as a count's are (the header).
+ */
+export function tilesInRegion(
+  content: Content,
+  layout: Layout,
+  sel: Selector,
+  region: Region,
+): number {
+  let n = 0;
+  for (const p of layout.house.pieces) {
+    if (counts(content, layout, sel, p.uid)) n += tilesIn(layout, p.uid, region);
+  }
+  return n;
+}
+
 /** Whether two pieces touch for scoring, either way round (a connector keeps rooms as neighbors). */
 function neighborsEither(layout: Layout, a: number, b: number): boolean {
   const has = (x: number, y: number) =>
@@ -307,6 +325,10 @@ export function meetsHouse(
   }
   if ('fencedYardTiles' in cond) return largestFencedYard(layout) >= cond.fencedYardTiles.min;
   if ('group' in cond) return largestGroup(content, layout, cond.group) >= cond.minTiles;
+  if ('tilesIn' in cond) {
+    const t = cond.tilesIn;
+    return tilesInRegion(content, layout, t.of, t.region) >= t.min;
+  }
   if ('set' in cond) {
     const held = matchSets(content, layout).filter((s) => s.set === cond.set).length;
     return held >= (cond.min ?? 1);
@@ -417,6 +439,10 @@ export function progressOf(
   if ('group' in cond) {
     return [{ text: `${largestGroup(content, layout, cond.group)} of ${cond.minTiles} tiles`, ok }];
   }
+  if ('tilesIn' in cond) {
+    const t = cond.tilesIn;
+    return [{ text: `${tilesInRegion(content, layout, t.of, t.region)} of ${t.min} tiles`, ok }];
+  }
   if ('set' in cond) {
     const held = matchSets(content, layout).filter((s) => s.set === cond.set).length;
     return [{ text: `${content.sets[cond.set].name} ${held} of ${cond.min ?? 1}`, ok }];
@@ -500,8 +526,9 @@ export function typeLimits(
 
 /**
  * The piece types a condition needs, each as the types that would do (`{ piece: [a, b] }`
- * needs an a or a b): from counts with a minimum, countNew, groups, and adjacent pairs, through
- * `and`. An `or` or a `not` needs nothing for sure, so it adds nothing.
+ * needs an a or a b): from counts with a minimum, countNew, groups, tiles in a region (D-206),
+ * and adjacent pairs, through `and`. An `or` or a `not` needs nothing for sure, so it adds
+ * nothing.
  */
 export function neededTypes(cond: HouseCondition): (readonly PieceId[])[] {
   const out: (readonly PieceId[])[] = [];
@@ -517,6 +544,8 @@ export function neededTypes(cond: HouseCondition): (readonly PieceId[])[] {
       if (c.min >= 1) add(c.countNew);
     } else if ('group' in c) {
       if (c.minTiles >= 1) add(c.group);
+    } else if ('tilesIn' in c) {
+      if (c.tilesIn.min >= 1) add(c.tilesIn.of);
     } else if ('adjacentPair' in c) c.adjacentPair.forEach(add);
   };
   walk(cond);

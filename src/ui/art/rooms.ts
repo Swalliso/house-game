@@ -11,11 +11,18 @@
 //   In a room with a set door (D-176), a kitchen's range and its counter (a key marked `south`)
 //   stand against a south wall instead where that keeps more of the group than any north wall
 //   does (D-202): the Entertainer's opening or door can take most of a short north wall. Never
-//   the key alone, and never the Fireplace.
+//   the key alone, and never the Fireplace. In any kitchen, where the counter still finds no room
+//   beside the range (an L-Kitchen's walls are a cell long, a Fireplace or a door takes the wall),
+//   it may stand on its own (`alone`): elsewhere on a north wall, or against a south wall (D-208).
+//   The kitchen is laid out with it before its table and after it too, and keeps whichever way
+//   shows the most of its fixture, range, counter, table and sink, in that order (kitchenPlans),
+//   but never one that costs it the table or the fridge it has without a counter on its own.
 // - NL/NR: beside what already stands on that run. NW/NE: at a run's west or east end.
 // - C: the free floor below what stands on the north wall. CL/CR: beside the last C piece.
 // - R: a rug or a hall's runner, centered on the floor, under everything else.
 // - S, SW, SE: against the south wall, in the middle or a corner.
+// - SR: against any straight run of south wall, at either end first (D-208: a kitchen's counter
+//   on its own).
 // - W, E: against the west or east wall, seen from the side (a side-on sofa).
 // - G: the Garage's car, nose-in through its garage door.
 //
@@ -450,7 +457,22 @@ function onFloor(g: Geo, r: Rect, face: boolean, tol = 1): boolean {
 // What each room type wants.
 
 type Slot =
-  'N' | 'NL' | 'NR' | 'NW' | 'NE' | 'C' | 'CL' | 'CR' | 'R' | 'S' | 'SW' | 'SE' | 'W' | 'E' | 'G';
+  | 'N'
+  | 'NL'
+  | 'NR'
+  | 'NW'
+  | 'NE'
+  | 'C'
+  | 'CL'
+  | 'CR'
+  | 'R'
+  | 'S'
+  | 'SW'
+  | 'SE'
+  | 'SR'
+  | 'W'
+  | 'E'
+  | 'G';
 
 interface Want {
   /**
@@ -490,6 +512,18 @@ interface Want {
    * counter, where the Entertainer's opening or door into the next room takes the north wall).
    */
   south?: boolean;
+  /**
+   * D-208: the slots a member of an N piece's group may take on its own where it finds no room
+   * beside that piece (a kitchen's counter: elsewhere on a north wall, then against a south wall).
+   * The room is laid out with them before its table and after it, and keeps the better, unless it
+   * costs the room its table or its fridge (kitchenPlans).
+   */
+  alone?: readonly Slot[];
+  /**
+   * D-208: it stands only where this other want stood nowhere (the counter on its own, after the
+   * table).
+   */
+  instead?: Want;
 }
 
 interface Ctx {
@@ -848,16 +882,19 @@ function bedOr(c: Ctx, ...beds: ArtId[]): Want {
  * the sink won't fit), then the fridge where it still fits. Where its doors leave no north wall,
  * the range and its counter stand in the middle of the floor; where the Entertainer's opening or
  * door into the next room leaves no north wall for the counter beside the range, the two stand
- * against a south wall that has room for both (D-202). A Fireplace takes the counter's place
- * beside the range; a Kitchen Island stands in the middle (a smaller one in an L-Kitchen's arm,
- * or beside a door's walkway).
+ * against a south wall that has room for both (D-202). Wherever the counter finds no room beside
+ * the range (an L-Kitchen's short walls, the Fireplace there, a door), it stands on its own, on
+ * another stretch of north wall or against a south wall, where that keeps the room's table or its
+ * fixture too, and never in the fridge's place (D-208). A Fireplace takes the counter's place
+ * beside the range; a Kitchen Island stands in the middle (a smaller one in an L-Kitchen's arm, or
+ * beside a door's walkway).
  */
 function kitchen(c: Ctx): Want[] {
   const isle = c.fixture === 'kitchenIsland';
   return [
     { ...want('range', 'N', 'C'), south: true },
     ...fireplace(c, 'NL', 'NR'),
-    { sprites: ['counter-sink', 'counter'], slots: ['NL', 'NR', 'CR', 'CL'] },
+    { sprites: ['counter-sink', 'counter'], slots: ['NL', 'NR', 'CR', 'CL'], alone: ALONE },
     ...(isle ? [island(ISLANDS.white)] : []),
     // Not one of the range's group (its counter with the sink comes first): on another north
     // wall, or beside the range's run where it still fits.
@@ -876,6 +913,13 @@ function kitchen(c: Ctx): Want[] {
       : []),
   ];
 }
+
+/**
+ * D-208: where a kitchen's counter may stand on its own when the range's wall has no room beside
+ * it: elsewhere on a north wall (the other side of a door, an L-Kitchen's other arm), then against
+ * a south wall.
+ */
+const ALONE: readonly Slot[] = ['N', 'SR'];
 
 /**
  * The Kitchen Island in a kitchen's counters (D-173: the white ones, the wood or the blue), the
@@ -1101,7 +1145,7 @@ function woodKitchen(c: Ctx): Want[] {
   return [
     { ...want('range', 'N', 'C'), south: true },
     ...fireplace(c, 'NL', 'NR'),
-    { sprites: ['counter-sink-1', 'counter-1'], slots: ['NR', 'NL', 'CR', 'CL'] },
+    { sprites: ['counter-sink-1', 'counter-1'], slots: ['NR', 'NL', 'CR', 'CL'], alone: ALONE },
     ...(isle ? [island(ISLANDS.wood)] : []),
     want('fridge-1', 'N', 'NL', 'NR'),
     want('counter-1', 'N'),
@@ -1123,7 +1167,7 @@ function blueKitchen(c: Ctx): Want[] {
   return [
     { ...want('range', 'N', 'C'), south: true },
     ...fireplace(c, 'NL', 'NR'),
-    { sprites: ['counter-sink-2', 'counter-2'], slots: ['NL', 'NR', 'CR', 'CL'] },
+    { sprites: ['counter-sink-2', 'counter-2'], slots: ['NL', 'NR', 'CR', 'CL'], alone: ALONE },
     ...(isle ? [island(ISLANDS.blue)] : []),
     want('fridge-2', 'N', 'NL', 'NR'),
     want('counter-2', 'N'),
@@ -1905,6 +1949,20 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
             return true;
           }
         }
+      } else if (slot === 'SR') {
+        // D-208: on its own against any south wall run, its feet on the band (as D-202's groups
+        // stand), all of it on the floor below any north face and clear: at either end of a run
+        // first, the room's flip picking which, then from its middle outward.
+        for (const r of g.south) {
+          const ends = c.flip ? [r.x0, r.x1 - sw] : [r.x1 - sw, r.x0];
+          for (const x of [...ends, ...spots(r.x0, r.x1, sw)]) {
+            const foot = { x, y: r.yt - h, w: sw, h };
+            if (onFloor(g, foot, false) && L.free(foot)) {
+              L.add(w, sprite, x, foot.y, null);
+              return true;
+            }
+          }
+        }
       } else if (slot === 'W' || slot === 'E') {
         // Against the side wall all along it (not where a hall opens on, D-159), off its
         // doorways and their walkways: the middle first, then up and down.
@@ -2324,7 +2382,8 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
   const done = new Set<Want>();
   /** Places want `w` (the i-th) through its slots: an N piece with its group first. */
   const place = (w: Want, i: number): boolean => {
-    if (w.slots[0] === 'N' && w.sprites.length > 0) {
+    const key = w.slots[0] === 'N' && w.sprites.length > 0 && !w.instead;
+    if (key) {
       const members: Want[] = [];
       for (let j = i + 1; j < wants.length; j++) {
         const s = wants[j]!.slots[0];
@@ -2334,7 +2393,7 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
       for (const got of placeGroup(L, w, members)) done.add(got);
       if (done.has(w)) return true;
     }
-    for (const slot of w.slots[0] === 'N' && w.sprites.length > 0 ? w.slots.slice(1) : w.slots) {
+    for (const slot of key ? w.slots.slice(1) : w.slots) {
       if (placeSlot(L, w, slot, c)) {
         done.add(w);
         return true;
@@ -2344,7 +2403,8 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
   };
   for (let i = 0; i < wants.length; i++) {
     const w = wants[i]!;
-    if (done.has(w)) continue;
+    // D-208: a want in another's place stands only where that one stood nowhere.
+    if (done.has(w) || (w.instead && done.has(w.instead))) continue;
     // A fixture's own sprites through all of its slots, and only then what stands in for it.
     if (!place(w, i) && w.standIn) {
       const { standIn, ...rest } = w;
@@ -2384,6 +2444,19 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
     ...(pendant ? { pendant: true as const } : {}),
     ...(cat ? { cat } : {}),
   };
+  // D-208: a kitchen is laid out the other ways its counter can stand too, and keeps the first that
+  // shows the most of what makes it a kitchen. A counter on its own never costs the room the table
+  // or the fridge it has as D-097 and D-202 stand its range and counter.
+  if (wants.some((w) => w.alone)) {
+    const shows = (l: RoomLayout, re: RegExp) => l.items.some((it) => re.test(it.sprite));
+    const keeps = (l: RoomLayout) => KEPT.every((re) => !shows(out, re) || shows(l, re));
+    let best = out;
+    for (const plan of kitchenPlans(wants)) {
+      const other = layOut(m, uid, plan, lit);
+      if (keeps(other) && beats(kitchenScore(other), kitchenScore(best))) best = other;
+    }
+    return best;
+  }
   // A spare stand-in (D-202) comes out again where the room keeps fewer of its other pieces with
   // it than without it.
   const spare = wants.find(
@@ -2404,6 +2477,62 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
 /** How many pieces a layout stands in the room: what lies underfoot and the house cat left out. */
 function pieces(l: RoomLayout): number {
   return l.items.filter((it) => !UNDERFOOT.test(it.sprite) && !isCat(it.sprite)).length;
+}
+
+/**
+ * D-208: a kitchen's other ways to stand its counter, where it finds no room beside its range. In
+ * both the range keeps to a north wall (no south wall for its group, D-202), and a counter that
+ * finds no room beside it stands on its own (`alone`): right after the range, before the fridge
+ * and the table, or after the table and its chairs (or the Kitchen Island), so it never costs the
+ * room either.
+ */
+function kitchenPlans(wants: readonly Want[]): Want[][] {
+  const counter = wants.find((w) => w.alone)!;
+  const alone = counter.alone!;
+  const early: Want = { ...counter, alone: undefined };
+  const plain = (w: Want): Want => (w.south ? { ...w, south: undefined } : w);
+  const first = wants.map((w) =>
+    w === counter ? { ...early, slots: [...counter.slots, ...alone] } : plain(w),
+  );
+  const last = wants.map((w) => (w === counter ? early : plain(w)));
+  const middle = last.findLastIndex((w) => /^C[LR]?$/.test(w.slots[0] ?? ''));
+  last.splice(middle < 0 ? last.length : middle + 1, 0, {
+    sprites: counter.sprites,
+    slots: alone,
+    instead: early,
+  });
+  return [first, last];
+}
+
+/** The tables a kitchen seats at: its breakfast table, a round one, or a big one's family table. */
+const KITCHEN_TABLE = /^(breakfast-table|dining-table|table-round)/;
+
+/**
+ * D-208: what a kitchen's counter on its own never costs it: the table, and the fridge (an
+ * L-Kitchen's other arm has a wall for one of the two, and the fridge stood there before).
+ */
+const KEPT: readonly RegExp[] = [KITCHEN_TABLE, /^fridge/];
+
+/**
+ * D-208: what a kitchen's layout shows, the most important first: its fixture (where it has one),
+ * the range, a counter, its table, the counter with the sink, then how many pieces stand in it.
+ */
+function kitchenScore(l: RoomLayout): number[] {
+  const shows = (re: RegExp) => Number(l.items.some((it) => re.test(it.sprite)));
+  return [
+    Number(l.fixtureShown),
+    shows(/^range/),
+    shows(/^counter/),
+    shows(KITCHEN_TABLE),
+    shows(/^counter-sink/),
+    pieces(l),
+  ];
+}
+
+/** Whether score `a` beats `b`: higher where they first differ. */
+function beats(a: readonly number[], b: readonly number[]): boolean {
+  const i = a.findIndex((v, k) => v !== b[k]);
+  return i >= 0 && a[i]! > b[i]!;
 }
 
 /** D-181: the rooms whose light hangs over the table: the kitchens'. */
