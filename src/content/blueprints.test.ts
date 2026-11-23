@@ -320,8 +320,8 @@ describe('Party House', () => {
     // The Kitchen and the Dining Room face the sun, +2 each (D-120). Kitchen: +7 with its own +3
     // (D-165), at the Dining Room's +50% (10.5 → 11), and the blueprint's: 14. Dining Room: 2 →
     // 3. The Patio below the Kitchen:
-    // +2 for it, 2 → 3. The Hot Tub beside the Patio and below the Dining Room: 3 → 4.5 → 5.
-    // The Bedroom isn't Social.
+    // +2 for it, 2 → 3. The Hot Tub beside the Patio and below the Dining Room: 3, at the Dining
+    // Room's +50% (D-201) 4.5 → 5, and with the blueprint's +100% 6. The Bedroom isn't Social.
     expect(
       withAndWithout('partyHouse', open, [
         ['kitchen', 0, 0],
@@ -331,8 +331,8 @@ describe('Party House', () => {
         ['bedroom', 6, 0],
       ]),
     ).toEqual([
-      [11, 2, 2, 3, 3],
-      [14, 3, 3, 5, 3],
+      [11, 2, 2, 5, 3],
+      [14, 3, 3, 6, 3],
     ]);
   });
 });

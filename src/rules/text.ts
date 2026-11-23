@@ -713,12 +713,16 @@ export const HAND_LINE_CHARS = 33;
 
 /**
  * "+50% to touching yard views": a bonus for what touches the piece says "touching" where the
- * line stays within HAND_LINE_CHARS (D-148, 2026-11-11). Without it, "+2 per Living Room or
- * Kitchen" reads as house-wide; Inspect and the ghost's Wow give the true reading. Past the
- * budget, the Patio's "+2 per touching Living Room or Kitchen" (38 letters) fits whole, but its
+ * line stays within HAND_LINE_CHARS (D-148, 2026-11-11). Without it, "+2 per Dining Room or
+ * Herb Garden" reads as house-wide; Inspect and the ghost's Wow give the true reading. Past the
+ * budget, the Patio's "+2 per touching Living Room or Kitchen" (38 letters) fit whole, but its
  * extra row put a fourth card under the Pass bar in the readable font at 1280×720 and 1366×768,
- * and in the pixel font at 1512×860 at 2×. The Dining Room's (39) takes a fourth line at
- * 1280×720, and the Kitchen's (42) five beside a 2× thumbnail.
+ * and in the pixel font at 1512×860 at 2×. The Dining Room's (39) took a fourth line at
+ * 1280×720, and the Kitchen's (42) takes five beside a 2× thumbnail. Since D-201 the Patio and
+ * the Dining Room read a tag, and say it as a tag is said ("+2 per touching Social room", "+50%
+ * to touching Social"): where a line breaks counts as much as its length, and "+50% to touching
+ * Social pieces" (30) took a fourth row beside a 2× thumbnail, where the Dining Room's line had
+ * three, and put a fourth card under the bar at 1440×900 and 1470×840 at 2×.
  */
 function touchingLine(lead: string, what: string, tail = ''): string {
   const line = `${lead} touching ${what}${tail}`;
@@ -737,11 +741,13 @@ function oneKind(sel: Selector): boolean {
  * An effect as a hand card says it (D-148): the number first, in as few words as say it. Inspect
  * and the shop keep effectText's full sentence. Only the kinds whose sentences ran long differ:
  * - a neighbor bonus that names two things says "touching" where the line has room for it
- *   (today none does: "+2 per Living Room or Kitchen"), and one for a tag drops "neighbor"
+ *   (today none does: "+2 per Dining Room or Herb Garden"), and one for a tag drops "neighbor"
  *   ("+2 per touching Quiet (up to 3)");
  * - an aura leads with what it gives, "touching" too where it fits ("+25% to touching rooms",
- *   "+50% to touching yard views", but "+50% to Kitchen or Living Room"), and a fenced yard's
- *   says so ("+50% to fenced Pet pieces");
+ *   "+50% to touching yard views"; two names that don't fit go without, as the Dining Room's
+ *   "+50% to Kitchen or Living Room" did before D-201), one for a tag says the tag alone, as a
+ *   neighbor bonus does ("+50% to touching Social", D-201), and a fenced yard's says so ("+50%
+ *   to fenced Pet pieces");
  * - a Fence's yard is "+1 per fenced tile (up to +6)".
  */
 function handEffectText(content: Content, effect: Effect): string {
@@ -775,6 +781,9 @@ function handEffectText(content: Content, effect: Effect): string {
           : `${to} ${what.replace(/ pieces$/, '')} nearby`;
       }
       if (oneKind(sel)) return `${to} touching ${selectorText(content, sel, 'every')}`;
+      // A tag, as a neighbor bonus says one (D-201): "+50% to touching Social". "Touching Social
+      // pieces" took a fourth row beside a 2× thumbnail.
+      if (sel !== 'all' && 'tag' in sel) return `${to} touching ${sel.tag}`;
       // A list of rooms, one of each: "Kitchen or Living Room".
       if (sel !== 'all' && 'piece' in sel)
         return touchingLine(to, selectorText(content, sel, 'one'));
