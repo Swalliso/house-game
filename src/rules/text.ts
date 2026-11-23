@@ -770,15 +770,13 @@ function handEffectText(content: Content, effect: Effect): string {
       if (effect.scope === 'region') {
         return `${to} fenced ${pieces(selectorText(content, sel, 'every'))}`;
       }
-      // D-199: a landmark's reach is "nearby" in a hand card's few words: "+25% to Social pieces
-      // nearby", "+10% to Outdoor or Pretty nearby". Its full card says how far ("within 2
-      // tiles"), and the board shades it while the card is picked.
+      // D-199: a landmark's reach is "nearby" in a hand card's few words, and a tag is said
+      // alone, as D-201 says one: "+25% to Social nearby", "+10% to Outdoor or Pretty nearby",
+      // "+1 to Quiet rooms nearby". Its full card says how far ("within 2 tiles"), and the board
+      // shades it while the card is picked. "+25% to Social pieces nearby" took a fourth row
+      // beside a 2× thumbnail in the pixel font, and put a fourth card under the bar at 1440×900.
       if (effect.scope !== 'adjacent') {
-        const what = reachSubject(content, sel, 'some');
-        const line = `${to} ${what} nearby`;
-        return line.length <= HAND_LINE_CHARS
-          ? line
-          : `${to} ${what.replace(/ pieces$/, '')} nearby`;
+        return `${to} ${reachSubject(content, sel, 'some').replace(/ pieces$/, '')} nearby`;
       }
       if (oneKind(sel)) return `${to} touching ${selectorText(content, sel, 'every')}`;
       // A tag, as a neighbor bonus says one (D-201): "+50% to touching Social". "Touching Social
