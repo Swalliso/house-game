@@ -13,6 +13,7 @@ import {
   type ClientId,
   type CrewId,
   type PieceId,
+  reserveSource,
   type ReservePiece,
   type RunState,
   type TerrainId,
@@ -53,10 +54,22 @@ export function arrivalTag(a: ArrivalDef): string {
 /**
  * Overtime weeks used so far: each makes the run a week longer (D-041), arrivals included. The
  * milestones' own counts and the overtime week on now, since D-206's gift can lift the weeks
- * left past what the run started with.
+ * left past what the run started with. A run that ends in an overtime week keeps that week on
+ * the state, and its last milestone has counted it already, so it counts once.
  */
 export function overtimeUsed(s: RunState): number {
-  return s.milestones.reduce((n, m) => n + m.overtimeUsed, 0) + s.overtimeWeek;
+  const over = s.screen === 'won' || s.screen === 'lost';
+  return s.milestones.reduce((n, m) => n + m.overtimeUsed, 0) + (over ? 0 : s.overtimeWeek);
+}
+
+/**
+ * The top bar's overtime clocks: one for every overtime week the run has had, the rule's and any
+ * neighbor's gift (D-206), the spent ones after those left. Weeks used before the gift stay
+ * spent clocks, so the bar never shows fewer weeks than the run has had.
+ */
+export function overtimeClocks(s: RunState): { total: number; left: number } {
+  const left = Math.max(0, s.overtimeLeft);
+  return { total: Math.max(rules.rule(s, 'overtime'), overtimeUsed(s) + left), left };
 }
 
 /**
@@ -115,77 +128,80 @@ export function extraSlotWords(
   /** D-205: the feature whose wish paid the run's prize (`RunState.wishFilled`). */
   wishFrom?: TerrainId,
 ): { tag: string; whose: string; from: string; note?: string } | null {
-  if (r.crew) {
-    // D-171: a crew's card comes from its stock, one each milestone; a starting card (M4b) came
-    // once. The note is the stock's, in as many words (16).
-    const stocked = !!crewId && (CONTENT.crews[crewId].stock ?? []).includes(r.id);
-    return {
-      tag: 'Crew',
-      whose: ' (your crew’s)',
-      from: stocked ? 'From your crew' : 'Your crew’s, from the start',
-      ...(stocked && {
-        note: 'From your crew, in an extra slot, not one of your reserve’s. Another comes each milestone.',
-      }),
-    };
+  // One case per mark (shop.ts' reserveSource): a new one doesn't compile until it's worded.
+  switch (reserveSource(r)) {
+    case 'own':
+      return null;
+    case 'crew': {
+      // D-171: a crew's card comes from its stock, one each milestone; a starting card (M4b)
+      // came once. The note is the stock's, in as many words (16).
+      const stocked = !!crewId && (CONTENT.crews[crewId].stock ?? []).includes(r.id);
+      return {
+        tag: 'Crew',
+        whose: ' (your crew’s)',
+        from: stocked ? 'From your crew' : 'Your crew’s, from the start',
+        ...(stocked && {
+          note: 'From your crew, in an extra slot, not one of your reserve’s. Another comes each milestone.',
+        }),
+      };
+    }
+    case 'arrival': {
+      const member = arrivalOf(clientId, r.arrival!);
+      if (!member) return null;
+      return {
+        tag: arrivalTag(member),
+        whose: ` (with ${midName(member)})`,
+        from: `Came with ${midName(member)}`,
+      };
+    }
+    case 'client': {
+      const client = CONTENT.clients[clientId];
+      const name = clientMid(client);
+      const tag = client.name.replace(/^The\s+/, '');
+      return {
+        tag,
+        whose: ` (${possessive(name)})`,
+        from: `${name.charAt(0).toUpperCase() + name.slice(1)} brought it`,
+      };
+    }
+    case 'stock':
+      return {
+        tag: 'Stock',
+        whose: ' (from your stock)',
+        from: 'From your stock',
+        // D-169: a refilled stock's note says so, in as many words as the others' (16).
+        ...(CONTENT.balance.standingStock.refill && {
+          note: 'From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone.',
+        }),
+      };
+    case 'surprise':
+      // D-188: the wrong delivery, once a run. Its note is the stock's and the crew's length (16).
+      return {
+        tag: 'Mix-up',
+        whose: ' (delivered by mistake)',
+        from: 'Delivered by mistake',
+        note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
+      };
+    case 'upgrade': {
+      // D-209: a company upgrade's piece (the Storage Unit's), one each milestone. Its tag is
+      // the upgrade's first word, and its note is the stock's length (16).
+      const name = CONTENT.upgrades[r.upgrade!].name;
+      return {
+        tag: name.split(' ')[0]!,
+        whose: ` (from your ${name})`,
+        from: `From your ${name}`,
+        note: `From your ${name}: an extra slot, not one of your reserve’s. Another comes each milestone.`,
+      };
+    }
+    case 'wish': {
+      // D-205: the lot's wish's prize, for the pieces built beside its feature.
+      if (!wishFrom) return null;
+      const name = CONTENT.features[wishFrom].name;
+      return {
+        tag: name,
+        whose: ` (from the ${name})`,
+        from: `For keeping the ${name} company`,
+      };
+    }
   }
-  if (r.arrival !== undefined) {
-    const member = arrivalOf(clientId, r.arrival);
-    if (!member) return null;
-    return {
-      tag: arrivalTag(member),
-      whose: ` (with ${midName(member)})`,
-      from: `Came with ${midName(member)}`,
-    };
-  }
-  if (r.client) {
-    const client = CONTENT.clients[clientId];
-    const name = clientMid(client);
-    const tag = client.name.replace(/^The\s+/, '');
-    return {
-      tag,
-      whose: ` (${possessive(name)})`,
-      from: `${name.charAt(0).toUpperCase() + name.slice(1)} brought it`,
-    };
-  }
-  if (r.stock) {
-    return {
-      tag: 'Stock',
-      whose: ' (from your stock)',
-      from: 'From your stock',
-      // D-169: a refilled stock's note says so, in as many words as the others' (16).
-      ...(CONTENT.balance.standingStock.refill && {
-        note: 'From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone.',
-      }),
-    };
-  }
-  if (r.surprise) {
-    // D-188: the wrong delivery, once a run. Its note is the stock's and the crew's length (16).
-    return {
-      tag: 'Mix-up',
-      whose: ' (delivered by mistake)',
-      from: 'Delivered by mistake',
-      note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
-    };
-  }
-  if (r.upgrade !== undefined) {
-    // D-209: a company upgrade's piece (the Storage Unit's), one each milestone. Its tag is the
-    // upgrade's first word, and its note is the stock's length (16).
-    const name = CONTENT.upgrades[r.upgrade].name;
-    return {
-      tag: name.split(' ')[0]!,
-      whose: ` (from your ${name})`,
-      from: `From your ${name}`,
-      note: `From your ${name}: an extra slot, not one of your reserve’s. Another comes each milestone.`,
-    };
-  }
-  if (r.wish && wishFrom) {
-    // D-205: the lot's wish's prize, for the pieces built beside its feature.
-    const name = CONTENT.features[wishFrom].name;
-    return {
-      tag: name,
-      whose: ` (from the ${name})`,
-      from: `For keeping the ${name} company`,
-    };
-  }
-  return null;
 }

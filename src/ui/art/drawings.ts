@@ -1,9 +1,9 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
 // the Sprinkler, the dogs' bed in Nana's Room (D-111), the Doghouse's dog, on its lead and loose
 // (D-179), rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items), the
-// Fountain (D-199), and the stepping stones up to the front door (D-217, painted on the floor
-// canvas as ground). The hens peck, the dog in the bed breathes (D-185) and the Fountain's water
-// falls, each from its first frame, at rest.
+// Fountain (D-199), a pantry's shelf and sack of flour (D-216), and the stepping stones up to the
+// front door (D-217, painted on the floor canvas as ground). The hens peck, the dog in the bed
+// breathes (D-185) and the Fountain's water falls, each from its first frame, at rest.
 // They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light from the top
 // left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
@@ -66,13 +66,20 @@ export const KEY: Readonly<Record<string, Rgba>> = {
   T: [0x73, 0xb8, 0xc6, 255], // the basin's water
   V: [0x95, 0xe3, 0xe3, 255], // falling water
   z: [0xde, 0xff, 0xf7, 255], // its glints
+  // D-216: a pantry's shelf and its sack of flour. The back of the shelf is 'O'.
+  q: [0x63, 0xa6, 0x50, 255], // a green lid, tin and bottle
+  Q: [0x56, 0x8d, 0x61, 255], // the bottle, shaded
+  t: [0xed, 0x93, 0x1e, 255], // marmalade
+  X: [0xe0, 0xd0, 0xb2, 255], // sacking, lit
+  Y: [0xc3, 0xac, 0x90, 255],
+  Z: [0xb2, 0x97, 0x7e, 255], // sacking, shaded
   // The stepping stones (D-217): warm grey flagstones, the pebbles' stone (LimeZu's) a step lighter,
   // lit from the top left, a darker rim along their front, and a darker outline.
-  Q: [0xd6, 0xca, 0xb3, 255], // stone, its lit edge
+  S: [0xd6, 0xca, 0xb3, 255], // stone, its lit edge
   L: [0xc2, 0xb3, 0xa6, 255], // stone, lit
   P: [0xab, 0x9a, 0x8f, 255], // stone, shaded
-  q: [0x8a, 0x7a, 0x77, 255], // its rim
-  t: [0x71, 0x64, 0x67, 255], // its outline
+  '+': [0x8a, 0x7a, 0x77, 255], // its rim
+  '#': [0x71, 0x64, 0x67, 255], // its outline
 };
 
 /**
@@ -472,62 +479,62 @@ const DOG_LOOSE = (() => {
 })();
 
 /**
- * Rain (S06, D-180): a streak falling down and to the left, 3 px down for each 1 across, as its
- * sheet steps (board/weather.ts). The near one is two steps of three; the far one is one, fainter.
- */
-/**
- * The stepping stones from the front door's mat to the kerb (D-217, yard.ts walkway): four
+ * The stepping stones from the front door's mat to the kerb (D-217, walkway.ts): four
  * flagstones, each a little wider than deep (a stride apart, a figure's feet fit on one), with
  * the shadow along their front edge that everything on the ground has. Painted on the floor
  * canvas, under everything that stands.
  */
 const STONES = [
   [
-    '...ttttttt....',
-    '.ttQQQLLLLtt..',
-    'tQQLLLLLLLLPt.',
-    'tQLLLLLLLLLPPt',
-    'tLLLLLLLLLPPPt',
-    'tqPPPPPPPPPPqt',
-    '.tqqqqqqqqqqt.',
-    '..tttttttttt..',
+    '...#######....',
+    '.##SSSLLLL##..',
+    '#SSLLLLLLLLP#.',
+    '#SLLLLLLLLLPP#',
+    '#LLLLLLLLLPPP#',
+    '#+PPPPPPPPPP+#',
+    '.#++++++++++#.',
+    '..##########..',
     '...ssssssss...',
   ],
   [
-    '..tttttt.....',
-    '.tQQQLLLttt..',
-    'tQLLLLLLLLPt.',
-    'tQLLLLLLLLPPt',
-    'tLLLLLLLPPPPt',
-    'tqPPPPPPPPPqt',
-    '.ttqqqqqqqqt.',
-    '...ttttttttt.',
+    '..######.....',
+    '.#SSSLLL###..',
+    '#SLLLLLLLLP#.',
+    '#SLLLLLLLLPP#',
+    '#LLLLLLLPPPP#',
+    '#+PPPPPPPPP+#',
+    '.##++++++++#.',
+    '...#########.',
     '....ssssssss.',
   ],
   [
-    '....tttttt..',
-    '..ttQQQLLLt.',
-    '.tQQLLLLLLPt',
-    'tQLLLLLLLLPt',
-    'tLLLLLLLPPPt',
-    'tqPPPPPPPPqt',
-    'tqqqqqqqqqqt',
-    '.tttttttttt.',
+    '....######..',
+    '..##SSSLLL#.',
+    '.#SSLLLLLLP#',
+    '#SLLLLLLLLP#',
+    '#LLLLLLLPPP#',
+    '#+PPPPPPPP+#',
+    '#++++++++++#',
+    '.##########.',
     '..ssssssss..',
   ],
   [
-    '.tttttttt....',
-    'tQQQLLLLLtt..',
-    'tQLLLLLLLLPtt',
-    'tLLLLLLLLPPPt',
-    'tqLLLLLLPPPPt',
-    '.tqPPPPPPPPqt',
-    '..tqqqqqqqqt.',
-    '...tttttttt..',
+    '.########....',
+    '#SSSLLLLL##..',
+    '#SLLLLLLLLP##',
+    '#LLLLLLLLPPP#',
+    '#+LLLLLLPPPP#',
+    '.#+PPPPPPPP+#',
+    '..#++++++++#.',
+    '...########..',
     '....ssssss...',
   ],
 ] as const;
 
+/**
+ * Rain (S06, D-180): a streak falling down and to the left, 3 px down for each 1 across, as its
+ * sheet steps (board/weather.ts). The near one is two steps of three; the far one is one, fainter.
+ */
 const RAIN_NEAR = ['.j', '.J', '.J', 'J.', 'l.', 'l.'] as const;
 const RAIN_FAR = ['j', 'j', 'J'] as const;
 
@@ -545,6 +552,51 @@ const PUDDLE = [
   '.ffFFFFFFFFFFff..fFFFf',
   '..fffFFFFFFfff...fiFFf',
   '.....ffffff.......fff.',
+] as const;
+
+/**
+ * D-216: a pantry's shelf, for a Closet beside a Kitchen: jars of marmalade, jam and honey on top,
+ * and a bottle of oil, a tin and a box of cereal below, in the bookcases' woods. As tall as a
+ * Closet's rail, so it stands wherever the rail does.
+ */
+const PANTRY = [
+  '.kkkkkkkkkkkkkkkkkk.',
+  'kWWWWWWWWWWWWWWWWWWk',
+  'kwwwwwwwwwwwwwwwwwwk',
+  'kbbbbbbbbbbbbbbbbbbk',
+  'kWbOrrOOOyyOOOqqObwk',
+  'kWbkrrkOkyykOkqqkbwk',
+  'kWbkCCkOkCCkOkCCkbwk',
+  'kWbktCkOkdCkOkyCkbwk',
+  'kWbkttkOkddkOkyykbwk',
+  'kWbkkkkOkkkkOkkkkbwk',
+  'kWbwwwwwwwwwwwwwwbwk',
+  'kWbbbbbbbbbbbbbbbbwk',
+  'kWbOkkOOOOOOkkkkkbwk',
+  'kWbOqkOkggkOkRRRkbwk',
+  'kWbkqqkkHHkOkhhRkbwk',
+  'kWbkQqkkrrkOkRhRkbwk',
+  'kWbkqqkkrrkOkRRRkbwk',
+  'kWbkQqkkHgkOkdRdkbwk',
+  'kWbkkkkkkkkkkkkkkbwk',
+  'kbbbbbbbbbbbbbbbbbbk',
+  '.kkkkkkkkkkkkkkkkkk.',
+  '.ssssssssssssssssss.',
+] as const;
+
+/** D-216: a sack of flour, tied at the neck, on a pantry's floor. */
+const SACK = [
+  '...kkk...',
+  '..kXYXk..',
+  '...kYk...',
+  '..kXXXk..',
+  '.kXXXXYk.',
+  'kXXXXXXYk',
+  'kXXXXXXYk',
+  'kXXXXXYZk',
+  '.kYYYYZk.',
+  '..kkkkk..',
+  '..sssss..',
 ] as const;
 
 /** A drop's ring, as offsets from where it lands: the drop, then rings spreading flat. */
@@ -614,6 +666,8 @@ export const DRAWINGS = {
   'own-dog-bed': { frames: DOG_BED_BREATHING, ms: FEEL.dogBed.stepMs },
   'own-dog-on-lead': { frames: [DOG_ON_LEAD] },
   'own-dog-loose': { frames: DOG_LOOSE, ms: FEEL.dog.hopMs },
+  'own-pantry': { frames: [PANTRY] },
+  'own-sack': { frames: [SACK] },
   'own-rain-near': { frames: [RAIN_NEAR] },
   'own-rain-far': { frames: [RAIN_FAR] },
   'own-stone-0': { frames: [STONES[0]] },

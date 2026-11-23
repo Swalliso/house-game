@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { rules, type Action, type PlaceAction, type RunState } from '../../rules/index.ts';
-import { overtimeUsed } from '../hud/household.ts';
+import { overtimeClocks, overtimeUsed } from '../hud/household.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { WALKERS } from './crowd.ts';
 import { askCount, neighborFeet, neighborFigure, overHead, stripCells } from './neighbor-ask.ts';
@@ -59,41 +59,37 @@ describe('the neighbor on the board (D-206)', () => {
 });
 
 describe('overtime weeks used, after a neighbor gave one (D-206)', () => {
-  /** Passes on, meeting each target by a cheat (a forced miss still misses), until `stop`. */
+  /** The next step: shops left, change orders answered, each target met by a cheat. */
+  const onward = (s: RunState): Action =>
+    s.screen === 'shop'
+      ? s.offers?.pick
+        ? { t: 'pick', i: -1 }
+        : { t: 'leaveShop' }
+      : s.screen === 'changeOrder'
+        ? { t: 'answerChangeOrder', i: 0 }
+        : s.score < rules.target(s)
+          ? { t: 'debug', op: 'addScore', amount: rules.target(s) }
+          : { t: 'pass' };
+  /** Steps on (a forced miss still misses) until `stop`. */
   function playUntil(from: RunState, stop: (s: RunState) => boolean): RunState {
     let s = from;
     for (let k = 0; k < 400 && !stop(s) && s.screen !== 'won' && s.screen !== 'lost'; k++) {
-      const a: Action =
-        s.screen === 'shop'
-          ? s.offers?.pick
-            ? { t: 'pick', i: -1 }
-            : { t: 'leaveShop' }
-          : s.screen === 'changeOrder'
-            ? { t: 'answerChangeOrder', i: 0 }
-            : s.score < rules.target(s)
-              ? { t: 'debug', op: 'addScore', amount: rules.target(s) }
-              : { t: 'pass' };
-      s = rules.apply(s, a).state;
+      s = rules.apply(s, onward(s)).state;
     }
     return s;
   }
   const firstWeek = (phase: number) => (s: RunState) =>
     s.screen === 'build' && s.phase === phase && s.slot === 1 && s.overtimeWeek === 0;
-
-  it('counts the weeks spent, whatever is left', () => {
-    // Framing misses once (an overtime week spent), then Roofing's ask is met: a week back.
-    const start = rules.newRun({
+  const start = () =>
+    rules.newRun({
       seed: 'oak',
       clientId: 'hendersons',
       crewId: 'generalContractor',
       mode: 'standard',
     });
-    const framing = playUntil(start, firstWeek(2));
-    const roofing = playUntil({ ...framing, forcedMiss: 2 }, firstWeek(3));
-    expect(roofing.overtimeLeft).toBe(1);
-    expect(overtimeUsed(roofing)).toBe(1);
-    expect(roofing.neighbor?.side).toBe('left');
-    const i = roofing.reserve.findIndex((c) => c.id === 'fence');
+  /** The standing stock's Fence, 5 tiles down the lot's left edge where it first fits. */
+  function fenceLeft(s: RunState): RunState {
+    const i = s.reserve.findIndex((c) => c.id === 'fence');
     const lay: PlaceAction = {
       t: 'place',
       from: 'reserve',
@@ -103,15 +99,46 @@ describe('overtime weeks used, after a neighbor gave one (D-206)', () => {
       rot: 0,
       shape: ['#', '#', '#', '#', '#'],
     };
-    let at = roofing;
-    for (let y = 0; y + 5 <= at.house.lot.height && !rules.checkPlay(at, lay).legal; y++) {
+    for (let y = 0; y + 5 <= s.house.lot.height && !rules.checkPlay(s, lay).legal; y++) {
       lay.y = y;
     }
-    at = rules.apply(roofing, lay).state;
-    const drywall = playUntil(at, firstWeek(4));
+    return rules.apply(s, lay).state;
+  }
+
+  it('counts the weeks spent, whatever is left', () => {
+    // Framing misses once (an overtime week spent), then Roofing's ask is met: a week back.
+    const framing = playUntil(start(), firstWeek(2));
+    const roofing = playUntil({ ...framing, forcedMiss: 2 }, firstWeek(3));
+    expect(roofing.overtimeLeft).toBe(1);
+    expect(overtimeUsed(roofing)).toBe(1);
+    expect(roofing.neighbor?.side).toBe('left');
+    const drywall = playUntil(fenceLeft(roofing), firstWeek(4));
     expect(drywall.neighbor?.result).toBe('met');
     // Two at the start, one spent, one given: two left, and still one used.
     expect(drywall.overtimeLeft).toBe(2);
     expect(overtimeUsed(drywall)).toBe(1);
+    // The top bar: three clocks, the spent one still there (it showed two, both lit).
+    expect(overtimeClocks(drywall)).toEqual({ total: 3, left: 2 });
+  });
+
+  it('counts each week as it’s spent, the neighbor’s too, to the run’s end', () => {
+    // Framing, Drywall and the last milestone each miss once, the last met in its overtime
+    // week; Roofing's ask is met. The rule's two weeks and the neighbor's, all spent.
+    const misses = [2, 4, 6];
+    let s = start();
+    let used = 0;
+    for (let k = 0; k < 400 && s.screen !== 'won' && s.screen !== 'lost'; k++) {
+      if (firstWeek(3)(s) && s.reserve.some((c) => c.id === 'fence')) s = fenceLeft(s);
+      if (firstWeek(s.phase)(s) && misses.includes(s.phase)) s = { ...s, forcedMiss: s.phase };
+      const out = rules.apply(s, onward(s));
+      used += out.events.filter((e) => e.t === 'overtimeUsed').length;
+      s = out.state;
+      expect(overtimeUsed(s), `step ${k}: ${s.screen}, phase ${s.phase}`).toBe(used);
+    }
+    expect(s.screen).toBe('won');
+    expect(s.neighbor?.result).toBe('met');
+    expect(used).toBe(3);
+    expect(s.overtimeLeft).toBe(0);
+    expect(s.milestones.at(-1)).toMatchObject({ phase: 6, result: 'overtime', overtimeUsed: 1 });
   });
 });

@@ -92,6 +92,30 @@ describe('modifier text', () => {
     expect(
       modifierText(CONTENT, { kind: 'grantTag', target: { piece: 'bedroom' }, tag: 'Pet' }),
     ).toBe('Bedrooms are Pet rooms');
+    // Kid names who lives there too; Loud is an adjective.
+    expect(modifierText(CONTENT, { kind: 'grantTag', target: host, tag: 'Kid' })).toBe(
+      'Makes it a Kid room',
+    );
+    expect(modifierText(CONTENT, { kind: 'grantTag', target: host, tag: 'Loud' })).toBe(
+      'Makes it Loud',
+    );
+  });
+
+  // D-210: the Sparkle tip names the ×Mult tools on offer, and reads as before without one.
+  it('names each ×Mult tool on offer in the Sparkle tip, and none when there’s none', () => {
+    const shoot = CONTENT.tools.photoShoot;
+    const tip = (tools: Partial<typeof CONTENT.tools>) =>
+      glossary({ ...CONTENT, tools: { ...CONTENT.tools, ...tools } }).sparkle.text;
+    const rare =
+      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it';
+    expect(tip({ photoShoot: { ...shoot, offered: false } })).toBe(
+      `${rare}, and each needs a setup. Each source counts once a week.`,
+    );
+    // A Rush Order made a ×Mult tool joins it, in the content's order.
+    const rush = { ...CONTENT.tools.rushOrder, use: shoot.use };
+    expect(tip({ rushOrder: rush })).toBe(
+      `${rare}, each with a setup, and the Rush Order and the Photo Shoot for the week you use it. Each source counts once a week.`,
+    );
   });
 
   // D-210: each new tool says what it does and for how long; Weekend Crew's line is as it was.
