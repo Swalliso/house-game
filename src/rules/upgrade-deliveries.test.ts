@@ -194,7 +194,7 @@ describe('the Storage Unit (D-209): a special piece each milestone', () => {
     expect(fromUpgrades(playUntil(s2, at(1), two).events)[0]!.cards).toEqual([third]);
   });
 
-  it('with every one there, brings the first not at a limit; with all at a limit, nothing', () => {
+  it('with every one there, brings the first a house holds two of; with all at a limit, nothing', () => {
     const seed = 'all in';
     const all = order(seed, 'upgrade/storageUnit', SPECIALS);
     // Every special piece waits in the reserve's extra slots already (as the stock's would).
