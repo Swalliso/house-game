@@ -5,9 +5,19 @@
 // Loud neighbor's, and the preview, the tally and the bot's estimate agree on all of it.
 
 import { describe, expect, it } from 'vitest';
-import type { Content, HouseState, PieceId, PlaceAction, RunState, Tally } from '../rules/index.ts';
-import { cardText, glossary, rules } from '../rules/index.ts';
+import type {
+  Cell,
+  Content,
+  HouseState,
+  PieceDef,
+  PieceId,
+  PlaceAction,
+  RunState,
+  Tally,
+} from '../rules/index.ts';
+import { cardText, createRules, glossary, rules } from '../rules/index.ts';
 import { withFixture } from '../rules/fixtures.ts';
+import { bounds, placedCells } from '../rules/grid.ts';
 import { computeLayout } from '../rules/layout.ts';
 import { tallyHouse } from '../rules/scoring.ts';
 import { handCardLines, HAND_LINE_CHARS } from '../rules/text.ts';
@@ -84,6 +94,29 @@ describe('the landmarks’ reach (D-199)', () => {
         { kind: 'piece', uid: 4 },
       ],
     });
+  });
+
+  it('adds to a Dining Room’s +50% for what’s Social (D-201): a Patio by one, near a Pool', () => {
+    // A Patio below a Dining Room (+2 for a Social room, and its +50%), the Pool 2 tiles west.
+    const near: Placement[] = [
+      ['diningRoom', 4, 0],
+      ['patio', 4, 2],
+      ['pool', 0, 2],
+    ];
+    const patio = tally(near).pieces[1]!;
+    expect(patio.lines.map((l) => [l.label, l.op, l.value])).toEqual([
+      ['Touching a Dining Room', 'add', 2],
+      ['Dining Room next door', 'pct', 50],
+      ['Pool within 2 tiles', 'pct', 25],
+    ]);
+    // 2 at +75%, 3.5, 4; with the two a tile further east, 2 at +50%, 3.
+    expect(patio.earned).toBe(4);
+    const far = earned([
+      ['diningRoom', 5, 0],
+      ['patio', 5, 2],
+      ['pool', 0, 2],
+    ]);
+    expect(far[1]).toBe(3);
   });
 
   it('keeps a Pool’s Bedrooms awake: −1 within 2 tiles, which Soundproofing shields', () => {
@@ -332,5 +365,198 @@ describe('a landmark’s play (D-199)', () => {
     // A piece without a reach shades nothing.
     expect(rules.reachTiles(s, { uid: 1 })).toEqual([]);
     expect(rules.reachTiles(s, { defId: 'bedroom', cells: [{ x: 0, y: 0 }] })).toEqual([]);
+  });
+});
+
+describe('the square a landmark shades (rules.reachTiles, D-199)', () => {
+  const W = 10;
+  const H = 10;
+  const start = rules.newRun({
+    seed: 'reach-tiles',
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
+  const at = (placements: readonly Placement[]): RunState => ({
+    ...start,
+    house: houseFrom(CONTENT, open, placements),
+  });
+  /** The lot's tiles within `r` of any of the cells, theirs on the lot too, tile by tile. */
+  function square(cells: readonly Cell[], r: number): number[] {
+    const out: number[] = [];
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (cells.some((c) => Math.abs(c.x - x) <= r && Math.abs(c.y - y) <= r)) {
+          out.push(y * W + x);
+        }
+      }
+    }
+    return out;
+  }
+
+  it('is the same square placed or as a ghost, at every turn, in each corner and along each edge', () => {
+    for (const id of LANDMARKS) {
+      const { shape } = CONTENT.pieces[id];
+      for (const rot of [0, 1, 2, 3] as const) {
+        const { w, h } = bounds(placedCells(shape, 0, 0, rot));
+        const spots = [
+          [0, 0],
+          [W - w, 0],
+          [0, H - h],
+          [W - w, H - h],
+          [4, 0],
+          [0, 4],
+          [W - w, 4],
+          [4, H - h],
+          [4, 4],
+        ] as const;
+        for (const [x, y] of spots) {
+          const where = `${id} turned ${rot} at (${x}, ${y})`;
+          const cells = placedCells(shape, x, y, rot);
+          const s = at([[id, x, y, rot]]);
+          const placed = rules.reachTiles(s, { uid: 1 });
+          expect(placed, where).toEqual(rules.reachTiles(s, { defId: id, cells }));
+          expect(placed, where).toEqual(square(cells, 2));
+        }
+      }
+    }
+    // The Pool turned is 2 × 3: in the top-left corner, x 0 to 3 and y 0 to 4.
+    const turned = placedCells(CONTENT.pieces.pool.shape, 0, 0, 1);
+    expect(rules.reachTiles(at([]), { defId: 'pool', cells: turned })).toHaveLength(20);
+  });
+
+  it('clips a ghost hanging off the lot to the lot, and never wraps a row', () => {
+    const pool = (x: number, y: number) => placedCells(CONTENT.pieces.pool.shape, x, y, 0);
+    const ghost = (x: number, y: number) =>
+      rules.reachTiles(at([]), { defId: 'pool', cells: pool(x, y) });
+    // One column and one row off the top-left corner: its two tiles on the lot, and x 0 to 3, y 0
+    // to 2.
+    expect(ghost(-1, -1)).toEqual(square(pool(-1, -1), 2));
+    expect(ghost(-1, -1)).toHaveLength(12);
+    // Off the bottom-right corner: x 6 to 9 and y 7 to 9.
+    expect(ghost(8, 9)).toEqual(square(pool(8, 9), 2));
+    expect(ghost(8, 9)).toHaveLength(12);
+    // A row's last tile comes before the next row's first in reading order, but they're a lot
+    // apart: off the left edge, nothing on the right edge is shaded, and the other way round.
+    for (const y of [0, 4, 8]) {
+      expect(
+        ghost(-2, y).some((i) => i % W === W - 1),
+        `(−2, ${y})`,
+      ).toBe(false);
+      expect(
+        ghost(W - 1, y).some((i) => i % W === 0),
+        `(${W - 1}, ${y})`,
+      ).toBe(false);
+    }
+  });
+
+  it('is empty for a piece with no reach, a piece that isn’t there, or no tiles', () => {
+    const s = at([['bedroom', 0, 0]]);
+    expect(rules.reachTiles(s, { uid: 1 })).toEqual([]);
+    expect(rules.reachTiles(s, { uid: 99 })).toEqual([]);
+    expect(rules.reachTiles(s, { defId: 'fountain', cells: [] })).toEqual([]);
+    expect(rules.reachTiles(s, { defId: 'porch', cells: [{ x: 4, y: 4 }] })).toEqual([]);
+  });
+});
+
+// The estimate counts a reach both ways (estimate.ts): a new landmark's on the placed pieces in
+// its square, and a placed landmark's on a new piece whose tiles it covers. Spot by spot, so the
+// lot's edges and corners, and pieces exactly 2 tiles off and 3, are all in it.
+describe('the bot’s estimate of a reach, at every spot (D-199)', () => {
+  const start = rules.newRun({
+    seed: 'reach-estimate',
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
+  // Something for each landmark to reach: Social rooms (a Kitchen, a Living Room), a Patio they
+  // pay 5 out back (Social and Outdoor: a Fountain's +10% makes it 5.5, 6, where it rounds away
+  // on a smaller earner), Quiet rooms (a Bedroom, a Home Office), Loud (a Garage), Green (a Lawn,
+  // a Flower Bed) and Pretty (the Flower Bed).
+  const HOUSE: Placement[] = [
+    ['kitchen', 3, 0],
+    ['livingRoom', 1, 2],
+    ['patio', 3, 2],
+    ['bedroom', 7, 0],
+    ['homeOffice', 0, 4],
+    ['garage', 7, 5],
+    ['lawn', 0, 7],
+    ['flowerBed', 5, 8],
+  ];
+  /** The content with no landmark reaching: what the reach adds is the difference. */
+  const reachless: Record<PieceId, PieceDef> = { ...CONTENT.pieces };
+  for (const def of Object.values(CONTENT.pieces)) {
+    reachless[def.id] = {
+      ...def,
+      effects: def.effects.filter((e) => !(e.kind === 'aura' && typeof e.scope === 'object')),
+    };
+  }
+  const without = createRules({ ...CONTENT, pieces: reachless });
+
+  const inHand = (placements: readonly Placement[], id: PieceId): RunState => ({
+    ...start,
+    house: houseFrom(CONTENT, open, placements),
+    hand: [{ kind: 'piece', id }],
+  });
+
+  /**
+   * Checks the estimate at every legal spot for the hand's card, and counts the spots it checked
+   * and those where the reach changes the score. A spot where the estimate misses something else
+   * without any reach (a yard side a new building moves, the Hendersons' −50% for a Loud piece a
+   * new Bedroom touches) can't tell the reach apart, so it's left out.
+   */
+  function everySpot(s: RunState, label: string) {
+    const plays = rules.legalPlacements(s).filter((p) => p.from === 'hand');
+    const base = rules.scoreOnly(s, null);
+    const baseWithout = without.scoreOnly(s, null);
+    let checked = 0;
+    let reached = 0;
+    for (const play of plays) {
+      const exactWithout = without.scoreOnly(s, play) - baseWithout;
+      if (without.estimatePlay(s, play).delta !== exactWithout) continue;
+      const exact = rules.scoreOnly(s, play) - base;
+      const where = `${label}: (${play.x}, ${play.y}) turned ${play.rot}`;
+      expect(rules.estimatePlay(s, play).delta, where).toBe(exact);
+      checked++;
+      if (exact !== exactWithout) reached++;
+    }
+    return { spots: plays.length, checked, reached };
+  }
+
+  it('a landmark placed anywhere: its reach on the pieces in its square, touching or not', () => {
+    for (const id of LANDMARKS) {
+      const { spots, checked, reached } = everySpot(inHand(HOUSE, id), id);
+      expect(checked, id).toBeGreaterThan(spots / 2);
+      expect(reached, id).toBeGreaterThan(0);
+    }
+  });
+
+  it('a piece placed anywhere around a landmark: its reach on the new piece', () => {
+    // A landmark in a corner and one mid-lot, and the pieces each one changes.
+    const around: [Placement, PieceId[]][] = [
+      [
+        ['pool', 0, 0],
+        ['patio', 'bedroom'],
+      ],
+      [
+        ['library', 5, 6],
+        ['bedroom', 'homeOffice', 'garage'],
+      ],
+      [
+        ['henhouse', 8, 9],
+        ['lawn', 'flowerBed'],
+      ],
+      [['fountain', 4, 5], ['patio']],
+    ];
+    for (const [landmark, targets] of around) {
+      // The house without the new piece's own kind, so it has room to go anywhere.
+      const house = HOUSE.filter((p) => !targets.includes(p[0]));
+      for (const id of targets) {
+        const label = `${id} around a ${landmark[0]} at (${landmark[1]}, ${landmark[2]})`;
+        // A new room moves the yard sides more often than not, so fewer spots are checked here.
+        const { reached } = everySpot(inHand([...house, landmark], id), label);
+        expect(reached, label).toBeGreaterThan(0);
+      }
+    }
   });
 });
