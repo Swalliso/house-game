@@ -1188,15 +1188,18 @@ export function modifierText(content: Content, mod: Modifier): string {
       return `${mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target)} pays ${signed(mod.pct)}% budget`;
     case 'drawWeight': {
       // Weight added to pieces the draw leaves out (weight 0, the special rooms): they show up
-      // at all, which "more often" would undersell.
+      // at all, which "more often" would undersell. D-200: a special piece the draw deals only
+      // from a later milestone (the Library, from Framing) shows up from the start with it, and
+      // more often once it's dealt.
       const ids = pieceIds(mod.target);
-      if (
-        !mod.pct &&
-        (mod.add ?? 0) > 0 &&
-        ids?.every((id) => content.pieces[id].drawWeight === 0)
-      ) {
+      const unseen = (id: PieceId) => content.pieces[id].drawWeight === 0;
+      const late = (id: PieceId) =>
+        !!content.pieces[id].special && content.pieces[id].fromPhase > 0;
+      if (!mod.pct && (mod.add ?? 0) > 0 && ids?.every((id) => unseen(id) || late(id))) {
         const all = selectorText(content, mod.target, 'every');
-        return `${all.charAt(0).toUpperCase() + all.slice(1)} show up in the weekly draw`;
+        const shown = `${all.charAt(0).toUpperCase() + all.slice(1)} show up in the weekly draw`;
+        if (ids.every(unseen)) return shown;
+        return `${shown} from the start${ids.some(unseen) ? '' : ', and more often'}`;
       }
       const what = selectorText(content, mod.target, 'some');
       const amount = mod.pct ? `${signed(mod.pct)}%` : `${signed(mod.add ?? 0)}`;

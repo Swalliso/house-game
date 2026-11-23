@@ -183,10 +183,10 @@ describe('Catalog', () => {
     const { state, events } = useTool(s);
     expect(state.draws).toBe(s.draws + 1);
     expect(state.hand).toHaveLength(s.hand.length);
-    // In phase 1 no fixture draws yet, so every card is a special piece (weight 0).
+    // In phase 1 no fixture draws yet, so every card is a special piece.
     for (const card of state.hand) {
       expect(card.kind).toBe('piece');
-      expect(CONTENT.pieces[card.id as PieceId].drawWeight).toBe(0);
+      expect(CONTENT.pieces[card.id as PieceId].special).toBe(true);
     }
     expect(eventsOf(events, 'handDrawn')).toMatchObject([{ special: true, reroll: false }]);
   });
@@ -412,6 +412,6 @@ describe('crates', () => {
   });
 
   it('Showroom: 3 special pieces', () => {
-    for (const def of piecesIn(open('showroom'))) expect(def.drawWeight, def.id).toBe(0);
+    for (const def of piecesIn(open('showroom'))) expect(def.special, def.id).toBe(true);
   });
 });

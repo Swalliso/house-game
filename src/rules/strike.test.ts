@@ -496,8 +496,9 @@ describe('whether Strike can be used at all (D-157)', () => {
     expect(s0.strikesLeft).toBeGreaterThan(0);
     expect(real.canStrikeAny(s0)).toEqual({ ok: true });
     // Special pieces the General Contractor and the Hendersons never draw: the Hendersons'
-    // pool only adds percent, so a weight of 0 stays 0.
-    const ids = ['playroom', 'library', 'hotTub', 'henhouse'] as const;
+    // pool only adds percent, so a weight of 0 stays 0. (The draw deals the Library and the
+    // Henhouse from Framing, D-200, so a strike can name them.)
+    const ids = ['playroom', 'mudroom', 'pool', 'hotTub'] as const;
     for (const id of ids) {
       expect(CONTENT.pieces[id].drawWeight).toBe(0);
       expect(CONTENT.pieces[id].member).toBeFalsy();

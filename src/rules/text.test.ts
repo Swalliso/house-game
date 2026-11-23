@@ -40,13 +40,23 @@ describe('articles', () => {
 
 describe('modifier text', () => {
   it('says weight added to pieces the draw leaves out shows them at all: the Architect', () => {
+    // D-200: the Library is dealt from Framing, so the Architect's +5 deals it from the start;
+    // the other three it deals at all.
     const [specials] = CONTENT.crews.architect.modifiers;
     expect(modifierText(CONTENT, specials!)).toBe(
-      'Playrooms, Libraries, Mudrooms, and Pools show up in the weekly draw',
+      'Playrooms, Libraries, Mudrooms, and Pools show up in the weekly draw from the start',
+    );
+    // Vladislav's Library: from the start, and 5 times as often once it's dealt.
+    expect(modifierText(CONTENT, CONTENT.clients.vladislav.pool[0]!)).toBe(
+      'Libraries show up in the weekly draw from the start, and more often',
+    );
+    // The Barkers' Mudroom is never dealt without them.
+    expect(modifierText(CONTENT, CONTENT.clients.barkers.pool[0]!)).toBe(
+      'Mudrooms show up in the weekly draw',
     );
     expect(
-      modifierText(CONTENT, { kind: 'drawWeight', target: { piece: 'library' }, add: 20 }),
-    ).toBe('Libraries show up in the weekly draw');
+      modifierText(CONTENT, { kind: 'drawWeight', target: { piece: ['pool', 'hotTub'] }, add: 5 }),
+    ).toBe('Pools and Hot Tubs show up in the weekly draw');
     // Pieces already in the draw come up more often.
     expect(
       modifierText(CONTENT, { kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }),
@@ -381,7 +391,8 @@ describe('set chips (D-122)', () => {
     // D-195: the Garage earns +2 off its drive, so it isn't among the pieces that earn nothing
     // without something; its garage sales still count for the budget.
     expect(g.requirement.text).not.toContain('Garage');
-    expect(g.budget.text).toContain('from Garage and Home Office');
+    // D-200: the Henhouse's eggs, now the weekly draw deals it.
+    expect(g.budget.text).toContain('from Garage, Home Office, and Henhouse');
     // The Garage's card says it plainly: built like any room, +2 anywhere, and the rest once
     // it's reached, each line with what it waits for.
     expect(cardText(CONTENT, CONTENT.pieces.garage).effects).toEqual([
