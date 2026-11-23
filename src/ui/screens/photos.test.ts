@@ -15,6 +15,7 @@ import {
   type PlacedPiece,
   type RunState,
 } from '../../rules/index.ts';
+import { emptyRows, houseFrom, type Placement } from '../../rules/testing.ts';
 import { boardRows, isIndoor } from '../board/geometry.ts';
 import { CELL } from '../sprites.ts';
 import {
@@ -325,6 +326,44 @@ describe('the photos’ frame', () => {
   });
 });
 
+// The frame on a lot the game's size (24 cells square, under its street and road), for houses at
+// the extremes: a single room, a row of rooms from one side of the lot to the other, and rooms
+// with a yard piece far from them.
+describe('the photos’ frame at the extremes', () => {
+  const at = (placements: readonly Placement[]) =>
+    houseFrom(CONTENT, emptyRows(24, 24), placements);
+
+  it('frames one room as the smallest 4:3 that holds it with a cell around it', () => {
+    // A Bathroom, one cell: three cells tall with the cell above and below, so four wide.
+    expect(photoFrame(at([['bathroom', 10, 10]]))).toEqual({
+      x: 8.5 * CELL,
+      y: 9 * CELL,
+      w: 4 * CELL,
+      h: 3 * CELL,
+    });
+    // In the lot's corner: the same frame, kept on the board.
+    expect(photoFrame(at([['bathroom', 0, 0]]))).toEqual({ x: 0, y: 0, w: 4 * CELL, h: 3 * CELL });
+  });
+
+  it('frames rooms from side to side of the lot at the board’s width, about their rows', () => {
+    // Twelve Bedrooms in a row, two rows tall, from the lot's left edge to its right.
+    const wide = at(Array.from({ length: 12 }, (_, k): Placement => ['bedroom', 2 * k, 11]));
+    expect(houseBox(wide)).toEqual({ x0: 0, y0: 11, x1: 24, y1: 13 });
+    // The board's width, and the 18 rows that make it 4:3, centered on the rooms' two.
+    expect(photoFrame(wide)).toEqual({ x: 0, y: 3 * CELL, w: 24 * CELL, h: 18 * CELL });
+  });
+
+  it('frames the rooms, not a yard piece far from them', () => {
+    // A Kitchen in the middle of the lot, and a Fence along its back edge.
+    const house = at([
+      ['kitchen', 10, 10],
+      ['fence', 0, 0],
+    ]);
+    expect(houseBox(house)).toEqual({ x0: 10, y0: 10, x1: 12, y1: 12 });
+    expect(photoFrame(house)).toEqual(photoFrame(at([['kitchen', 10, 10]])));
+  });
+});
+
 describe('the end screen’s house', () => {
   it('is the box of the rooms, or of the yard pieces when there are none', () => {
     const house = won.state.house;
@@ -374,5 +413,31 @@ describe('the end screen’s house', () => {
     expect(rooms.top - pan.top - view.top).toBeCloseTo(view.bottom - (rooms.bottom - pan.top));
     // A sign above the view (it never is) changes nothing.
     expect(endPan(view, view.top - 10, rooms)).toEqual(pan);
+  });
+
+  it('never pans a room up under the sign, however tall the rooms are', () => {
+    // The view above and one 48 px shorter; rooms a row to twenty rows tall at 1× (32 px), and
+    // just as tall as the space under the sign or a pixel taller, wherever they start.
+    for (const v of [view, { ...view, bottom: view.bottom - 48 }]) {
+      const space = v.bottom - sign;
+      const heights = [...Array.from({ length: 20 }, (_, k) => 32 * (k + 1)), space, space + 1];
+      for (const h of heights) {
+        for (const top of [-300, 0, 83, 500]) {
+          const rooms = { left: 395, top, right: 971, bottom: top + h };
+          const pan = endPan(v, sign, rooms);
+          const shownTop = rooms.top - pan.top;
+          const shownBottom = rooms.bottom - pan.top;
+          expect(shownTop, `${h} px from ${top}`).toBeGreaterThanOrEqual(sign);
+          if (h <= space) {
+            // They fit: wholly in view under the sign, as far from it as from the view's foot.
+            expect(shownBottom).toBeLessThanOrEqual(v.bottom);
+            expect(shownTop - sign).toBeCloseTo(v.bottom - shownBottom);
+          } else {
+            // Taller: their top just under the sign, and the rest past the foot.
+            expect(shownTop).toBe(sign);
+          }
+        }
+      }
+    }
   });
 });

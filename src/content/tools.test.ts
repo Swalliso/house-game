@@ -186,6 +186,42 @@ describe('Photo Shoot', () => {
     expect(rules.currentTally(useTool(next).state).total).toBe(5);
   });
 
+  it('a second in the same week isn’t offered to anyone: not listed, previewed or applied', () => {
+    const s = build([['bedroom', 0, 0]], {
+      supplies: [tool('photoShoot'), tool('photoShoot')],
+    });
+    // The first is listed and previews ×1.5: 3 × 1.5 = 4.5, so 5.
+    expect(rules.legalActions(s)).toContainEqual(USE);
+    expect(rules.previewTool(s, USE)).toMatchObject({ ok: true, delta: 2 });
+    const used = useTool(s).state;
+    const reason = 'This week already has its Photo Shoot.';
+    // What the bots choose from (D-210's trial: the first let the bot spend one for nothing).
+    expect(rules.legalActions(used).filter((a) => a.t === 'useTool')).toEqual([]);
+    expect(rules.previewTool(used, USE)).toMatchObject({ ok: false, reason, delta: 0 });
+    expect(() => rules.apply(used, USE)).toThrow(reason);
+    expect(used.supplies).toEqual([tool('photoShoot')]);
+  });
+
+  it('the once-a-week rule is for a ×Mult: a second Rush Order the same week adds again', () => {
+    const s = build([['bedroom', 0, 0]], {
+      supplies: [tool('rushOrder'), tool('rushOrder'), tool('photoShoot')],
+    });
+    const once = useTool(s).state;
+    expect(rules.canUseTool(once, USE)).toEqual({ ok: true });
+    // +0.5 and +0.5: 3 × 2 = 6, then the Photo Shoot after both, 3 × 3 = 9.
+    const twice = useTool(once).state;
+    expect(rules.currentTally(twice)).toMatchObject({ mult: 200, total: 6 });
+    expect(rules.currentTally(useTool(twice).state)).toMatchObject({ mult: 300, total: 9 });
+  });
+
+  it('can be used on a house with nothing to multiply, for nothing', () => {
+    const s = build([], { supplies: [tool('photoShoot')] });
+    expect(rules.previewTool(s, USE)).toMatchObject({ ok: true, delta: 0 });
+    const used = useTool(s).state;
+    expect(used.supplies).toEqual([]);
+    expect(rules.currentTally(used).total).toBe(0);
+  });
+
   it('stacks with another ×Mult source, after it: the Chandelier’s ×1.25 in an Entertainer', () => {
     const s = build(ENTERTAINER, { supplies: [tool('photoShoot')] });
     const lit = { ...s, house: withFixture(s.house, 2, 'chandelier', 1) };

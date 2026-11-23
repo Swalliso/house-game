@@ -1,8 +1,8 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
 // the Sprinkler, the dogs' bed in Nana's Room (D-111), the Doghouse's dog, on its lead and loose
-// (D-179), rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items), and
-// the Fountain (D-199). The hens peck, the dog in the bed breathes (D-185) and the Fountain's water
-// falls, each from its first frame, at rest.
+// (D-179), rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items), the
+// Fountain (D-199), and a pantry's shelf and sack of flour (D-216). The hens peck, the dog in the
+// bed breathes (D-185) and the Fountain's water falls, each from its first frame, at rest.
 // They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light from the top
 // left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
@@ -65,6 +65,13 @@ export const KEY: Readonly<Record<string, Rgba>> = {
   T: [0x73, 0xb8, 0xc6, 255], // the basin's water
   V: [0x95, 0xe3, 0xe3, 255], // falling water
   z: [0xde, 0xff, 0xf7, 255], // its glints
+  // D-216: a pantry's shelf and its sack of flour. The back of the shelf is 'O'.
+  q: [0x63, 0xa6, 0x50, 255], // a green lid, tin and bottle
+  Q: [0x56, 0x8d, 0x61, 255], // the bottle, shaded
+  t: [0xed, 0x93, 0x1e, 255], // marmalade
+  X: [0xe0, 0xd0, 0xb2, 255], // sacking, lit
+  Y: [0xc3, 0xac, 0x90, 255],
+  Z: [0xb2, 0x97, 0x7e, 255], // sacking, shaded
 };
 
 /**
@@ -486,6 +493,51 @@ const PUDDLE = [
   '.....ffffff.......fff.',
 ] as const;
 
+/**
+ * D-216: a pantry's shelf, for a Closet beside a Kitchen: jars of marmalade, jam and honey on top,
+ * and a bottle of oil, a tin and a box of cereal below, in the bookcases' woods. As tall as a
+ * Closet's rail, so it stands wherever the rail does.
+ */
+const PANTRY = [
+  '.kkkkkkkkkkkkkkkkkk.',
+  'kWWWWWWWWWWWWWWWWWWk',
+  'kwwwwwwwwwwwwwwwwwwk',
+  'kbbbbbbbbbbbbbbbbbbk',
+  'kWbOrrOOOyyOOOqqObwk',
+  'kWbkrrkOkyykOkqqkbwk',
+  'kWbkCCkOkCCkOkCCkbwk',
+  'kWbktCkOkdCkOkyCkbwk',
+  'kWbkttkOkddkOkyykbwk',
+  'kWbkkkkOkkkkOkkkkbwk',
+  'kWbwwwwwwwwwwwwwwbwk',
+  'kWbbbbbbbbbbbbbbbbwk',
+  'kWbOkkOOOOOOkkkkkbwk',
+  'kWbOqkOkggkOkRRRkbwk',
+  'kWbkqqkkHHkOkhhRkbwk',
+  'kWbkQqkkrrkOkRhRkbwk',
+  'kWbkqqkkrrkOkRRRkbwk',
+  'kWbkQqkkHgkOkdRdkbwk',
+  'kWbkkkkkkkkkkkkkkbwk',
+  'kbbbbbbbbbbbbbbbbbbk',
+  '.kkkkkkkkkkkkkkkkkk.',
+  '.ssssssssssssssssss.',
+] as const;
+
+/** D-216: a sack of flour, tied at the neck, on a pantry's floor. */
+const SACK = [
+  '...kkk...',
+  '..kXYXk..',
+  '...kYk...',
+  '..kXXXk..',
+  '.kXXXXYk.',
+  'kXXXXXXYk',
+  'kXXXXXXYk',
+  'kXXXXXYZk',
+  '.kYYYYZk.',
+  '..kkkkk..',
+  '..sssss..',
+] as const;
+
 /** A drop's ring, as offsets from where it lands: the drop, then rings spreading flat. */
 const RINGS: readonly (readonly (readonly [number, number])[])[] = [
   [[0, 0]],
@@ -553,6 +605,8 @@ export const DRAWINGS = {
   'own-dog-bed': { frames: DOG_BED_BREATHING, ms: FEEL.dogBed.stepMs },
   'own-dog-on-lead': { frames: [DOG_ON_LEAD] },
   'own-dog-loose': { frames: DOG_LOOSE, ms: FEEL.dog.hopMs },
+  'own-pantry': { frames: [PANTRY] },
+  'own-sack': { frames: [SACK] },
   'own-rain-near': { frames: [RAIN_NEAR] },
   'own-rain-far': { frames: [RAIN_FAR] },
   // Still in its first frame: the rest are drops landing, in the big puddle and then the small.
