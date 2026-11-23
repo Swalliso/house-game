@@ -520,7 +520,8 @@ export function validateContent(content: Content): string[] {
       if (a.cards.length === 0) problems.push(`${at}: no cards`);
       a.cards.forEach((id) => known(id, at));
       if (a.room === undefined) {
-        if (!a.cards.includes('bedroom')) problems.push(`${at}: no room of their own, so a Bedroom`);
+        if (!a.cards.includes('bedroom'))
+          problems.push(`${at}: no room of their own, so a Bedroom`);
         continue;
       }
       if (a.room.length === 0) problems.push(`${at}: no room`);

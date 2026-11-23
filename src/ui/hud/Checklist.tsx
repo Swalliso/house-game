@@ -37,6 +37,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import {
   changeOrderText,
   CONTENT,
+  eachMilestone,
   lotTraits,
   lotTraitText,
   modifierText,
@@ -822,10 +823,12 @@ const tastesShown = (box: HTMLElement) =>
  * Who's still to move in (M4b, D-103), under the household's lines until they arrive: "Grandma
  * at Drywall", two lines at most in a 280 px column (D-142; with "arrives" and the week it took
  * four). The week is in the name's tip, after what they bring. Room for everyone's line already
- * shows what they'll need.
+ * shows what they'll need. D-219: a household that grows each milestone (the Bigsbys' five)
+ * shows only who's next, one line.
  */
 function ArrivalLines({ s }: { s: RunState }) {
-  const coming = upcomingArrivals(s);
+  const all = upcomingArrivals(s);
+  const coming = eachMilestone(CONTENT.clients[s.setup.clientId].household) ? all.slice(0, 1) : all;
   if (coming.length === 0) return null;
   const overtime = overtimeUsed(s);
   return (
