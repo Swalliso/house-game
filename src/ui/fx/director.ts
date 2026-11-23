@@ -36,6 +36,7 @@ import {
   type NeighborSide,
   type PieceId,
   type PieceScore,
+  type ReserveSource,
   type RunState,
   type SetScore,
   type SpecScore,
@@ -300,7 +301,7 @@ export const overtimeGift = signal<{ id: number } | null>(null);
  * of the week's deliveries; `slots` holds them all.
  */
 export const justDelivered = signal<{
-  from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade' | 'wish';
+  from: Exclude<ReserveSource, 'own' | 'arrival'>;
   slots: readonly number[];
   delayMs: number;
   id: number;

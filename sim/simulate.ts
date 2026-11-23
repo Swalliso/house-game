@@ -28,7 +28,7 @@ import type {
   NeighborSide,
   PieceId,
   PickOption,
-  ReservePiece,
+  ReserveSource,
   Rules,
   RunState,
   ShopOffer,
@@ -37,26 +37,18 @@ import type {
   TerrainId,
   RunMode,
 } from '../src/rules/index.ts';
-import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../src/rules/index.ts';
+import {
+  contentHash,
+  encodeRunCode,
+  placedCells,
+  reserveSource,
+  stream,
+  weekTotal,
+} from '../src/rules/index.ts';
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
 import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
 import { goodValue } from './policies/shop.ts';
-
-/** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
-export type ReserveSource =
-  'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise' | 'upgrade' | 'wish';
-
-export function reserveSource(r: ReservePiece): ReserveSource {
-  if (r.crew) return 'crew';
-  if (r.arrival !== undefined) return 'arrival';
-  if (r.client) return 'client';
-  if (r.stock) return 'stock';
-  if (r.surprise) return 'surprise';
-  if (r.upgrade !== undefined) return 'upgrade';
-  if (r.wish) return 'wish';
-  return 'own';
-}
 
 export interface RunRecord {
   seed: string;
