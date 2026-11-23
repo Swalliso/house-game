@@ -144,17 +144,19 @@ export const PHOTO_ASPECT = { w: 4, h: 3 } as const;
 /** The frame around an empty lot: twelve cells by nine in its middle. */
 const EMPTY = { w: 12, h: 9 };
 
+/** A box of the lot's cells: from `x0`, `y0` up to (not including) `x1`, `y1`. */
+export interface CellBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 /**
- * Where every photo of a run is taken: the finished house's bounding box (its rooms; a house of
- * yard pieces alone, all of them) with a cell around it, grown to 4:3 about its middle, and kept
- * on the board. Taking each milestone's photo through the same frame, the house grows in place.
- * A house too tall for a 4:3 frame as wide as the board (rooms down 18 rows or more) loses its
- * top and bottom edges.
+ * The house the end screen shows: the bounding box of its rooms (a house of yard pieces alone,
+ * all of them), or null on an empty lot.
  */
-export function photoFrame(house: HouseState): PhotoFrame {
-  const { width, height } = house.lot;
-  const boardW = width * CELL;
-  const boardH = boardRows(height) * CELL;
+export function houseBox(house: HouseState): CellBox | null {
   const occ = occupancy(house);
   const rooms = house.pieces.filter((p) => isIndoor(p.defId)).map((p) => p.uid);
   const framed = rooms.length > 0 ? rooms : house.pieces.map((p) => p.uid);
@@ -170,17 +172,63 @@ export function photoFrame(house: HouseState): PhotoFrame {
       y1 = Math.max(y1, c.y + 1);
     }
   }
-  if (x0 === Infinity) {
+  return x0 === Infinity ? null : { x0, y0, x1, y1 };
+}
+
+/** A box on the screen, in CSS px. */
+export interface ScreenBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * How far the end screen pans the board (the scroll to add, CSS px) so the house is the hero of
+ * the view the strip leaves (D-204): its rooms in the middle of the part of the view under the
+ * "It's a house." sign, or, where they're taller than that part, their top just under the sign,
+ * so the sign never sits on a room. `signBottom` is null while there's no sign.
+ */
+export function endPan(
+  view: ScreenBox,
+  signBottom: number | null,
+  rooms: ScreenBox,
+): { left: number; top: number } {
+  const top = Math.max(view.top, signBottom ?? view.top);
+  const mid = (a: number, b: number) => (a + b) / 2;
+  const tall = rooms.bottom - rooms.top > view.bottom - top;
+  return {
+    left: mid(rooms.left, rooms.right) - mid(view.left, view.right),
+    top: tall ? rooms.top - top : mid(rooms.top, rooms.bottom) - mid(top, view.bottom),
+  };
+}
+
+/**
+ * Where every photo of a run is taken: the finished house's bounding box (houseBox) with a cell
+ * around it, grown to 4:3 about its middle, and kept on the board. Taking each milestone's photo
+ * through the same frame, the house grows in place. A house too tall for a 4:3 frame as wide as
+ * the board (rooms down 18 rows or more) loses its top and bottom edges.
+ */
+export function photoFrame(house: HouseState): PhotoFrame {
+  const { width, height } = house.lot;
+  const boardW = width * CELL;
+  const boardH = boardRows(height) * CELL;
+  const box = houseBox(house);
+  let x0: number;
+  let y0: number;
+  let x1: number;
+  let y1: number;
+  if (!box) {
     // Nothing built: the middle of the lot.
     x0 = (width - EMPTY.w) / 2;
     x1 = x0 + EMPTY.w;
     y0 = (height - EMPTY.h) / 2;
     y1 = y0 + EMPTY.h;
   } else {
-    x0 -= 1;
-    y0 -= 1;
-    x1 += 1;
-    y1 += 1;
+    x0 = box.x0 - 1;
+    y0 = box.y0 - 1;
+    x1 = box.x1 + 1;
+    y1 = box.y1 + 1;
   }
   // Grow the short side to 4:3, in whole steps of 4 × 3 art px, no bigger than the board.
   const { w: aw, h: ah } = PHOTO_ASPECT;

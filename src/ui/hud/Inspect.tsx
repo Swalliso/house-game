@@ -872,7 +872,12 @@ function GoodWorth({ good }: { good: GoodRef }) {
   }
 }
 
-/** A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold. */
+/**
+ * A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold.
+ * Its value line comes first, under the name: pointed at, Inspect keeps a few lines while the
+ * checklist has the room (D-110), and under the good's text the line was out of view from
+ * 1280×720 to 1440×900 (D-204). A shop card keeps it under the text, where it has the room.
+ */
 function ItemInfo({
   good,
   sellAs,
@@ -889,8 +894,8 @@ function ItemInfo({
         {good.kind === 'blueprint' && <Icon name={BLUEPRINT_ICONS[good.id]} class="good-glyph" />}
         {goodName(good)}
       </h2>
-      <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
       <GoodWorth good={good} />
+      <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
       {good.kind === 'blueprint' && sellAs && (
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}
