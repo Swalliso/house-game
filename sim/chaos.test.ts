@@ -1107,6 +1107,21 @@ class Checker {
         }
       }
     }
+    // D-205: the lot's wish pays once, the piece its feature names, with its count met then, and
+    // stays paid.
+    const wished = events.filter((e) => e.t === 'wishFilled');
+    if (prev.wishFilled && s.wishFilled !== prev.wishFilled) this.fail('a paid wish changed');
+    if (wished.length > (prev.wishFilled ? 0 : 1)) this.fail('the lot’s wish paid twice');
+    if ((wished.length === 1) !== (!prev.wishFilled && !!s.wishFilled))
+      this.fail('wishFilled without its event, or the event without it');
+    for (const e of wished) {
+      const def = CONTENT.features[e.feature].wish;
+      if (!def || e.feature !== s.wishFilled) this.fail('a wish from the wrong feature', e);
+      else if (e.pieces.length < def.need) this.fail('a wish paid short of its count', e);
+      else if (e.reward.piece && !s.reserve.some((r) => r.wish && r.id === e.reward.piece))
+        this.fail('a wish’s piece isn’t in the reserve', e);
+    }
+    if (s.reserve.filter((r) => r.wish).length > 1) this.fail('two of the wish’s pieces');
     if (new Set(s.blueprints.map((b) => b.id)).size !== s.blueprints.length)
       this.fail('a blueprint twice');
     if (new Set(s.upgrades).size !== s.upgrades.length) this.fail('an upgrade twice');
@@ -1190,10 +1205,11 @@ class Checker {
       if (s.reserve[a.i]?.crew) this.see('place:crew');
       if (s.reserve[a.i]?.client) this.see('place:client');
       if (s.reserve[a.i]?.stock) this.see('place:stock');
-      // D-188: the wrong delivery's piece.
+      // D-188: the wrong delivery's piece; D-205: the lot's wish's.
       if (s.reserve[a.i]?.surprise) this.see('place:surprise');
       // D-209: a company upgrade's piece (the Storage Unit's).
       if (s.reserve[a.i]?.upgrade) this.see('place:upgrade');
+      if (s.reserve[a.i]?.wish) this.see('place:wish');
     }
     if (a.t === 'answerChangeOrder') this.see(`answer:${a.i === 0 ? 'first' : 'second'}`);
     if (a.t === 'useTool') {
@@ -1298,6 +1314,9 @@ const COVERAGE: readonly string[] = [
   ...prefixed('place', ['upgrade']),
   ...prefixed('event', ['upgradeTool']),
   ...prefixed('crate', ['draftingTable']),
+  // D-205: the lot's wish fills, and its piece is placed.
+  ...prefixed('event', ['wishFilled']),
+  ...prefixed('place', ['wish']),
   // D-211: a room is finished, and pays.
   ...prefixed('event', ['roomFinished']),
   // D-206: the neighbor asks at Roofing's start, and their ask resolves at its milestone.
