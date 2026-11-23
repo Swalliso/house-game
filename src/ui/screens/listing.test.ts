@@ -528,6 +528,13 @@ describe('the listing, on the household and the yard', () => {
     const missing: Record<string, string | null> = {};
     for (const c of CLIENTS) {
       for (const a of CONTENT.clients[c].household.arrivals) {
+        // D-219: a member with no room of their own (the Bigsbys') has none to miss: the Bedroom
+        // they bring is Room for everyone's.
+        if (!a.room) {
+          const s = finished(c, [kitchen], { arrived: [a.id] });
+          expect(flaw(s), a.id).not.toMatch(/^No room for/);
+          continue;
+        }
         for (const room of a.room) {
           const s = finished(c, [kitchen, [room, 3, 0]], { arrived: [a.id] });
           expect(lineOf(s, 'headline')?.text, room).toBe(`1 bed, 0 bath ${LOWEST} on a rocky lot.`);
