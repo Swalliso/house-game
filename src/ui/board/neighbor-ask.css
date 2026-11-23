@@ -1,0 +1,151 @@
+/* The neighbor's ask (D-206, NeighborAskLayer.tsx). The neighbor stands after the overhang on its
+   z-index, as the household at the door does (people.css); their bubble sits with the labels, over
+   the tree tops. The strip's shade is D-166's side tint (board-m2.css), dashed edge and all.
+   Nothing takes the pointer. At rest every sprite is untransformed, on whole device pixels; the
+   walk is whole art px steps, and the bubble's pop and the fade are short tweens (CLAUDE.md). */
+
+.board > .neighbor-ask,
+.board > .neighbor-ask-bubbles {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.board > .neighbor-ask {
+  z-index: var(--z-overhang);
+}
+.board > .neighbor-ask-bubbles {
+  z-index: var(--z-labels);
+}
+.neighbor-ask .fx-sprite,
+.neighbor-ask .arrive,
+.neighbor-ask .neighbor-hearts {
+  position: absolute;
+}
+.neighbor-ask .neighbor-hearts {
+  left: 0;
+  top: 0;
+}
+.neighbor-ask .visit-bubble > .fx-sprite {
+  position: absolute;
+}
+
+/* Going: met, after the heart has had its moment; missed, sooner. A fade, never a move. */
+.neighbor-ask .going,
+.neighbor-ask .neighbor-hearts {
+  animation: neighbor-going var(--going-ms) linear var(--going-at) forwards;
+}
+@keyframes neighbor-going {
+  to {
+    opacity: 0;
+  }
+}
+.reduce-motion .neighbor-ask .going,
+.reduce-motion .neighbor-ask .neighbor-hearts {
+  animation: none;
+}
+
+/* The bubble: the interface's paper in LimeZu's ink ring, as the board's labels are (labels.css),
+   the Fence icon and the count. It hangs from a point over the neighbor's head (.neighbor-keep,
+   which NeighborAskLayer.tsx nudges into the view), its corner over them and the rest out over
+   the lot, with two dots of a tail down to them. */
+.neighbor-keep {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.neighbor-bubble {
+  position: absolute;
+  bottom: calc(var(--px) * 7);
+  left: calc(var(--px) * -6);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 2);
+  width: max-content;
+  padding: var(--px) calc(var(--px) * 3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 var(--px) var(--paper-line),
+    var(--shadow-card);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  -webkit-font-smoothing: none;
+  transform-origin: calc(var(--px) * 6) calc(100% + var(--px) * 7);
+}
+.neighbor-bubble.from-right {
+  left: auto;
+  right: calc(var(--px) * -6);
+  transform-origin: calc(100% - var(--px) * 6) calc(100% + var(--px) * 7);
+}
+[data-font='readable'] .neighbor-bubble {
+  -webkit-font-smoothing: auto;
+  font-weight: 800;
+}
+.neighbor-bubble::before,
+.neighbor-bubble::after {
+  content: '';
+  position: absolute;
+  background: var(--card);
+  box-shadow: 0 0 0 var(--px) var(--ink);
+}
+.neighbor-bubble::before {
+  left: calc(var(--px) * 4);
+  top: calc(100% + var(--px) * 2);
+  width: calc(var(--px) * 3);
+  height: calc(var(--px) * 3);
+}
+.neighbor-bubble::after {
+  left: calc(var(--px) * 5);
+  top: calc(100% + var(--px) * 7);
+  width: var(--px);
+  height: var(--px);
+}
+.neighbor-bubble.from-right::before {
+  left: auto;
+  right: calc(var(--px) * 4);
+}
+.neighbor-bubble.from-right::after {
+  left: auto;
+  right: calc(var(--px) * 5);
+}
+/* Nudged into the view, away from the neighbor: no tail. */
+.neighbor-keep.kept .neighbor-bubble::before,
+.neighbor-keep.kept .neighbor-bubble::after {
+  display: none;
+}
+/* Met: the count in the good blue with a check; a placement looked at that changes it, the count
+   in its direction's tone (never color alone: the number moves, and met has its check). */
+.neighbor-bubble.met .neighbor-count,
+.neighbor-bubble.up .neighbor-count {
+  color: var(--good);
+}
+.neighbor-bubble.down .neighbor-count {
+  color: var(--bad);
+}
+
+/* As the ask comes: hidden until the neighbor has stopped, then it grows from its tail. */
+.neighbor-bubble.pop {
+  animation: neighbor-bubble-pop var(--pop-ms) cubic-bezier(0.25, 1.6, 0.45, 1) var(--pop-at) both;
+}
+@keyframes neighbor-bubble-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

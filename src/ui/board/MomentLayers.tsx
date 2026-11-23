@@ -101,7 +101,7 @@ export function ClientVisit({ scale }: { scale: number }) {
  * frames, beating. It never pokes above the lot, where the view often ends (the canopy's room is
  * scrolled away): a piece on the top row gets its heart on it rather than over it.
  */
-function Bubble({
+export function Bubble({
   icon,
   tail,
   delayMs,

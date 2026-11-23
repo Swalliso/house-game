@@ -84,6 +84,8 @@ import type {
   MilestoneRecord,
   MilestoneReward,
   MilestoneResult,
+  NeighborSide,
+  NeighborView,
   OfferView,
   PieceDef,
   PieceId,
@@ -105,6 +107,7 @@ import type {
   RuleKey,
   RunSetup,
   RunState,
+  Selector,
   SellAction,
   StrikePreview,
   StruckSlot,
@@ -135,6 +138,7 @@ import {
   newPiecesNeeded,
   perHouseLimits,
   progressOf,
+  tilesInRegion,
   typeLimits,
   typesAtLimit,
   type CondCtx,
@@ -195,12 +199,14 @@ import {
   pieceIn,
   reachOf,
   REGION_BIT,
+  sideRegion,
+  sideStrip,
   tilesIn,
   tilesWithin,
   type Layout,
   type LayoutModifier,
 } from './layout.ts';
-import { generateLot, withTraits } from './lot.ts';
+import { generateLot, isWater, protectedTerrain, withTraits } from './lot.ts';
 import {
   earlyBonus,
   isRunMode,
@@ -497,6 +503,12 @@ export interface Rules {
    * listed in that order, none offered before, minus the skipped), for tests and the ?debug panel.
    */
   eligibleChangeOrders(state: RunState): ChangeOrderId[];
+  /**
+   * D-206: the neighbor's ask, running or resolved, with its count as the house stands (with a
+   * legal play on the build screen, as the play would leave it); null in a run that has had
+   * none.
+   */
+  neighbor(state: RunState, play?: Play): NeighborView | null;
   replay(setup: RunSetup, actions: readonly Action[]): ReplayResult;
 }
 
@@ -1399,7 +1411,7 @@ export function createRules(content: Content): Rules {
    * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
    * what the client brings for that phase, the standing stock's top-up (D-160), the crew's own
    * card and the wrong delivery's piece (D-171, D-188), a company upgrade's special piece
-   * (D-209), the crew's tool, and a company upgrade's tool.
+   * (D-209), the crew's tool, a company upgrade's tool, and the neighbor's ask (D-206).
    */
   function arrive(state: RunState, events: GameEvent[]): RunState {
     if (state.overtimeWeek !== 0) return state;
@@ -1411,7 +1423,9 @@ export function createRules(content: Content): Rules {
       s = deliver(s, events);
     }
     s = surprise(crewStock(restock(s, events), events), events);
-    return upgradeTools(crewTool(upgradePieces(s, events), events), events);
+    s = upgradeTools(crewTool(upgradePieces(s, events), events), events);
+    // D-206: then the neighbor, with the standing stock's Fence already in Your goods.
+    return askNeighbor(s, events);
   }
 
   /**
@@ -1685,6 +1699,152 @@ export function createRules(content: Content): Rules {
       else missing.push(id);
     }
     return { ...addExtra(s, 'stock', missing, events), stocked: true };
+  }
+
+  // -------------------------------------------------------------------------------------
+  // The neighbor's ask (D-206).
+
+  const ask = b.neighborAsk;
+  /** What the ask counts: its piece by type (a Fence pack is one piece of several tiles). */
+  const askSel: Selector = { piece: ask.piece };
+  const SIDES: readonly NeighborSide[] = ['left', 'right'];
+
+  /** The ask's piece's tiles in the strip along `side`, as `house` stands. */
+  function askHave(state: RunState, side: NeighborSide, house = state.house): number {
+    return tilesInRegion(content, layoutFor(state, house), askSel, sideRegion(side));
+  }
+
+  /**
+   * The most tiles of a side's strip in one group the ask's piece could go on now: nothing
+   * built there, and ground it can stand on (a Tree it would clear, but not a kept one, D-174).
+   * One pack, the standing stock's, can lay that many.
+   */
+  function freeRun(state: RunState, strip: readonly number[]): number {
+    const lot = state.house.lot;
+    const layout = layoutFor(state);
+    const def = content.pieces[ask.piece];
+    const kept = protectedTerrain(content, lot);
+    const free = new Set(
+      strip.filter((i) => {
+        if (layout.occupant[i]! >= 0) return false;
+        const t = lot.terrain[i];
+        if (!t) return true;
+        if (kept.has(t)) return false;
+        const f = content.features[t];
+        return f.clear === 'buildOver' || !f.blocks || !!def?.canCover?.includes(t);
+      }),
+    );
+    const w = lot.width;
+    let best = 0;
+    for (const start of free) {
+      free.delete(start);
+      const stack = [start];
+      let n = 0;
+      while (stack.length > 0) {
+        const i = stack.pop()!;
+        n++;
+        const x = i % w;
+        for (const j of [x < w - 1 ? i + 1 : -1, i + w, x > 0 ? i - 1 : -1, i - w]) {
+          if (free.delete(j)) stack.push(j);
+        }
+      }
+      best = Math.max(best, n);
+    }
+    return best;
+  }
+
+  /**
+   * Whether the neighbor on `side` can ask now: no water and no kept Trees in their strip (the
+   * lake, a creek, Old Woods), not met already, and room in one group for what's missing.
+   */
+  function sideOpen(state: RunState, side: NeighborSide): boolean {
+    const lot = state.house.lot;
+    const strip = sideStrip(lot, side, ask.depth);
+    const kept = protectedTerrain(content, lot);
+    if (strip.some((i) => isWater(lot.terrain[i] ?? null) || kept.has(lot.terrain[i]!))) {
+      return false;
+    }
+    const have = askHave(state, side);
+    return have < ask.tiles && freeRun(state, strip) >= ask.tiles - have;
+  }
+
+  /**
+   * Start of week (D-206): in the first week of `neighborAsk.phase` (never in a first job or an
+   * overtime week; `arrive` sees to that), once a run, a neighbor asks. The side the run's seed
+   * picks (`neighbor/<phase>`) first, or the other if it isn't open; neither open, no ask.
+   */
+  function askNeighbor(s: RunState, events: GameEvent[]): RunState {
+    if (ask.tiles <= 0 || s.neighbor || s.setup.mode === 'firstJob') return s;
+    if (s.slot !== 1 || s.phase !== ask.phase) return s;
+    const first = stream(s.setup.seed, `neighbor/${s.phase}`).pick(SIDES);
+    const side = [first, ...SIDES.filter((x) => x !== first)].find((x) => sideOpen(s, x));
+    if (!side) return s;
+    events.push({
+      t: 'neighborAsked',
+      side,
+      phase: s.phase,
+      tiles: ask.tiles,
+      have: askHave(s, side),
+    });
+    return { ...s, neighbor: { side, phase: s.phase, tiles: ask.tiles } };
+  }
+
+  /**
+   * At a milestone met (D-206): the ask that ran through it resolves. Met, with enough of its
+   * piece's tiles in the strip then, it pays its reward, once.
+   */
+  function resolveNeighbor(s: RunState, events: GameEvent[]): RunState {
+    const n = s.neighbor;
+    if (!n || n.result !== undefined || n.phase > s.phase) return s;
+    const have = askHave(s, n.side);
+    const result = have >= n.tiles ? 'met' : 'missed';
+    const reward = result === 'met' ? ask.reward : undefined;
+    events.push({
+      t: 'neighborResolved',
+      side: n.side,
+      phase: n.phase,
+      tiles: n.tiles,
+      have,
+      result,
+      ...(reward ? { reward } : {}),
+    });
+    const next: RunState = { ...s, neighbor: { ...n, result } };
+    return reward ? payReward(next, reward, `neighbor/${n.phase}`, events) : next;
+  }
+
+  /** The ask as the UI shows it (Rules.neighbor). */
+  function neighborView(state: RunState, play?: Play): NeighborView | null {
+    const n = state.neighbor;
+    if (!n) return null;
+    let house = state.house;
+    if (play && n.result === undefined && state.screen === 'build') {
+      const check = checkPlay(state, play);
+      if (check.legal) house = applyPlay(state, play, check).house;
+    }
+    const have = askHave(state, n.side, house);
+    return {
+      side: n.side,
+      phase: n.phase,
+      piece: ask.piece,
+      tiles: n.tiles,
+      have,
+      met: have >= n.tiles,
+      ...(n.result ? { result: n.result } : {}),
+      reward: ask.reward,
+      strip: sideStrip(state.house.lot, n.side, ask.depth),
+    };
+  }
+
+  /**
+   * The regions the inspect panel names (D-166): a side's strip only while the neighbor's ask on
+   * it runs (D-206), or every tile along the lot's edges would say so.
+   */
+  function shownRegions(state: RunState, has: (r: Region) => boolean): Region[] {
+    const n = state.neighbor;
+    const asked = n && n.result === undefined ? sideRegion(n.side) : null;
+    return (Object.keys(REGION_BIT) as Region[]).filter((r) =>
+      (r !== 'leftSide' && r !== 'rightSide') || r === asked ? has(r) : false,
+    );
   }
 
   // -------------------------------------------------------------------------------------
@@ -2188,7 +2348,8 @@ export function createRules(content: Content): Rules {
       milestonesEarly: s.milestonesEarly + (result === 'early' ? 1 : 0),
     };
     // M4b: the phase's effects end, and its accepted change orders resolve (a met milestone only).
-    if (result !== 'failed') next = resolveOrders(next, events);
+    // D-206: then the neighbor's ask that ran through it.
+    if (result !== 'failed') next = resolveNeighbor(resolveOrders(next, events), events);
     if (result === 'failed' || last) {
       const won = result !== 'failed';
       events.push({
@@ -4487,7 +4648,7 @@ export function createRules(content: Content): Rules {
       const layout = layoutFor(state);
       const piece = layout.byUid.get(uid);
       if (!piece) return null;
-      const regions = (Object.keys(REGION_BIT) as Region[]).filter((r) => pieceIn(layout, uid, r));
+      const regions = shownRegions(state, (r) => pieceIn(layout, uid, r));
       const tags = [...(layout.tags.get(uid) ?? [])];
       const { width } = state.house.lot;
       const sunlit = (layout.cells.get(uid) ?? [])
@@ -4515,7 +4676,7 @@ export function createRules(content: Content): Rules {
       const bits = layout.regionBits[i]!;
       const id = layout.fencedId[i]!;
       return {
-        regions: (Object.keys(REGION_BIT) as Region[]).filter((r) => bits & REGION_BIT[r]),
+        regions: shownRegions(state, (r) => (bits & REGION_BIT[r]) !== 0),
         fencedYardTiles: id >= 0 ? layout.fencedSizes[id]! : 0,
       };
     },
@@ -4575,6 +4736,7 @@ export function createRules(content: Content): Rules {
     changeOrderOffer: offerView,
     activeChangeOrders: (state) => running(state).map((r) => orderView(state, r.id, r.phase, r)),
     eligibleChangeOrders: eligibleOrders,
+    neighbor: neighborView,
     replay,
   };
 }

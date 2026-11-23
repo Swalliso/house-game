@@ -139,6 +139,7 @@ import { WeatherLayer } from './WeatherLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
 import { people as placePeople, roomPeople, walkObstacles } from './people.ts';
+import { NeighborAskLayer } from './NeighborAskLayer.tsx';
 import { PeopleLayer } from './PeopleLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
 import { Outline, ReachTint, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
@@ -1094,6 +1095,8 @@ export function Board() {
           {wallsLayer}
           {overhangLayer}
           <PeopleLayer people={household} model={model} obstacles={walkBlocks} scale={scale} />
+          {/* D-206: a neighbor's ask, at the lot's edge on their side, and the strip they mean. */}
+          <NeighborAskLayer lot={lot} seed={state.setup.seed} scale={scale} />
           {/* D-187: the end of a run's time-lapse, over the lot and under its life. */}
           <TimelapseLayer state={state} scale={scale} />
           {highlightsLayer}
