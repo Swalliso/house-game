@@ -17,7 +17,14 @@ import {
 } from '../../rules/index.ts';
 import { boardRows, isIndoor } from '../board/geometry.ts';
 import { CELL } from '../sprites.ts';
-import { buildSteps, endPan, houseBox, milestoneShots, photoFrame } from './photos.ts';
+import {
+  buildSteps,
+  endPan,
+  houseBox,
+  milestoneShots,
+  PHOTO_ASPECT,
+  photoFrame,
+} from './photos.ts';
 
 // The greedy bot completing every milestone early that it can, on the first seeds where it wins
 // with early and overtime milestones, and loses with a missed one. Found by search, so tuning
@@ -233,14 +240,21 @@ describe('the photos’ frame', () => {
       expect(f.y + f.h).toBeLessThanOrEqual(boardRows(house.lot.height) * CELL);
       const cells = roomCells(house);
       expect(cells.length).toBeGreaterThan(0);
+      // A cell around the house, where the board leaves room for it: a frame already the
+      // biggest 4:3 the board holds (a house nearly as tall as the lot is wide, the greedy
+      // bot's sprawl) holds the house itself, and what it can of the cell around it.
+      const most = Math.min(
+        Math.floor((house.lot.width * CELL) / PHOTO_ASPECT.w),
+        Math.floor((boardRows(house.lot.height) * CELL) / PHOTO_ASPECT.h),
+      );
+      const spare = f.w === most * PHOTO_ASPECT.w ? 0 : 1;
       for (const c of cells) {
-        // A cell around the house, where the board leaves room for it.
-        const left = Math.max(0, (c.x - 1) * CELL);
-        const top = Math.max(0, (c.y - 1) * CELL);
+        const left = Math.max(0, (c.x - spare) * CELL);
+        const top = Math.max(0, (c.y - spare) * CELL);
         expect(f.x).toBeLessThanOrEqual(left);
         expect(f.y).toBeLessThanOrEqual(top);
-        expect(f.x + f.w).toBeGreaterThanOrEqual(Math.min(house.lot.width, c.x + 2) * CELL);
-        expect(f.y + f.h).toBeGreaterThanOrEqual((c.y + 2) * CELL);
+        expect(f.x + f.w).toBeGreaterThanOrEqual(Math.min(house.lot.width, c.x + 1 + spare) * CELL);
+        expect(f.y + f.h).toBeGreaterThanOrEqual((c.y + 1 + spare) * CELL);
       }
     });
   }

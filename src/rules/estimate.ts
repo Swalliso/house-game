@@ -35,6 +35,11 @@
 // since placing a piece can change them in ways only a new layout shows, and so do change
 // orders' counts of new pieces and demolitions.
 //
+// A landmark's reach (D-199) counts both ways, from per-layout caches: a placed landmark's auras
+// on the new piece where its reach covers one of the new tiles, and a new landmark's on every
+// placed piece in its reach, touching or not. Soundproofing's shield from a reach's penalty is
+// left out, as from a neighbor's.
+//
 // The house rules that pay on the rooms (D-165) are granted effects: they count for the new
 // piece and its neighbors as their own effects do (Cozy's rooms touched; a room reaching a
 // "touching 2+" threshold), and A Bathroom nearby from the house's matching as it stands: a new
@@ -69,11 +74,13 @@ import {
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { SUN_STEP, terrainAt } from './lot.ts';
 import {
+  auraReach,
   isBuilding,
   isRoom,
   pieceDef,
   REGION_BIT,
   tilesIn,
+  tilesWithin,
   type Layout,
   type Neighbor,
 } from './layout.ts';
@@ -522,6 +529,44 @@ export function estimatePlay(
     if (d !== 0) sunPoints.set(uid, d);
   }
 
+  // D-199: the landmarks' reach. A placed landmark's auras on the new piece, where its reach
+  // covers one of the new tiles; and the new landmark's on each placed piece in its own, added
+  // to that piece's other changes below.
+  const w = layout.house.lot.width;
+  const at = cells.map((c) => cellIndex(w, c.x, c.y));
+  for (const l of placedReach(content, layout)) {
+    if (scoreOf.get(l.uid)?.unmet || !at.some((i) => l.tiles.has(i))) continue;
+    if (!matchesNew(content, layout, l.aura.match, def, cells, sun)) continue;
+    pct += l.aura.pct ?? 0;
+    points += l.aura.amount ?? 0;
+  }
+  const reached = new Map<number, { points: number; pct: number }>();
+  if (!blocked) {
+    for (const e of def.effects) {
+      const r = auraReach(e);
+      if (r === 0 || e.kind !== 'aura') continue;
+      // Each piece once, however many of its tiles are in reach.
+      const uids = new Set<number>();
+      for (const i of tilesWithin(layout.house.lot, cells, r)) {
+        const uid = layout.occupant[i]!;
+        if (uid >= 0) uids.add(uid);
+      }
+      for (const uid of uids) {
+        if (!matchesPiece(content, layout, e.match, uid)) continue;
+        const d = reached.get(uid) ?? { points: 0, pct: 0 };
+        d.points += e.amount ?? 0;
+        d.pct += e.pct ?? 0;
+        reached.set(uid, d);
+      }
+    }
+  }
+  /** The new landmark's reach on a placed piece, taken once (D-199). */
+  const reachOn = (uid: number): { points: number; pct: number } => {
+    const d = reached.get(uid);
+    reached.delete(uid);
+    return d ?? NO_CHANGE;
+  };
+
   // Neighbors' auras on the new piece, and the new piece's effect on each neighbor.
   let delta = 0;
   for (const n of neighbors) {
@@ -531,8 +576,9 @@ export function estimatePlay(
     if (odef.connector) continue;
     const score = scoreOf.get(n.uid);
     if (!score || score.unmet || zeroed(n.uid)) continue;
-    let dPoints = sunPoints.get(n.uid) ?? 0;
-    let dPct = 0;
+    const reach = reachOn(n.uid);
+    let dPoints = (sunPoints.get(n.uid) ?? 0) + reach.points;
+    let dPct = reach.pct;
     for (const e of odef.effects) {
       if (
         e.kind === 'aura' &&
@@ -565,9 +611,18 @@ export function estimatePlay(
   for (const uid of connectors) {
     const score = scoreOf.get(uid);
     if (!score || score.unmet || zeroed(uid)) continue;
-    let dPoints = 0;
+    const reach = reachOn(uid);
+    let dPoints = reach.points;
     for (const e of pieceDef(content, layout.byUid.get(uid)!).effects) dPoints += gain(uid, e);
-    if (dPoints !== 0) delta += earnedFor(score.points + dPoints, score.pct) - score.earned;
+    if (dPoints !== 0 || reach.pct !== 0) {
+      delta += earnedFor(score.points + dPoints, score.pct + reach.pct) - score.earned;
+    }
+  }
+  // The rest of the new landmark's reach: the pieces it doesn't touch (D-199).
+  for (const [uid, d] of reached) {
+    const score = scoreOf.get(uid);
+    if (!score || score.unmet || zeroed(uid)) continue;
+    delta += earnedFor(score.points + d.points, score.pct + d.pct) - score.earned;
   }
   if (!blocked && !nothing) delta += earnedFor(points, pct);
 
@@ -618,6 +673,44 @@ export function estimatePlay(
     specHint,
     sunHint: sunChanges && mods.some(({ mod }) => readsSunny(mod)),
   };
+}
+
+// ---------------------------------------------------------------------------------------
+// D-199: the landmarks' reach.
+
+const NO_CHANGE: { points: number; pct: number } = Object.freeze({ points: 0, pct: 0 });
+
+type Aura = Extract<Effect, { kind: 'aura' }>;
+
+/** A placed landmark's aura with a reach, and the tiles it reaches (tilesWithin). */
+interface PlacedReach {
+  uid: number;
+  aura: Aura;
+  tiles: ReadonlySet<number>;
+}
+
+const reachCache = new WeakMap<Layout, readonly PlacedReach[]>();
+
+/**
+ * The placed pieces' auras with a reach, each with its tiles, worked out once per layout (the
+ * bots estimate every play on one). Only a card's own auras: none of today's is conditional or
+ * granted.
+ */
+function placedReach(content: Content, layout: Layout): readonly PlacedReach[] {
+  let list = reachCache.get(layout);
+  if (!list) {
+    const out: PlacedReach[] = [];
+    for (const piece of layout.house.pieces) {
+      for (const e of pieceDef(content, piece).effects) {
+        const r = auraReach(e);
+        if (r === 0 || e.kind !== 'aura') continue;
+        const tiles = new Set(tilesWithin(layout.house.lot, layout.cells.get(piece.uid)!, r));
+        out.push({ uid: piece.uid, aura: e, tiles });
+      }
+    }
+    reachCache.set(layout, (list = out));
+  }
+  return list;
 }
 
 // ---------------------------------------------------------------------------------------

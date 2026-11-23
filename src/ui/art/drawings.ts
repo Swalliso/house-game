@@ -1,7 +1,8 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
 // the Sprinkler, the dogs' bed in Nana's Room (D-111), the Doghouse's dog, on its lead and loose
-// (D-179), and rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items).
-// The hens peck and the dog in the bed breathes (D-185), each from its first frame, at rest.
+// (D-179), rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items), and
+// the Fountain (D-199). The hens peck, the dog in the bed breathes (D-185) and the Fountain's water
+// falls, each from its first frame, at rest.
 // They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light from the top
 // left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
@@ -54,6 +55,16 @@ export const KEY: Readonly<Record<string, Rgba>> = {
   I: [0xe2, 0xf2, 0xf3, 255], // a glint
   n: [0xf8, 0xf8, 0xf8, 230], // a drop's ring
   N: [0xe2, 0xf2, 0xf3, 160], // the ring, spreading
+  // The Fountain (D-199): pale stone, lit to shaded, its basin's water ('c' under the bowl's
+  // rim), and the water falling, brightest where it catches the light.
+  A: [0xeb, 0xe4, 0xf2, 255], // stone, lit
+  a: [0xd8, 0xd0, 0xe0, 255],
+  E: [0xc6, 0xbd, 0xd5, 255],
+  K: [0x98, 0x9e, 0xbe, 255],
+  M: [0x7d, 0x7f, 0x99, 255], // stone, shaded
+  T: [0x73, 0xb8, 0xc6, 255], // the basin's water
+  V: [0x95, 0xe3, 0xe3, 255], // falling water
+  z: [0xde, 0xff, 0xf7, 255], // its glints
 };
 
 /**
@@ -214,6 +225,105 @@ const SPRINKLER = [
     '.........kgggggggk.........',
     '..........kmkkkmk..........',
     '...........sssss...........',
+  ],
+] as const;
+
+/**
+ * The Fountain (D-199): a round stone basin of water with a column up the middle to a bowl, its
+ * jet rising from the bowl and two streams falling off its rim into the basin. Drawn for one
+ * 32 px cell. Its frames are the water falling a pixel at a time (FEEL.fountain); the first is
+ * the Fountain at rest, as Reduce motion shows it.
+ */
+const FOUNTAIN = [
+  [
+    '............VzzV............',
+    '...........V.zz.V...........',
+    '.............zV.............',
+    '.............Vz.............',
+    '..........kkkkkkkk..........',
+    '........kkAAAaaaaakk........',
+    '.......zkAATTTTTTaakz.......',
+    '.......VkEaaTTTTaaMkV.......',
+    '.......V.kEEKKKKMMk.V.......',
+    '.......z..kkkKKkkk..z.......',
+    '.......V...kAaaEk...V.......',
+    '.......VkkkkAaaEkkkkV.......',
+    '....kkkzAAAkAaaEkaaazkkk....',
+    '..kkAAAVAAAkAaaEkaaaVaaakk..',
+    '.kAAAAAVEEEkAaaEkEEEVaaaaak.',
+    'kAAAAEEzccckAaaEkccczEaaaaak',
+    'kAAAEczTzTTkAaaEkTTzTzcEaaak',
+    'kAaETTTTTTTkAaaEkTTTTTTTEaak',
+    'kaaKTTTTTVzTTTTTTzVTTTTTKaak',
+    'kaaaKTTTTTTTTTTTTTTTTTTKaaak',
+    'kEaaaKKTTTTTTTTTTTTTTKKaaaMk',
+    'kEEEaaaKKKKKKKKKKKKKKaaaMMMk',
+    'kEEEEEEEaaaaaaaaaaaaMMMMMMMk',
+    '.kEEEEEEKKKKKKKKKKKKMMMMMMk.',
+    '.skkEEEEKKKKKKKKKKKKMMMMkks.',
+    '..sskkkkKKKKKKKKKKKKkkkkss..',
+    '....sssskkkkkkkkkkkkssss....',
+    '........ssssssssssss........',
+  ],
+  [
+    '...........V.zz.V...........',
+    '............zVVz............',
+    '.............Vz.............',
+    '.............zV.............',
+    '..........kkkkkkkk..........',
+    '........kkAAAaaaaakk........',
+    '.......VkAATTTTTTaakV.......',
+    '.......zkEaaTTTTaaMkz.......',
+    '.......V.kEEKKKKMMk.V.......',
+    '.......V..kkkKKkkk..V.......',
+    '.......z...kAaaEk...z.......',
+    '.......VkkkkAaaEkkkkV.......',
+    '....kkkVAAAkAaaEkaaaVkkk....',
+    '..kkAAAzAAAkAaaEkaaazaaakk..',
+    '.kAAAAAVEEEkAaaEkEEEVaaaaak.',
+    'kAAAAEEVccckAaaEkcccVEaaaaak',
+    'kAAAEcVTVTTkAaaEkTTVTVcEaaak',
+    'kAaETTTTTTTkAaaEkTTTTTTTEaak',
+    'kaaKTTTTTVzTTTTTTzVTTTTTKaak',
+    'kaaaKTTTTTTTTTTTTTTTTTTKaaak',
+    'kEaaaKKTTTTTTTTTTTTTTKKaaaMk',
+    'kEEEaaaKKKKKKKKKKKKKKaaaMMMk',
+    'kEEEEEEEaaaaaaaaaaaaMMMMMMMk',
+    '.kEEEEEEKKKKKKKKKKKKMMMMMMk.',
+    '.skkEEEEKKKKKKKKKKKKMMMMkks.',
+    '..sskkkkKKKKKKKKKKKKkkkkss..',
+    '....sssskkkkkkkkkkkkssss....',
+    '........ssssssssssss........',
+  ],
+  [
+    '............VzzV............',
+    '............V.zV............',
+    '.............zz.............',
+    '.............Vz.............',
+    '..........kkkkkkkk..........',
+    '........kkAAAaaaaakk........',
+    '.......VkAATTTTTTaakV.......',
+    '.......VkEaaTTTTaaMkV.......',
+    '.......z.kEEKKKKMMk.z.......',
+    '.......V..kkkKKkkk..V.......',
+    '.......V...kAaaEk...V.......',
+    '.......zkkkkAaaEkkkkz.......',
+    '....kkkVAAAkAaaEkaaaVkkk....',
+    '..kkAAAVAAAkAaaEkaaaVaaakk..',
+    '.kAAAAAzEEEkAaaEkEEEzaaaaak.',
+    'kAAAAEEVccckAaaEkcccVEaaaaak',
+    'kAAAEczTzTTkAaaEkTTzTzcEaaak',
+    'kAaETTTTTTTkAaaEkTTTTTTTEaak',
+    'kaaKTTTTTVzTTTTTTzVTTTTTKaak',
+    'kaaaKTTTTTTTTTTTTTTTTTTKaaak',
+    'kEaaaKKTTTTTTTTTTTTTTKKaaaMk',
+    'kEEEaaaKKKKKKKKKKKKKKaaaMMMk',
+    'kEEEEEEEaaaaaaaaaaaaMMMMMMMk',
+    '.kEEEEEEKKKKKKKKKKKKMMMMMMk.',
+    '.skkEEEEKKKKKKKKKKKKMMMMkks.',
+    '..sskkkkKKKKKKKKKKKKkkkkss..',
+    '....sssskkkkkkkkkkkkssss....',
+    '........ssssssssssss........',
   ],
 ] as const;
 
@@ -439,6 +549,7 @@ export const DRAWINGS = {
   ...hens('own-hen-brown-w', BROWN_HEN, BROWN_HEN_PECK),
   ...hens('own-hen-brown-e', mirror(BROWN_HEN), mirror(BROWN_HEN_PECK)),
   'own-sprinkler': { frames: SPRINKLER, ms: 180 },
+  'own-fountain': { frames: FOUNTAIN, ms: FEEL.fountain.flowMs },
   'own-dog-bed': { frames: DOG_BED_BREATHING, ms: FEEL.dogBed.stepMs },
   'own-dog-on-lead': { frames: [DOG_ON_LEAD] },
   'own-dog-loose': { frames: DOG_LOOSE, ms: FEEL.dog.hopMs },

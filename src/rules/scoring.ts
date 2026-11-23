@@ -16,6 +16,9 @@
 // A `served` effect (a Bedroom's Bathroom) pays once the house's pieces are matched to the ones
 // that serve them, each serving up to its capacity (servedMatch). `blockPenalties`
 // (Soundproofing) drops negative neighbor terms and negative auras from matching neighbors.
+// An aura reaches the pieces it touches (links count), the fenced yards it borders (the Mudroom),
+// or (D-199) every piece with a tile within its `within` tiles: a landmark's reach, whose
+// penalties Soundproofing blocks as a neighbor's.
 // A Renovated room (M4a) adds `renovate.pointsPerLevel` flat points per level, before its
 // percentages, and an extended room (D-168) `extend.pointsPerTile` for each tile beyond its own
 // card's, the same way.
@@ -28,6 +31,7 @@
 // Integer math throughout, rounding half up, so every browser and Node agree.
 
 import type {
+  AuraScope,
   BreakdownLine,
   Content,
   Effect,
@@ -53,6 +57,7 @@ import {
   grownTiles,
   neighborRef,
   pieceDef,
+  piecesWithin,
   tilesIn,
   type Layout,
   type Neighbor,
@@ -67,7 +72,9 @@ import {
   earnTargetText,
   neighborName,
   ordinal,
+  plural,
   regionText,
+  withinText,
 } from './text.ts';
 
 /** a / b rounded half up, for non-negative integers. */
@@ -167,20 +174,31 @@ function earnLabels(content: Content, mods: readonly ActiveMod[]): Map<ActiveMod
   );
 }
 
-/** Auras of one kind from several neighbors read as one line: "2 Dining Rooms next door +100%". */
-function addAura(target: Acc, def: PieceDef, op: 'add' | 'pct', value: number, uid: number): void {
-  const key = `${def.id}|${op}`;
+/**
+ * Auras of one kind from several pieces read as one line: "2 Dining Rooms next door +100%", and
+ * a landmark's reach (D-199) says so: "Pool within 2 tiles +25%", "2 Pools within 2 tiles +50%".
+ */
+function addAura(
+  target: Acc,
+  def: PieceDef,
+  op: 'add' | 'pct',
+  value: number,
+  uid: number,
+  scope: AuraScope,
+): void {
+  const where = typeof scope === 'object' ? ` ${withinText(scope.within)}` : ' next door';
+  const key = `${def.id}|${op}|${where}`;
   const from = { kind: 'piece', uid } as const;
   const i = target.auraAt.get(key);
   if (i === undefined) {
     target.auraAt.set(key, target.auras.length);
-    target.auras.push({ label: `${def.name} next door`, op, value, from: [from] });
+    target.auras.push({ label: `${def.name}${where}`, op, value, from: [from] });
     return;
   }
   const old = target.auras[i]!;
   const n = old.from.length + 1;
   target.auras[i] = {
-    label: `${n} ${def.name.endsWith('s') ? def.name : `${def.name}s`} next door`,
+    label: `${n} ${plural(def.name)}${where}`,
     op,
     value: old.value + value,
     from: [...old.from, from],
@@ -298,22 +316,27 @@ function applyEffect(
       break;
     }
     case 'aura': {
-      // Adjacent: each touching piece. Region: each piece in the fenced yards it borders.
+      // Adjacent: each touching piece. Region: each piece in the fenced yards it borders. Within
+      // (D-199): each piece with a tile in the landmark's reach, touching or not.
+      const { scope } = effect;
       const targets =
-        effect.scope === 'region'
+        scope === 'region'
           ? regionTargets(layout, piece.uid)
-          : layout.neighbors.get(piece.uid)!.flatMap((n) => (n.kind === 'piece' ? [n.uid] : []));
+          : scope === 'adjacent'
+            ? layout.neighbors.get(piece.uid)!.flatMap((n) => (n.kind === 'piece' ? [n.uid] : []))
+            : piecesWithin(layout, piece.uid, scope.within);
       for (const uid of targets) {
         if (!matchesPiece(content, layout, effect.match, uid)) continue;
         const target = ctx.acc.get(uid)!;
+        // Soundproofing shields a room from a landmark's penalty as from a neighbor's.
         const shielded = blocked(ctx, uid, { kind: 'piece', uid: piece.uid });
         if (effect.pct && !(shielded && effect.pct < 0)) {
           target.pct += effect.pct;
-          if (withLines) addAura(target, def, 'pct', effect.pct, piece.uid);
+          if (withLines) addAura(target, def, 'pct', effect.pct, piece.uid, scope);
         }
         if (effect.amount && !(shielded && effect.amount < 0)) {
           target.points += effect.amount;
-          if (withLines) addAura(target, def, 'add', effect.amount, piece.uid);
+          if (withLines) addAura(target, def, 'add', effect.amount, piece.uid, scope);
         }
       }
       break;

@@ -96,6 +96,7 @@ import type {
   Play,
   Preview,
   PreviewLine,
+  ReachOf,
   ReplayResult,
   Reward,
   RenovateAction,
@@ -189,8 +190,10 @@ import {
   NO_LAYOUT_MODS,
   pieceDef,
   pieceIn,
+  reachOf,
   REGION_BIT,
   tilesIn,
+  tilesWithin,
   type Layout,
   type LayoutModifier,
 } from './layout.ts';
@@ -415,6 +418,13 @@ export interface Rules {
    * board's shading while a card that reads one is picked.
    */
   yardTiles(state: RunState, yard: Yard): readonly number[];
+  /**
+   * D-199: the square a landmark reaches (its auras' `within`, the widest of them), its own tiles
+   * included, as lot indexes in reading order, for the board's shading: around a placed piece
+   * (`uid`), or around a card's tiles before it's placed (`defId` and `cells`: the ghost's). Empty
+   * for a piece with no reach, so the board never works one out.
+   */
+  reachTiles(state: RunState, of: ReachOf): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
   /**
@@ -4231,6 +4241,28 @@ export function createRules(content: Content): Rules {
       const out: number[] = [];
       layoutFor(state).regionBits.forEach((bits, i) => bits & bit && out.push(i));
       return out;
+    },
+    reachTiles: (state, of) => {
+      const { lot } = state.house;
+      let def: PieceDef | undefined;
+      let cells: readonly Cell[];
+      if ('uid' in of) {
+        const layout = layoutFor(state);
+        const piece = layout.byUid.get(of.uid);
+        if (!piece) return [];
+        def = content.pieces[piece.defId];
+        cells = layout.cells.get(of.uid) ?? [];
+      } else {
+        def = content.pieces[of.defId];
+        cells = of.cells;
+      }
+      const r = def ? reachOf(def) : 0;
+      if (r === 0 || cells.length === 0) return [];
+      const w = lot.width;
+      const own = cells
+        .filter((c) => c.x >= 0 && c.y >= 0 && c.x < w && c.y < lot.height)
+        .map((c) => c.y * w + c.x);
+      return [...new Set([...tilesWithin(lot, cells, r), ...own])].sort((a, b) => a - b);
     },
     describePiece: (state, uid) => {
       const layout = layoutFor(state);

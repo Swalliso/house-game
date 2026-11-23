@@ -114,10 +114,10 @@ seeds `check-*`):
 
 ## Done when
 
-- [ ] The four landmarks pay what's within 2 tiles, in the tally and the preview alike.
-- [ ] Picking one shades its reach around the ghost and marks the pieces it would change.
-- [ ] Their cards say "within 2 tiles", and the glossary explains it.
-- [ ] The paired-seed result is in the log entry, and the targets are untouched.
+- [x] The four landmarks pay what's within 2 tiles, in the tally and the preview alike.
+- [x] Picking one shades its reach around the ghost and marks the pieces it would change.
+- [x] Their cards say "within 2 tiles", and the glossary explains it.
+- [x] The paired-seed result is in the log entry, and the targets are untouched.
 
 ## How to check
 

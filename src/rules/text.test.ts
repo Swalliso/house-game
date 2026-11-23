@@ -219,17 +219,21 @@ describe('a compact hand card (D-121)', () => {
       treehouse: ['+2 every week'],
       greenhouse: ['+50% to touching yard views'],
       playroom: ['+2 per touching Bedroom'],
-      library: ['+2 per touching Quiet (up to 3)'],
+      // The landmarks (D-199) lead with their reach, "nearby" here and "within 2 tiles" on the
+      // full card: the board shades how near while the card is picked.
+      library: ['+1 to Quiet rooms nearby'],
       mudroom: ['+50% to fenced Pet pieces'],
-      pool: ['+12 every 3rd week'],
+      pool: ['+25% to Social nearby'],
       sunroom: ['+6 every week while Sunny'],
       // D-195: "+3 per touching Patio, Pool, or Fire Pit" runs 41 letters.
       hotTub: ['+3 per Patio, Pool, or Fire Pit'],
       // The Dining Room's line (D-201), from D-195's "+50% to touching Social pieces".
       firePit: ['+50% to touching Social'],
-      henhouse: ['+1 budget every 2nd week'],
+      henhouse: ['+1 to Green nearby'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
+      // "+10% to Outdoor or Pretty pieces nearby" runs 40 letters.
+      fountain: ['+10% to Outdoor or Pretty nearby'],
       // D-171: the Architect's card, which only ever waits in Your goods.
       addition: ['+8 to the room it grows'],
     });

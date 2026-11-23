@@ -710,7 +710,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 |---|---|---|
 | `steady` | `amount` | Closet |
 | `neighbor` | `match`, `amount` (negative = penalty), `max?` | Bedroom next to Trees; next to the street; Lawn per adjacent Lawn |
-| `aura` | `match`, `pct?` or `amount?`, `scope: 'adjacent' \| 'region'` | Dining Room and Fire Pit boost Social neighbors (D-201, D-195); Herb Garden boosts the Kitchen; Mudroom boosts Pet pieces in the fenced yard it borders |
+| `aura` | `match`, `pct?` or `amount?`, `scope: 'adjacent' \| 'region' \| { within: 1–3 }` | Dining Room and Fire Pit boost Social neighbors (D-201, D-195); Herb Garden boosts the Kitchen; Mudroom boosts Pet pieces in the fenced yard it borders; a landmark (D-199) reaches every piece with a tile within 2 tiles of one of its own, across or diagonally, touching or not: the Pool's Social pieces earn +25% |
 | `rhythm` | `every`, `amount` | Pool |
 | `growth` | `perWeek`, `max?` | Good Bones (granted by a blueprint; counts from the later of placement and purchase) |
 | `enclosure` | `perTile`, `cap?` | Fence: per tile of the fenced yards it borders, with the cap on the total |
@@ -1967,19 +1967,20 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 
 ### Special pieces (shop, clients, crews; `special`, weight 0 but for two)
 
-The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six, flagged `special`. Once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse also comes free as the wrong delivery (D-188). The Library and the Henhouse stay special pieces, and the weekly draw deals them too, at 5 from Framing (D-200): the Library in the Rooms row, the Henhouse in the Layout row.
+The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six, flagged `special`. Once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse also comes free as the wrong delivery (D-188). The Library and the Henhouse stay special pieces, and the weekly draw deals them too, at 5 from Framing (D-200): the Library in the Rooms row, the Henhouse in the Layout row. The Pool, the Library and the Henhouse are landmarks (D-199), with the Fountain of the weekly draw: each reaches the pieces within 2 tiles of it, and the board shades its square while one is picked.
 
 | Item | Encoding | Built in |
 |---|---|---|
 | Playroom | Indoor; tags Loud and Kid; `neighbor bedroom +2` | M3a (D-195: its `aura {tag Quiet} −2 flat adjacent` is gone) |
-| Library | Indoor; tag Quiet; `neighbor {tag Quiet} +2 max 3` | M3a |
+| Library | Indoor; tag Quiet; `aura {tag Quiet ∧ room} +1 within 2`, `aura {tag Loud} −1 within 2` (D-199); `neighbor {tag Quiet} +2 max 3` | M3a (D-199: a landmark) |
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
-| Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M3a |
+| Pool | Yard; tags Wet, Sunny, Loud; `aura {tag Social} +25% within 2`, `aura bedroom −1 within 2` (D-199); `rhythm every 3 +12`; `neighbor tree −2 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M3a (D-199: a landmark) |
 | **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor [patio, pool, firePit] +3` (D-195; was `patio`); `conditional {in: backYard} → steady 1` (D-166) | M3a |
 | **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura {tag Social} +50% adjacent` (D-195; was `patio`); `neighbor boulder +2 max 2` (D-145); `conditional {in: backYard} → steady 1` (D-166) | M3a (D-145: the draw) |
-| **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1`; `neighbor oldShed +2, max 1` (D-145) | M3a |
+| **Henhouse** (1×2) | Outbuilding; tag House; `aura {tag Green} +1 within 2` (D-199; was `neighbor [herbGarden, flowerBed] +1`); `economy 1 every 2`; `neighbor oldShed +2, max 1` (D-145) | M3a (D-199: a landmark) |
 | **Birdhouse** (1×1) | Weight 5 in the Layout row from Roofing (D-145; it was a special piece). Outbuilding; tag House; `neighbor tree +1 max 3` | M3a (D-145: the draw) |
 | **Porch** (1×2) *(new, D-145)* | Weight 5 in the Layout row from Drywall, never a special piece. Yard; tag Outdoor; `aura {property room} +25% adjacent`; `neighbor {property room} +1 max 4`; `conditional {in: frontYard} → steady 2` (D-166). Drawn from cuts already in the atlas: the wood floor, a bench and a pot of flowers | D-145 |
+| **Fountain** (1×1) *(new, D-199)* | Weight 5 in the Layout row from Framing, never a special piece; complexity 2. Yard; tags Wet and Pretty; `aura {tag Outdoor ∨ tag Pretty} +10% within 2`; `steady 1`; `conditional {in: frontYard} → steady 2` (D-166). Our own drawing, its water falling in three frames | D-199 |
 
 ### Fixtures (D-050; drawn from phase 2 and sold in the shop)
 

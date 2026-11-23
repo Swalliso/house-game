@@ -4,8 +4,9 @@
 // but for the Henhouse and the Library, dealt from Framing too since D-200), and three that
 // left them for the weekly draw (the Sunroom, drawn from Foundation since D-120, and the
 // Birdhouse and the Fire Pit, drawn from Roofing and Drywall since D-145), the Porch (D-145,
-// drawn from Drywall), then (M4b) the 7 member rooms (weight 0), which arrive with the
-// household (D-103).
+// drawn from Drywall), the Fountain (D-199, drawn from Framing), then (M4b) the 7 member rooms
+// (weight 0), which arrive with the household (D-103). The Pool, the Library, the Henhouse and
+// the Fountain are landmarks (D-199): each reaches the pieces within 2 tiles of it.
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -56,6 +57,15 @@ const FRONT_YARD = {
   when: { in: 'frontYard' },
   effect: { kind: 'steady', amount: 2 },
 } as const;
+
+/**
+ * A landmark's reach (D-199): every piece with a tile within 2 tiles of one of its own, across or
+ * diagonally, rooms and yard alike, the way a Combolands building's range reaches past its
+ * neighbors. Its lines lead its card, so the hand shows what the piece is for, and the board
+ * shades the square while it's picked. 2 for every landmark to start with.
+ */
+const REACH = { within: 2 } as const;
+const QUIET_ROOMS = { all: [{ tag: 'Quiet' }, { property: 'room' }] } as const;
 
 export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   bedroom: {
@@ -524,7 +534,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 1,
     fromPhase: 2,
     perHouse: 1, // D-165: one of each special room
-    effects: [{ kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 }],
+    effects: [
+      // D-199: a landmark. It quiets the rooms within 2 tiles, and hushes what's Loud there.
+      { kind: 'aura', match: QUIET_ROOMS, scope: REACH, amount: 1 },
+      { kind: 'aura', match: { tag: 'Loud' }, scope: REACH, amount: -1 },
+      { kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 },
+    ],
   },
   mudroom: {
     id: 'mudroom',
@@ -558,6 +573,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 2,
     fromPhase: 0,
     effects: [
+      // D-199: a landmark. The Social pieces within 2 tiles liven up, and it keeps the Bedrooms
+      // there awake.
+      { kind: 'aura', match: { tag: 'Social' }, scope: REACH, pct: 25 },
+      { kind: 'aura', match: { piece: 'bedroom' }, scope: REACH, amount: -1 },
       { kind: 'rhythm', every: 3, amount: 12 },
       // Leaves in the water.
       { kind: 'neighbor', match: { feature: 'tree' }, amount: -2, max: 3 },
@@ -635,8 +654,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 2,
     fromPhase: 2,
     effects: [
+      // D-199: a landmark. The hens feed the garden within 2 tiles: every Green piece there, in
+      // place of its own +1 for each Herb Garden or Flower Bed it touched.
+      { kind: 'aura', match: { tag: 'Green' }, scope: REACH, amount: 1 },
       { kind: 'economy', budget: 1, every: 2 }, // eggs
-      { kind: 'neighbor', match: { piece: ['herbGarden', 'flowerBed'] }, amount: 1 },
       SHED(2), // the feed's in the shed
     ],
   },
@@ -672,6 +693,30 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 },
       { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 4 },
+      FRONT_YARD,
+    ],
+  },
+  // D-199: a landmark of the weekly draw, from Framing at half a card's weight. It brightens the
+  // yard within 2 tiles (the Lawns, Patios, Porches and Flower Beds there, and anything Garden
+  // Lights make Pretty), and greets the street from the front yard, as the Porch does.
+  fountain: {
+    id: 'fountain',
+    name: 'Fountain',
+    tier: 'core',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Wet', 'Pretty'],
+    drawWeight: 5,
+    complexity: 2,
+    fromPhase: 2,
+    effects: [
+      {
+        kind: 'aura',
+        match: { any: [{ tag: 'Outdoor' }, { tag: 'Pretty' }] },
+        scope: REACH,
+        pct: 10,
+      },
+      { kind: 'steady', amount: 1 },
       FRONT_YARD,
     ],
   },

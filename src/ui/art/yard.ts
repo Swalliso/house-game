@@ -14,12 +14,13 @@
 //   the Driveway nearest the front door or a Garage with room for it (D-126; it slides there as
 //   the drive grows, HouseLayers.tsx), a Fence's pickets and posts, a Pool's ladder and float,
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
-//   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the
-//   Pergola over its Patio or (D-194) its Lawn, Garden Lights as two bollards with their glow; a
-//   fixture's badge shows only where a door keeps it off.
+//   the hens, a Porch's bench and pot of flowers, the Fountain. Fixtures: the Sprinkler on its
+//   Lawn, the Pergola over its Patio or (D-194) its Lawn, Garden Lights as two bollards with their
+//   glow; a fixture's badge shows only where a door keeps it off.
 // - The yard's pieces live (D-185): a butterfly flutters over each Flower Bed and Herb Garden,
-//   the Pool's float bobs, and the hens peck, each on its own beat. All of it is items' frames,
-//   stepped a whole art px at a time, and their first frames are the pieces at rest.
+//   the Pool's float bobs, the hens peck, each on its own beat, and the Fountain's water falls
+//   (D-199). All of it is items' frames, stepped a whole art px at a time, and their first frames
+//   are the pieces at rest.
 // - A piece's picture can depend on whether its requirement is met, from the rules' tally
 //   (yardModel's `unmet`; D-179): the Doghouse's dog sits on its lead in the kennel's doorway
 //   while it earns nothing outside a fenced yard, and once the yard closes it's loose, hopping
@@ -986,6 +987,13 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
 
   birdhouse: (y) => {
     y.stand(pick(BIRDHOUSES, y.ctx.color), y.box.x + 10, y.box.y + 32 - 41);
+  },
+
+  // The Fountain (D-199) stands like an outbuilding: it's the piece itself, and no door opens
+  // onto it (house-model.ts), so it always shows, filling its cell to the shadow at its foot.
+  fountain: (y) => {
+    const { w, h } = artSize('own-fountain');
+    y.stand('own-fountain', y.box.x + Math.floor((CELL - w) / 2), y.box.y + CELL - h);
   },
 
   // The Porch (D-145): boards against the house, with a bench in one cell and a pot of flowers in
