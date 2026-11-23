@@ -116,7 +116,7 @@ reading the code, not from building anything.
 | [S10](s10-house-builds-itself.md) | The house rebuilds itself on the end screen | M | UI only | S01 played | Built 2026-11-20 (D-187): Play in the photo viewer, then the rebuild on the board the user asked for after it; waiting on their playtest on /dev/ |
 | [S11](s11-walkthrough-tour.md) | The camera tours the rooms after a win | M | UI only | S01 played | Not started; S01 played 2026-11-18 |
 | [S12](s12-dusk-when-you-win.md) | Evening falls and the rooms light up after a win | S, then M | UI only | S01 played; a mockup the user likes | Not started; S01 played 2026-11-18 |
-| [S13](s13-listing-on-the-end-screen.md) | The end screen writes a short listing for the house | S | UI only | The user's OK on the tone | Not started |
+| [S13](s13-listing-on-the-end-screen.md) | The end screen writes a short listing for the house | S | UI only | The user's OK on the tone | Built 2026-11-23 (D-212, `phase/end-screen-listing`) in the straight tone; waiting on the user's pick of the tone, then their playtest |
 | [S14](s14-pin-one-card.md) | Keep one card for next week | M | Rules and UI, no re-fit | | Accepted 2026-11-20: #111 (D-186) |
 | [S15](s15-trim-the-upgrade-shelf.md) | The upgrade slot stops offering two dead cards | S | Content | The user's answer | Replaced by S26 on 2026-11-20: the user keeps both upgrades |
 | [S16](s16-wrong-delivery.md) | A free yard showpiece arrives once a run | M | Rules and content | D-171's verdict | Built 2026-11-20 (D-188, #110); waiting on their playtest on /dev/ |
