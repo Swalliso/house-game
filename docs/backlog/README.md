@@ -211,5 +211,6 @@ alongside.
     `phase/closet-by-neighbor`), reading only the rooms built before it; waiting on the user's
     playtest.*
   - A stepping-stone walk from the front doormat to the kerb, as art only.
-  - A Play button in the photo viewer that flips through the milestone polaroids.
+  - A Play button in the photo viewer that flips through the milestone polaroids. *Built
+    2026-11-20 with S10 (D-187), stage 1.*
   - A second click on the ghost builds the piece, the outside tester's ask.
