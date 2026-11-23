@@ -77,6 +77,7 @@ function houseConditionPieceIds(cond: HouseCondition, out: PieceId[]): void {
   else if ('none' in cond) selectorPieceIds(cond.none, out);
   else if ('adjacentPair' in cond) cond.adjacentPair.forEach((s) => selectorPieceIds(s, out));
   else if ('group' in cond) selectorPieceIds(cond.group, out);
+  else if ('tilesIn' in cond) selectorPieceIds(cond.tilesIn.of, out);
   else if ('ratio' in cond) {
     selectorPieceIds(cond.ratio.count, out);
     selectorPieceIds(cond.ratio.per, out);
@@ -115,6 +116,10 @@ function houseConditionProblems(content: Content, cond: HouseCondition, where: s
         out.push(`${where}: ratio every ≥ 1`);
     } else if ('set' in c) {
       if (!content.sets[c.set]) out.push(`${where}: unknown set "${c.set}"`);
+    } else if ('tilesIn' in c) {
+      if (!Number.isInteger(c.tilesIn.min) || c.tilesIn.min < 1) {
+        out.push(`${where}: tiles in a region needs a min of 1 or more`);
+      }
     } else if ('outline' in c) {
       const o = c.outline;
       if (o.minFillPct < 0 || o.minFillPct > 100 || o.maxAspect < 1)
@@ -640,6 +645,26 @@ export function validateContent(content: Content): string[] {
     problems.push(`${surpriseAt}: a piece twice`);
   }
   if (!isPhase(surprise.phase)) problems.push(`${surpriseAt}: phase must be a phase of the run`);
+
+  // D-206: the neighbor's ask: a piece the run can lay, in a phase the run goes on from (its
+  // reward comes at that milestone, and after the last nothing would use it), a strip a column
+  // deep or more that leaves the lot's middle, a count the strip can hold, and a reward.
+  const ask = content.balance.neighborAsk;
+  const askAt = 'balance neighborAsk';
+  known(ask.piece, askAt);
+  const { width: lotW, height: lotH } = content.balance.lot;
+  if (!isPhase(ask.phase) || ask.phase >= content.balance.phases.length - 1) {
+    problems.push(`${askAt}: phase must be a phase of the run before the last`);
+  }
+  if (!Number.isInteger(ask.depth) || ask.depth < 1 || 2 * ask.depth >= lotW) {
+    problems.push(`${askAt}: depth must be a whole number of columns, under half the lot`);
+  }
+  if (!Number.isInteger(ask.tiles) || ask.tiles < 0 || ask.tiles > ask.depth * lotH) {
+    problems.push(`${askAt}: tiles must be a whole number the strip can hold`);
+  }
+  if (ask.tiles > 0 && Object.values(ask.reward).every((v) => !v)) {
+    problems.push(`${askAt}: an ask pays something`);
+  }
 
   // M4b: change orders.
   for (const [key, def] of Object.entries(content.changeOrders)) {

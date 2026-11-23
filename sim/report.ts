@@ -167,6 +167,7 @@ export function report(content: Content, records: readonly RunRecord[], title: s
   out.push(houseReport(content, records));
   out.push(clientsReport(content, records));
   out.push(changeOrdersReport(content, records));
+  out.push(neighborReport(content, records));
   out.push(crewsReport(content, records));
   out.push(layersReport(records));
   out.push(sitingReport(records));
@@ -541,6 +542,24 @@ function offerKindsReport(content: Content, records: readonly RunRecord[]): stri
     rows.push([`  ${key}`, g.n, pct(g.n, offers.length), mixed ? pct(g.first, g.n) : '–']);
   }
   return '\n' + table(rows);
+}
+
+/**
+ * D-206: the neighbor's ask: how often it came, and of those, how often the bots met it (they
+ * take no action for it, so that's Fence laid along the side for its own sake), missed it, or
+ * ended the run before its milestone.
+ */
+export function neighborReport(content: Content, records: readonly RunRecord[]): string {
+  const asked = records.filter((r) => r.neighbor);
+  if (asked.length === 0) return '';
+  const ended = (result?: 'met' | 'missed') =>
+    pct(asked.filter((r) => r.neighbor!.result === result).length, asked.length);
+  const ask = content.balance.neighborAsk;
+  const phase = content.balance.phases[ask.phase]?.name ?? `phase ${ask.phase + 1}`;
+  return (
+    `\nThe neighbor’s ask (D-206), at ${phase}: asked in ${fmtRate(asked.length, records.length)}` +
+    ` · met ${ended('met')}, missed ${ended('missed')}, open at the run’s end ${ended()}`
+  );
 }
 
 export function crewsReport(content: Content, records: readonly RunRecord[]): string {

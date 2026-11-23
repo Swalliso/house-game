@@ -21,7 +21,8 @@
 //   the house's front row, or all yard before the first indoor piece); the back yard (the
 //   rest); fenced yards (flood fill over non-wall tiles, bounded by indoor tiles, Fences, and
 //   the lot edge; fenced if it doesn't touch the street edge, has `fencedYardMin` tiles, and
-//   borders a Fence and the house).
+//   borders a Fence and the house); and (D-206) the strips along the lot's left and right
+//   edges, `balance.neighborAsk.depth` columns deep, whatever stands on them.
 // - Reach (D-199): the pieces with a tile within r tiles of one of a piece's own, across or
 //   diagonally, rooms and yard alike (piecesWithin), worked out once per layout and piece.
 // - Layout modifiers (M3), from fixtures (on their host) and the run (blueprints), resolved in
@@ -39,6 +40,7 @@ import type {
   HouseState,
   Lot,
   Modifier,
+  NeighborSide,
   PieceDef,
   PieceId,
   PlacedPiece,
@@ -96,7 +98,31 @@ export const REGION_BIT: Readonly<Record<Region, number>> = {
   frontYard: 2,
   backYard: 4,
   fencedYard: 8,
+  leftSide: 16,
+  rightSide: 32,
 };
+
+/** D-206: the region of the strip along a side of the lot. */
+export function sideRegion(side: NeighborSide): Extract<Region, 'leftSide' | 'rightSide'> {
+  return side === 'left' ? 'leftSide' : 'rightSide';
+}
+
+/**
+ * D-206: the strip along a side of the lot, `depth` columns deep (balance.neighborAsk), every
+ * row, as lot indexes in reading order.
+ */
+export function sideStrip(
+  lot: Pick<Lot, 'width' | 'height'>,
+  side: NeighborSide,
+  depth: number,
+): number[] {
+  const { width: w, height: h } = lot;
+  const d = Math.max(0, Math.min(depth, w));
+  const x0 = side === 'left' ? 0 : w - d;
+  const out: number[] = [];
+  for (let y = 0; y < h; y++) for (let x = x0; x < x0 + d; x++) out.push(cellIndex(w, x, y));
+  return out;
+}
 
 export interface Layout {
   house: HouseState;
@@ -447,6 +473,7 @@ export function computeLayout(
     return buildingTile[i] === 1 || t === 'tree' || t === 'oldShed';
   };
   const regionBits = new Uint8Array(size);
+  const sideDepth = content.balance.neighborAsk.depth;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = cellIndex(w, x, y);
@@ -456,6 +483,9 @@ export function computeLayout(
         bits |= frontRow === null || y > frontRow ? REGION_BIT.frontYard : REGION_BIT.backYard;
       }
       if (fencedId[i]! >= 0) bits |= REGION_BIT.fencedYard;
+      // D-206: the strips along the lot's sides, whatever stands on them.
+      if (x < sideDepth) bits |= REGION_BIT.leftSide;
+      if (x >= w - sideDepth) bits |= REGION_BIT.rightSide;
       regionBits[i] = bits;
     }
   }

@@ -50,9 +50,13 @@ export function arrivalTag(a: ArrivalDef): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/** Overtime weeks used so far: each makes the run a week longer (D-041), arrivals included. */
+/**
+ * Overtime weeks used so far: each makes the run a week longer (D-041), arrivals included. The
+ * milestones' own counts and the overtime week on now, since D-206's gift can lift the weeks
+ * left past what the run started with.
+ */
 export function overtimeUsed(s: RunState): number {
-  return Math.max(0, rules.rule(s, 'overtime') - s.overtimeLeft);
+  return s.milestones.reduce((n, m) => n + m.overtimeUsed, 0) + s.overtimeWeek;
 }
 
 /**

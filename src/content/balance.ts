@@ -321,4 +321,17 @@ export const BALANCE: Balance = {
     phase: 2,
     pieces: ['pool', 'hotTub', 'henhouse'],
   },
+
+  // D-206: the neighbor's ask (S18). Once a run, as Roofing starts, a neighbor asks for 5 tiles
+  // of Fence in the 2 columns along their side of the lot; there by the Roofing milestone, they
+  // give one overtime week. The standing stock tops up a Fence at every milestone (D-162, D-169),
+  // so one pack can always answer it: a side without room for one isn't asked. A first job gets
+  // none. Neither bot chases it, so the sim understates what a player gets from it.
+  neighborAsk: {
+    phase: 3,
+    piece: 'fence',
+    depth: 2,
+    tiles: 5,
+    reward: { overtime: 1 },
+  },
 };

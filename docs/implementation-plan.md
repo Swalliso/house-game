@@ -373,6 +373,7 @@ interface RunState {
   upgrades: UpgradeId[]                // company upgrades, permanent for the run
   servicesBought: { reroll: number; demolition: number; strike: number }   // their prices rise per purchase
   changeOrders: ActiveChangeOrder[]    // requests and restrictions being worked on
+  neighbor?: NeighborAsk               // D-206: the neighbor's ask, once a run: its side, the phase it runs through, the tiles asked, and once resolved, met or missed
   timedEffects: { source: ChangeOrderId | ToolId; until: { phase: number } | { week: number }; modifiers: Modifier[] }[]
   lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }   // specsMet in checklist order
   setsRewarded: SetId[]                // sets whose one-time reward has been paid
@@ -440,6 +441,7 @@ type Action =
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
 - `changeOrderOffered` (the orders to pick from), `changeOrderAnswered` (the one picked and the ones passed over, D-144), `changeOrderResolved`
+- `neighborAsked` (D-206: as its phase's first week starts, the side, the phase, the tiles asked and how many stand there) and `neighborResolved` (at that phase's milestone met, after the change orders: the tiles there, met or missed, and the reward paid)
 - `shopOpened`, `bought`, `sold`, `crateOpened`, `picked`; `goodHeld` (D-196: the good, and whether it's now held or let go) and `holdDropped` (D-196: the held good, and why it couldn't come back)
 - `runEnded`
 
@@ -489,7 +491,7 @@ The UI keeps an event queue and plays it through an animation director (place â†
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores. The lot's wish is looked at again after them (D-205).
-2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188).
+2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188). Last, in Roofing's first week, a neighbor may ask for Fence along their side (D-206), with the stock's Fence already in Your goods.
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
@@ -621,6 +623,7 @@ Each client also has a hand-built **witness layout** in its tests that meets all
 type Tag = 'Quiet' | 'Loud' | 'Social' | 'Wet' | 'Sunny' | 'Outdoor' | 'Green'
          | 'Kid' | 'Pet' | 'Pretty' | 'Dark' | 'House'
 type Region = 'sunny' | 'frontYard' | 'backYard' | 'fencedYard'
+            | 'leftSide' | 'rightSide'   // D-206: the columns along the lot's west and east edges (balance.neighborAsk.depth)
 type Property = 'indoor' | 'yard' | 'outbuilding' | 'room' | 'exterior' | 'interior' | 'view' | 'viewSource'
 
 interface PieceDef {
@@ -691,6 +694,7 @@ type HouseCondition =                             // about the house: specs, req
   | { adjacentPair: [Selector, Selector] }
   | { fencedYardTiles: { min: number } }          // largest single fenced yard
   | { group: Selector; minTiles: number }         // largest connected group of matching tiles
+  | { tilesIn: { of: Selector; region: Region; min: number } }   // D-206: matching pieces' tiles inside the region, however many pieces
   | { set: SetId; min?: number }
   | { demolishedSinceAccepted: { min: number } }
   // M4a, for the house rules (D-101):
@@ -750,7 +754,8 @@ interface SetDef {
 interface Reward { score?: number /* a one-time Wow payout */; budget?: number; rerolls?: number; demolitions?: number; overtime?: number
                   tool?: ToolId | 'random'            // a tool goes into supplies (the Old Shed's 'random')
                   piece?: PieceId }                   // D-205: a special piece into the reserve's extra slots; only a lot's wish pays one
-// No Core content grants overtime, so D-041's 2 overtime weeks per run hold.
+// D-206: the neighbor's ask is the one Core content that grants overtime (one week, met at Roofing's
+// milestone), so a run holds D-041's 2 overtime weeks, or 3 with the ask met.
 
 type Modifier =
   | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }  // "Dark pieces earn double" â†’ +100

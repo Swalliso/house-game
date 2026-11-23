@@ -149,6 +149,29 @@ function wishPlays(rules: Rules, s: RunState, legal: readonly Action[]): Action[
   });
 }
 
+/**
+ * D-206: while the neighbor's ask runs, its piece from Your goods laid straight down a column
+ * of their strip, as many tiles as are missing: what random play would seldom do. Every legal
+ * spot, so the bot still picks one at random.
+ */
+function answerNeighbor(rules: Rules, s: RunState): PlaceAction[] {
+  const n = rules.neighbor(s);
+  if (!n || n.result || n.met) return [];
+  const i = s.reserve.findIndex((c) => c.id === n.piece);
+  if (i < 0) return [];
+  const { width: w, height: h } = s.house.lot;
+  const long = Math.min(n.tiles - n.have, rules.content.pieces[n.piece].pack?.maxTiles ?? 1);
+  const shape = Array.from({ length: long }, () => '#');
+  const out: PlaceAction[] = [];
+  for (const x of new Set(n.strip.map((k) => k % w))) {
+    for (let y = 0; y + long <= h; y++) {
+      const a: PlaceAction = { t: 'place', from: 'reserve', i, x, y, rot: 0, shape };
+      if (rules.checkPlay(s, a).legal) out.push(a);
+    }
+  }
+  return out;
+}
+
 function buildGroups(
   rules: Rules,
   s: RunState,
@@ -189,6 +212,8 @@ function buildGroups(
     { kind: 'play', weight: 60 * end, actions: of((a) => a.t === 'place') },
     // D-205: a card the lot's wish counts, built beside its feature.
     { kind: 'play:wish', weight: 8 * end, actions: wishPlays(rules, s, legal) },
+    // D-206: the neighbor's ask answered from Your goods, a free action.
+    { kind: 'neighbor', weight: 6, actions: answerNeighbor(rules, s) },
     // A hand fixture has a few hosts against a placement's hundreds of spots: its own kind.
     {
       kind: 'install:hand',

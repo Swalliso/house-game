@@ -105,6 +105,9 @@ const REGION_CHIP: Record<Region, string> = {
   frontYard: 'Front yard',
   backYard: 'Back yard',
   fencedYard: 'Fenced yard',
+  // D-206: a side's strip, named only while the neighbor's ask on it runs (rules.describeTile).
+  leftSide: 'The neighbor’s side',
+  rightSide: 'The neighbor’s side',
 };
 
 /** The regions with a glossary term (D-077). */
@@ -113,6 +116,8 @@ const REGION_TERM: Partial<Record<Region, Term>> = {
   frontYard: 'frontYard',
   backYard: 'backYard',
   fencedYard: 'fencedYard',
+  leftSide: 'neighbor',
+  rightSide: 'neighbor',
 };
 
 /** A region's words, as a Tip where the glossary has the region. */
