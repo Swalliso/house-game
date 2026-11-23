@@ -5066,6 +5066,41 @@ What the columns mean:
 - **The visit's figure is the Hendersons',** and the members have no figures, so the board shows nobody arriving: only the bell and the card.
 - **`npm run sim -- --check` now rotates six clients,** so its per-client numbers aren't comparable to runs before this one by seed.
 
+### D-218 · Dusk when you win, stage 1: a still of the finished house at dusk beside it by day, for a yes or a no
+**Status:** Proposed · 2026-11-23, a draft phase pull request (`phase/dusk-when-you-win`): the backlog's S12 (`docs/backlog/s12-dusk-when-you-win.md`), stage 1 only. The story asks the user to judge one still before anything goes into the game, because the roof came out for looking wrong over this art (D-147) and D-154 turned down light by time of day during play. Started while the user slept, at their ask to spend the rest of the week's budget on stories in parallel, and with no beat added to the game while S10's rebuild (D-187) is unplayed. UI only, and nothing in the game calls it: no content change, so `contentHash(CONTENT)` is develop's (`af553691` when it was built), and saves and run codes carry over. On a no, the pull request closes and this entry records the no; on a yes, stage 2 builds the beat on this painter, with the dated notes the story lists (D-156, D-125, D-120).
+**Decision** (the still's look, for the user to judge):
+- **The picture** is `docs/playtests/dusk-mockup.png`: the Hendersons' finished house from a greedy won run (seed `dusk-5`, the Architect, a meadow lot), drawn by the end screen's own photo painter (`paintPhoto`) by day and with its new `dusk` option. The whole lot at 1x, a part of it at 3x, and a dry lot and an autumn lot (seeds `dusk-17` and `dusk-4`).
+- **The evening** multiplies everything outside the house by the palette's periwinkle `787dbf`, then lays the palette's royal blue `3d56d2` over it at 10%: one step for the whole lot (the ground, the water, the street, the yard's pieces and the trees' crowns), never a gradient. The yard comes out about half as bright, its greens teal and its water deep blue.
+- **What keeps its light** (`houseMask` in the new `src/ui/art/dusk.ts`): the rooms' cells (their floors, and the outside walls' bands, which lie inside them, D-097), the bays, and each room's furniture where it's in view, stacked as the photos paint the house (`housePieces`, now shared with `paintHouse`). A yard piece's prop in front of a room (a Treehouse's deck) takes the evening; a room's bookcase rising over its north wall keeps its light.
+- **The rooms keep their daylight, less the sun.** The dusk house is built without D-120's sunny bands, so sun and lamplight never share a floor; the day picture beside it shows the bands. Each lit room gains a warm pool on the middle four fifths of its floor in the palette's gold `f2b22b`, 28% in the middle, then two thirds and a third (pixel light's three steps, as D-181's lamps). A finished room's lamp (D-181) and a Chandelier's glow are as they were by day.
+- **Lit windows:** the glass turns the palette's palest yellow `fff59a` (its glints `fefcfe`), and its pale yellow `ffe57b` spills on the ground outside each window, 10 px out and a px wider each side every 3 px, in three steps. Blackout Curtains keep a room's windows dark. A Closet, a Hallway or the Garage has no windows (house-model.ts), so it gets the pool alone: the story's "a floor glow only".
+- **The yard's own lights keep theirs:** a Fire Pit's fire and Garden Lights' bollards (`YARD_LIGHTS`) stay as they are by day, each with a glow on the ground round its foot (the palette's orange `ed931e` for the fire, its pale yellow for a bollard). The story doesn't ask for it; without it the fire went out at dusk.
+
+**Why:** the story's worry is that a tint over this pixel art reads muddy, so the still is painted by the game's own painters at the board's resolution, and its look was picked by trying the other ways on the same house (below). The rooms are left as they are by day, so the house reads as lit by its contrast with the yard more than by any tint of its own.
+
+**Considered** (each tried on the same house, at 1x and at 3x):
+- **A mix toward a dark color,** the way D-120's shade is painted: the palette's navy `2d4275` at 50%, LimeZu's ink `3a3a50` at 45%, its violet `54467f` at 45%. The lot went grey and flat, more fog than evening.
+- **A multiply alone:** the periwinkle kept the meadow's contrast but left the dry lot's sand and the autumn grass grey-brown, which the royal blue's 10% fixes. The lighter `8fa1c8` read as shade, not evening, and the violets (`887ca4`, `968bab`, `76689e`) turned the grass olive.
+- **Bigger spills** (16 to 20 px out, a px wider every 2 px), and a spill split by the mullion's shadow, as D-120's sun is under a window: searchlight beams, and hatching.
+- **A pool as big as the floor,** in the palette's yellow `ffe57b`: barely shows on wood. In its orange `ed931e` the rooms went brown.
+
+**Changes:**
+- `src/ui/art/dusk.ts` (new, pure): `DUSK` (the colors and sizes), `duskColor`, `duskPixels`, `houseMask`, `paintDusk` and `YARD_LIGHTS`.
+- `src/ui/screens/photo-paint.ts`: `paintPhoto` takes `dusk` (no caller in the game); `paintHouse` stacks the pieces through `housePieces`, unchanged.
+- `src/ui/art/house-paint.ts`: `housePieces` (the order `paintHouse` used, moved here so the dusk shares it), and `GLASS`, `GLINT`, `floorBox` and `drawnAt` exported.
+- `docs/backlog/README.md` (S12's row).
+
+**Checked:** `npm test` (178 files; 2,955 tests pass and 1 is skipped), `npm run typecheck`, `npm run build` and `npm run format:check`; `contentHash(CONTENT)` is develop's, and nothing under `src/rules` or `src/content` changed.
+- **New tests:** `src/ui/art/dusk.test.ts` (7): the dusk's colors are LimeZu's; the evening takes everything outside the house by one rule and leaves the house, unlit, as it was; a room's Bunk Beds over its north wall keep their light and a Treehouse's deck in front of the room doesn't; a lit room has no daylight glass left, and straight out from each window its spill is three steps, brightest at the wall, then the plain evening; the wall bands stay as they were but for the glass; a lit room with Blackout Curtains changes nothing outside; a Fire Pit's fire keeps its pixels and warms the ground beside it.
+- **Painted** in headless Chromium on Vite's dev server, through `paintPhoto` from a run code, for five greedy wins on all four biomes (seeds `dusk-4`, `dusk-5`, `dusk-6`, `dusk-17` and `dusk-29`). The scripts are in the project's files (`dusk-when-you-win/`).
+
+**Known gaps:**
+- **A still, not the beat:** no rooms lighting in build order, no plinks or doorbell, and nothing yet for Reduce motion, the Flashing setting, a debug run, a loaded run or a lost run (stage 2, after a yes).
+- **The lot only.** The garden past the lot's edges and the neighbors' plots, which the look down the street shows (D-156), aren't in the picture: stage 2's reach.
+- **A Skylight's patch of sun** stays at dusk: it's painted with the walls, sun or no sun. None of the pictured houses has one.
+- **The lot's tree shade** (D-120's, painted into the terrain) stays under the evening, faint.
+- **Not seen on the board,** only in the photo painter's still: the board's layers would need the evening as layers of their own (a multiply and a cast over everything but the house's pixels), which is stage 2's work.
+
 ### D-217 · Stepping stones from the front door's mat to the kerb, down the household's walk in and round what stands in the way
 **Status:** Proposed · 2026-11-23, a phase pull request (`phase/stepping-stones`), one of the threads started side by side when the user, going to bed, asked for "any additional stories you can in parallel" before the week's budget reset; the coordinator gave it this number. Merged into develop by the thread once its checks pass (the user's standing OK of 2026-11-22), for the user's playtest on /dev/. It stays Proposed until played. Art only (`src/ui/art/walkway.ts`, new, and `yard.ts`, `house-paint.ts`, `drawings.ts`): no rule, content, scoring, save or run-code change, so `contentHash(CONTENT)` is develop's (`af553691` when it was built) and saves and run codes carry over. It adds to the art of Accepted D-097 (noted there), along D-177's walk in.
 **Decision:**
