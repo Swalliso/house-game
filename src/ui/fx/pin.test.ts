@@ -1,18 +1,31 @@
 // A pin's beats (D-186, director.ts): a pushpin's sound going in and coming out, and a hand
-// dealt around a kept card (FEEL.pin), the week after a pin or a reroll's with one in the hand.
+// dealt around a kept card (FEEL.pin), the week after a pin (past a milestone and its shop too,
+// D-207) or a reroll's with one in the hand.
 // Like a strike's, they play outside the tally's chain: the deal never marks the director busy,
 // and any action ends it at once. And the hand's pins (actions.ts): a click on a pushpin, or P,
-// changes the pin and nothing else, and P does nothing in strike mode or with no card to pin.
+// changes the pin and nothing else, and P does nothing in strike mode or with no card to pin,
+// nor in the run's last week (D-207).
 //
 // The store and the director play real runs here.
 
 import { effect } from '@preact/signals';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { rules, type RunSetup } from '../../rules/index.ts';
+import { CONTENT, rules, type Action, type RunSetup } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { pinAt, pinKey, selectCard, toggleStrike } from '../hud/actions.ts';
 import { settings } from '../settings.ts';
-import { endWeek, log, reroll, run, selected, startRun, tentative, tool } from '../store.ts';
+import {
+  endWeek,
+  leaveShop,
+  log,
+  pickOption,
+  reroll,
+  run,
+  selected,
+  startRun,
+  tentative,
+  tool,
+} from '../store.ts';
 import { busy, dealView, instantTally } from './director.ts';
 import { FEEL } from './feel.ts';
 
@@ -99,6 +112,21 @@ describe('a pin', () => {
     expect(play).toHaveBeenLastCalledWith('illegal');
   });
 
+  it('says no to P in the run’s last week, which no week follows (D-207)', () => {
+    run.value = {
+      ...run.value,
+      phase: CONTENT.balance.phases.length - 1,
+      slot: CONTENT.balance.weeksPerPhase,
+      overtimeLeft: 0,
+    };
+    const play = vi.spyOn(audio, 'play');
+    selectCard(1);
+    const before = log.value;
+    pinKey();
+    expect(log.value).toBe(before);
+    expect(play).toHaveBeenLastCalledWith('illegal');
+  });
+
   it('says no to a pin on the card waiting to be placed: the play takes it', () => {
     const play = vi.spyOn(audio, 'play');
     tentative.value = { t: 'place', from: 'hand', i: 1, x: 0, y: 0, rot: 0 };
@@ -126,6 +154,24 @@ describe('the deal around a kept card', () => {
     expect(dealView.value).toMatchObject({ kept: k });
     vi.advanceTimersByTime(1);
     expect(dealView.value).toBeNull();
+  });
+
+  it('deals the next phase’s first week around a card pinned in the last week (D-207)', () => {
+    const W = CONTENT.balance.weeksPerPhase;
+    // The first phase's last week with its target met, loaded: no tally plays.
+    const passes = Array.from({ length: W - 1 }, (): Action => ({ t: 'pass' }));
+    startRun(SETUP, [...passes, { t: 'debug', op: 'addScore', amount: 1000 }]);
+    expect(run.value.slot).toBe(W);
+    const card = run.value.hand[1]!;
+    pinAt(1);
+    endWeek();
+    expect(run.value.pinnedOver).toMatchObject({ card });
+    if (run.value.offers?.pick) pickOption(-1);
+    expect(leaveShop()).toBe(true);
+    const k = run.value.kept;
+    expect(k).toBeDefined();
+    expect(run.value.hand[k!]).toEqual(card);
+    expect(dealView.value).toMatchObject({ kept: k });
   });
 
   it('deals a reroll around it too, never busy, and ends at once for the next action', () => {

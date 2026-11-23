@@ -3,7 +3,8 @@
 // - scoreOnly equals preview().after
 // - replay(log) reproduces the state
 // - a strike from the hand (D-157) is a free action that keeps the hand's size
-// - a pin (D-186) is a free action, and next week's draw is the pin-less one with the kept card
+// - a pin (D-186) is a free action, and next week's draw is the pin-less one with the kept card,
+//   past a milestone and its shop too (D-207)
 // - the same seed gives the same game
 
 import fc from 'fast-check';
@@ -217,9 +218,9 @@ describe('properties', () => {
     expect(listed).toBeGreaterThan(0);
   }, 60_000);
 
-  // D-186: a pin keeps the hand, the week and the draws. When the pass after it starts another
-  // week with no milestone between, that week's draw is the one it makes with no pin, with the
-  // pinned card in its row, at its slot, in place of one of the draw's cards.
+  // D-186: a pin keeps the hand, the week and the draws. The next week played, after the pass
+  // and, past a milestone, its shop (D-207), draws what it would with no pin, with the pinned
+  // card in its row, at its slot, in place of one of the draw's cards. A run's end keeps nothing.
   it('a pin is a free action, and next week’s draw is the pin-less one with the kept card in it', () => {
     let kept = 0;
     fc.assert(
@@ -238,16 +239,36 @@ describe('properties', () => {
         expect(out.pinned).toBe(end.pinned === a.i ? undefined : a.i);
         if (out.pinned === undefined) return;
         const { pinned: _pinned, ...bare } = out;
-        const withPin = rules.apply(out, { t: 'pass' });
-        const plain = rules.apply(bare, { t: 'pass' });
-        if (withPin.state.screen !== 'build' || withPin.events.some((e) => e.t === 'milestone')) {
+        let withPin = rules.apply(out, { t: 'pass' });
+        let plain = rules.apply(bare, { t: 'pass' });
+        const card = end.hand[a.i]!;
+        const k = rowSlot(content, end.hand, a.i);
+        if (withPin.state.screen !== 'build') {
           expect(withPin.state.kept).toBeUndefined();
-          return;
+          if (withPin.state.screen === 'won' || withPin.state.screen === 'lost') {
+            expect(withPin.state.pinnedOver).toBeUndefined();
+            return;
+          }
+          // D-207: the card waits through the milestone's change orders and shop, and the next
+          // phase's first week takes it. On the way, an order is picked and a crate let go.
+          expect(withPin.state.pinnedOver).toEqual({ card, k });
+          const leave = (x: RunState): ReturnType<typeof rules.apply> => {
+            const step: Action =
+              x.screen === 'changeOrder'
+                ? { t: 'answerChangeOrder', i: 0 }
+                : x.offers?.pick
+                  ? { t: 'pick', i: -1 }
+                  : { t: 'leaveShop' };
+            const next = rules.apply(x, step);
+            return next.state.screen === 'build' ? next : leave(next.state);
+          };
+          withPin = leave(withPin.state);
+          plain = leave(plain.state);
+          expect(withPin.state.pinnedOver).toBeUndefined();
         }
         const drawn = (events: typeof plain.events) =>
           drawnBefore(events.find((e) => e.t === 'handDrawn'));
-        const card = end.hand[a.i]!;
-        const want = keptInto(content, drawn(plain.events), card, rowSlot(content, end.hand, a.i));
+        const want = keptInto(content, drawn(plain.events), card, k);
         expect(drawn(withPin.events)).toEqual(want.hand);
         expect(withPin.state.kept).toBe(want.i);
         expect(withPin.state.hand[want.i]).toEqual(card);

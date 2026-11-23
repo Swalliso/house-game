@@ -191,8 +191,9 @@ export function Hints() {
                     ? 'extend it'
                     : 'end the week'}
           </Hint>
-          {/* D-186: a hand card picked, not yet placed, can be pinned for next week instead. */}
-          {shown.value.pin && source.value === 'hand' && !pending && (
+          {/* D-186: a hand card picked, not yet placed, can be pinned for next week instead.
+              D-207: not in the run's last week, which no week follows. */}
+          {shown.value.pin && source.value === 'hand' && !pending && !rules.lastWeekOfRun(s) && (
             <Hint keys={['P']} extra>
               {s.pinned === selected.value ? 'unpin it' : 'pin it'}
             </Hint>
@@ -219,8 +220,9 @@ export function Hints() {
             strike
           </Hint>
         )}
-        {/* D-186: the card under the pointer, or the one Tab is on. Never in the first job. */}
-        {shown.value.pin && (
+        {/* D-186: the card under the pointer, or the one Tab is on. Never in the first job, nor
+            in the run's last week (D-207). */}
+        {shown.value.pin && !rules.lastWeekOfRun(s) && (
           <Hint keys={['P']} extra>
             pin
           </Hint>
