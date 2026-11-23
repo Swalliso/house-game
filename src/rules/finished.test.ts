@@ -24,7 +24,9 @@ import type {
   GameEvent,
   PieceId,
   PlacedPiece,
+  Play,
   ReservePiece,
+  Reward,
   RunSetup,
   RunState,
   SpecDef,
@@ -484,6 +486,101 @@ describe('finishing a room pays, once (D-211)', () => {
     const unpaid = R.apply(plain, fromHand);
     expect(isFinished(pieceOf(unpaid.state, 1))).toBe(true);
     expect(finishedIn(unpaid.events)).toEqual([]);
+  });
+
+  it('preview().finishes names what apply() pays, for every play from the hand, Your goods and the supplies', () => {
+    // The boxed-in Kitchen (uid 1) and a Bedroom (uid 4) have fixtures and haven't grown; a
+    // Bedroom (uid 5) has grown (a level) with no fixture; the boxing Bedrooms have neither.
+    const s0 = paying([...BOXED_KITCHEN, ['bedroom', 6, 6], ['bedroom', 6, 10]], {
+      hand: [pc('bedroom'), fx('fireplace'), pc('kitchen')],
+      reserve: [{ id: 'bedroom' }, { id: 'kitchen' }],
+      supplies: [supply('skylight')],
+    });
+    const fixture = (id: FixtureId) => ({ id, week: 1 });
+    const s: RunState = {
+      ...s0,
+      house: {
+        ...s0.house,
+        pieces: s0.house.pieces.map((p) =>
+          p.uid === 1
+            ? { ...p, fixture: fixture('kitchenIsland') }
+            : p.uid === 4
+              ? { ...p, fixture: fixture('fireplace') }
+              : p.uid === 5
+                ? { ...p, level: 1 }
+                : p,
+        ),
+      },
+    };
+    expect(s.house.pieces.filter((p) => isFinished(p))).toEqual([]);
+    const fromSupplies = s.house.pieces.map((p): NonNullable<Play> => ({
+      t: 'install',
+      from: 'supplies',
+      i: 0,
+      uid: p.uid,
+    }));
+    const legal = RP.legalPlays(s);
+    const plays = [
+      ...legal.filter((p) => p.t !== 'place'),
+      // A new room is never finished: a few placements stand for the rest.
+      ...legal.filter((p) => p.t === 'place').slice(0, 6),
+      ...fromSupplies.filter((p) => RP.preview(s, p).legal),
+    ];
+    const finishing = new Set<string>();
+    for (const play of plays) {
+      const preview = RP.preview(s, play);
+      const { state, events } = RP.apply(s, play);
+      const paid = eventsOf(events, 'roomFinished');
+      expect(paid.length, JSON.stringify(play)).toBeLessThanOrEqual(1);
+      expect(preview.finishes?.uid, JSON.stringify(play)).toBe(paid[0]?.uid);
+      if (!preview.finishes) continue;
+      expect(preview.finishes.reward).toEqual(PAID);
+      expect(state.budgetEarned - s.budgetEarned).toBe(
+        2 + eventsOf(events, 'tally').reduce((n, e) => n + e.tally.budget, 0),
+      );
+      if (play.t !== 'place') finishing.add(`${play.t}/${play.from}/${play.uid}`);
+    }
+    // Each way in: a fixture into the grown room, from the hand or the supplies; the Kitchen
+    // renovated, from the hand or Your goods; the fitted Bedroom extended, from either.
+    expect([...finishing].sort()).toEqual([
+      'extend/hand/4',
+      'extend/reserve/4',
+      'install/hand/5',
+      'install/supplies/5',
+      'renovate/hand/1',
+      'renovate/reserve/1',
+    ]);
+  });
+
+  it('pays whatever finishReward holds, through payReward; a reward of zeros says and pays nothing', () => {
+    const s = { ...grownBedroom(), supplies: [supply('fireplace')] };
+    const fromSupplies = { t: 'install', from: 'supplies', i: 0, uid: 1 } as const;
+    const rulesPaying = (finishReward: Reward) =>
+      createRules({ ...K, balance: { ...K.balance, finishReward } });
+    // Each kind alone, and what it changes, with the budget left as it was.
+    const kinds: [Reward, Partial<RunState>][] = [
+      [{ score: 7 }, { score: s.score + 7 }],
+      [{ rerolls: 1 }, { bonusRerolls: s.bonusRerolls + 1 }],
+      [{ demolitions: 1 }, { demolitionsLeft: s.demolitionsLeft + 1 }],
+      [{ overtime: 1 }, { overtimeLeft: s.overtimeLeft + 1 }],
+      [{ tool: 'catalog' }, { supplies: [tool('catalog')] }],
+    ];
+    for (const [reward, changed] of kinds) {
+      const rr = rulesPaying(reward);
+      expect(rr.preview(s, fromSupplies).finishes).toEqual({ uid: 1, reward });
+      const paid = rr.apply(s, fromSupplies);
+      expect(eventsOf(paid.events, 'roomFinished')).toEqual([
+        { t: 'roomFinished', uid: 1, defId: 'bedroom', reward },
+      ]);
+      expect(paid.state).toMatchObject({ ...changed, budget: s.budget });
+    }
+    // Zeros pay nothing, so nothing is said: no event, no line in the preview.
+    const zeros = rulesPaying({ budget: 0, score: 0 });
+    expect(zeros.preview(s, fromSupplies)).not.toHaveProperty('finishes');
+    const unpaid = zeros.apply(s, fromSupplies);
+    expect(isFinished(pieceOf(unpaid.state, 1))).toBe(true);
+    expect(types(unpaid.events)).toEqual(['installed']);
+    expect(unpaid.state.budget).toBe(s.budget);
   });
 
   it('a run code replays the payouts exactly', () => {
