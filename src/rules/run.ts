@@ -1303,12 +1303,9 @@ export function createRules(content: Content): Rules {
         (id) => content.tools[id].offered,
       );
       tool = reward.tool === 'random' ? stream(s.setup.seed, key).pick(offered) : reward.tool;
-      if (s.supplies.length < slotsFor(content, s).supplies) {
-        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-      } else {
-        soldTool = sellPrice(content, s, content.tools[tool].price);
-        s = { ...s, budget: s.budget + soldTool, budgetEarned: s.budgetEarned + soldTool };
-      }
+      const took = takeTool(s, tool);
+      s = took.state;
+      soldTool = took.sold;
     }
     if (reward.piece) s = { ...s, reserve: [...s.reserve, { id: reward.piece, wish: true }] };
     if (find) {
@@ -1323,6 +1320,19 @@ export function createRules(content: Content): Rules {
       );
     }
     return s;
+  }
+
+  /**
+   * A tool into the supplies, or sold at once for half its price when they're full: a reward's,
+   * the crew's (D-171) and a company upgrade's (D-209). `sold` is what the sale paid, if it sold.
+   */
+  function takeTool(state: RunState, tool: ToolId): { state: RunState; sold?: number } {
+    if (state.supplies.length < slotsFor(content, state).supplies) {
+      return { state: { ...state, supplies: [...state.supplies, { kind: 'tool', id: tool }] } };
+    }
+    const sold = sellPrice(content, state, content.tools[tool].price);
+    const budget = { budget: state.budget + sold, budgetEarned: state.budgetEarned + sold };
+    return { state: { ...state, ...budget }, sold };
   }
 
   /** A reward without its tool field, so the resolved tool can take its place. */
@@ -1719,20 +1729,16 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-171: the crew's tool (CrewDef.orderTool), in the first week of each milestone that
-   * follows a change order. Into the supplies, or sold at once when they're full (payReward's
-   * rule for a reward's tool).
+   * follows a change order. Into the supplies, or sold at once when they're full (takeTool, a
+   * reward's tool's rule).
    */
   function crewTool(s: RunState, events: GameEvent[]): RunState {
     const tool = content.crews[s.setup.crewId].orderTool;
     if (!tool || s.overtimeWeek !== 0 || s.slot !== 1) return s;
     if (!b.changeOrderAfter.includes(s.phase)) return s;
-    if (s.supplies.length < slotsFor(content, s).supplies) {
-      events.push({ t: 'crewTool', tool, phase: s.phase });
-      return { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-    }
-    const sold = sellPrice(content, s, content.tools[tool].price);
-    events.push({ t: 'crewTool', tool, phase: s.phase, sold });
-    return { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+    const { state, sold } = takeTool(s, tool);
+    events.push({ t: 'crewTool', tool, phase: s.phase, ...(sold === undefined ? {} : { sold }) });
+    return state;
   }
 
   // -------------------------------------------------------------------------------------
@@ -1813,7 +1819,7 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-209: each upgrade that delivers a tool (the Tool Belt) puts the milestone's in the
-   * supplies, after the crew's, or sells it at once when they're full (crewTool's rule).
+   * supplies, after the crew's, or sells it at once when they're full (takeTool, as the crew's).
    */
   function upgradeTools(state: RunState, events: GameEvent[]): RunState {
     let s = state;
@@ -1821,14 +1827,10 @@ export function createRules(content: Content): Rules {
       const d = content.upgrades[id].delivers;
       const tool = d?.kind === 'tool' ? upgradeTool(s, id, d) : null;
       if (!tool) continue;
-      if (s.supplies.length < slotsFor(content, s).supplies) {
-        events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase });
-        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-        continue;
-      }
-      const sold = sellPrice(content, s, content.tools[tool].price);
-      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, sold });
-      s = { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+      const took = takeTool(s, tool);
+      const sold = took.sold === undefined ? {} : { sold: took.sold };
+      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, ...sold });
+      s = took.state;
     }
     return s;
   }
