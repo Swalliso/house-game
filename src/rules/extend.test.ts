@@ -429,6 +429,19 @@ describe('a card at its per-house cap (D-165) extends where it can (D-169)', () 
       'One per house: extend or renovate.',
     );
   });
+
+  it('says only renovate for a type Extend can’t grow: a Library', () => {
+    const library = createRules(withPieces({ library: { perHouse: 1 } }, contentWith([])));
+    const s = build([['library', 2, 2]], { rules: library, hand: [pc('library')] });
+    expect(library.extendTargets(s, 'hand', 0)).toEqual([]);
+    expect(library.renovateTargets(s, 'hand', 0)).toEqual([1]);
+    expect(
+      library.checkPlay(s, { t: 'place', from: 'hand', i: 0, x: 8, y: 2, rot: 0 }),
+    ).toMatchObject({ legal: false, reason: 'The house has its Library: this card renovates it.' });
+    expect(cardText(library.content, library.content.pieces.library).perHouse).toBe(
+      'One per house: renovate.',
+    );
+  });
 });
 
 describe('Weekend Crew: an extension can be its free play', () => {

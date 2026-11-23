@@ -28,6 +28,7 @@ import type {
   PlaceAction,
   RunState,
   ShopOffer,
+  Supply,
   ToolId,
 } from './index.ts';
 import { createRules, type Rules } from './run.ts';
@@ -353,6 +354,29 @@ describe('toolValue: a tool’s worth in the house as it stands (D-193)', () => 
     // ...and Bedrooms are neither.
     const beds = build(HOUSE.slice(0, 2));
     expect(value(beds, 'openHouseParty')).toEqual({ kind: 'needs', needs: 'No Social pieces yet' });
+  });
+
+  // D-210: a second Photo Shoot can't be used in a week that has one. Valued as if used, it added
+  // nothing, and its line said "Adds nothing to your house yet", which read as a good to sell.
+  it('says a second Photo Shoot waits for next week in a week that has one (D-210)', () => {
+    const shoot: Supply = { kind: 'tool', id: 'photoShoot' };
+    const s: RunState = { ...build(HOUSE, { rows: HOUSE_ROWS }), supplies: [shoot, shoot] };
+    // ×1.5 on 12 Wow: 18.
+    expect(value(s, 'photoShoot')).toEqual({ kind: 'week', gain: 6 });
+    const used = R.apply(s, { t: 'useTool', i: 0 }).state;
+    expect(R.canUseTool(used, { t: 'useTool', i: 0 }).ok).toBe(false);
+    expect(value(used, 'photoShoot')).toEqual({
+      kind: 'needs',
+      needs: 'Waits for next week: this week has a Photo Shoot',
+    });
+    // Next week it's worth its ×1.5 again.
+    expect(value(nextWeek(R, used), 'photoShoot')).toEqual({ kind: 'week', gain: 6 });
+    // The run's last week has no next week to wait for: only why.
+    const last = R.apply(at(s, PHASES - 1, W), { t: 'useTool', i: 0 }).state;
+    expect(value(last, 'photoShoot')).toEqual({
+      kind: 'needs',
+      needs: 'This week already has its Photo Shoot',
+    });
   });
 
   it('gives a Remodel Plan’s next level for a set the house holds, this week and over the run', () => {

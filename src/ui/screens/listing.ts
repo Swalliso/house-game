@@ -8,7 +8,8 @@
 // - The counts: rules.countPieces (D-212), each piece once. A member's room is a Bedroom and an
 //   L-Kitchen a Kitchen, and a Bedroom with Bunk Beds is one bed, as a listing counts rooms.
 // - The wishes held: rules.checklist. What a wish asked for is its condition's, in the content.
-// - The pieces that earn nothing: the tally's unmet requirement, in the rules' words.
+// - The pieces that earn nothing: the tally's unmet requirement, in the rules' words, and how
+//   many of that piece the house has (rules.countPieces).
 // - The lot: its traits as the run began (lotTraits), else its biome's look (lotBiome).
 // - The verdict, which is the listing's noun: rules.verdict. A lost run is a Fixer-Upper.
 // The wording is in SAY, so the listing's tone is one table. No DOM, so it tests in Node.
@@ -75,10 +76,13 @@ const SAY = {
   notBeside: (a: string, b: string) => `${cap(definite(a))} isn’t beside ${definite(b)}.`,
   tooManyRooms: (rooms: number, min: number, max: number) =>
     `${rooms} rooms, where ${min} to ${max} were asked for.`,
-  earnsNothing: (piece: string, n: number, why: string) =>
-    n === 1
-      ? `${cap(definite(piece))} earns nothing: it must be ${why}.`
-      : `${n} ${plural(piece)} earn nothing: each must be ${why}.`,
+  // `of`: how many of the piece the house has, so one of two reads "One Doghouse", not "The".
+  earnsNothing: (piece: string, n: number, of: number, why: string) =>
+    n > 1
+      ? `${n} ${plural(piece)} earn nothing: each must be ${why}.`
+      : of > 1
+        ? `One ${piece} earns nothing: it must be ${why}.`
+        : `${cap(definite(piece))} earns nothing: it must be ${why}.`,
 };
 
 /**
@@ -310,13 +314,18 @@ function tooManyRooms(s: RunState): string | null {
   return SAY.tooManyRooms(rooms, minRooms, maxRooms);
 }
 
-/** The first piece that earns nothing, by its unmet requirement, with any more of its kind. */
+/**
+ * The first piece that earns nothing, by its unmet requirement, with any more of its kind, and
+ * how many of it the house has, as the client line counts them: "One Doghouse" when another one
+ * earns.
+ */
 function earnsNothing(s: RunState): string | null {
   const unmet = rules.currentTally(s).pieces.filter((p) => p.unmet !== undefined);
   const first = unmet[0];
   if (!first) return null;
   const same = unmet.filter((p) => p.defId === first.defId && p.unmet === first.unmet);
-  return SAY.earnsNothing(CONTENT.pieces[first.defId].name, same.length, first.unmet!);
+  const of = rules.countPieces(s, { piece: first.defId });
+  return SAY.earnsNothing(CONTENT.pieces[first.defId].name, same.length, of, first.unmet!);
 }
 
 /** At most one flaw, the first that's true: someone's missing room, then the Kitchen, … */
