@@ -1569,7 +1569,9 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           // D-206: so do the neighbor's ask and its overtime week, after them.
           const gift = events
             .slice(i + 1)
-            .find((x): x is Extract<GameEvent, { t: 'neighborResolved' }> => x.t === 'neighborResolved');
+            .find(
+              (x): x is Extract<GameEvent, { t: 'neighborResolved' }> => x.t === 'neighborResolved',
+            );
           const asking = gift
             ? {
                 neighbor: base.neighbor,

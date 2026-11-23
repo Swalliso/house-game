@@ -134,8 +134,7 @@
 
 /* As the ask comes: hidden until the neighbor has stopped, then it grows from its tail. */
 .neighbor-bubble.pop {
-  animation: neighbor-bubble-pop var(--pop-ms) cubic-bezier(0.25, 1.6, 0.45, 1) var(--pop-at)
-    both;
+  animation: neighbor-bubble-pop var(--pop-ms) cubic-bezier(0.25, 1.6, 0.45, 1) var(--pop-at) both;
 }
 @keyframes neighbor-bubble-pop {
   from {
