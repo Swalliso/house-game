@@ -50,6 +50,7 @@ export const FIXTURE_ICONS: Record<FixtureId, IconName> = {
   pergola: 'pergola',
   gardenLights: 'gardenLights',
   chandelier: 'chandelier',
+  dogDoor: 'dogDoor',
 };
 
 /** Each tool's icon (theme/icons.ts), for its supply slot and its art slot in the shop. */
@@ -67,6 +68,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   remodelSuite: 'remodel',
   remodelFullHouse: 'remodel',
   weekendCrew: 'weekendCrew',
+  photoShoot: 'photoShoot',
 };
 
 /**

@@ -90,10 +90,10 @@ with a setup (Balatro puts it on 70% of its Rare jokers and 3% of its Common one
 
 ## Done when
 
-- [ ] The goods the user picked are on the shelf (and the Dog Door in the draw), each with an
-      icon and its card's words.
-- [ ] A Dog Door's room is a Pet room for the Barkers and Nana's Room.
-- [ ] The paired-seed result is in the log entry, and the targets are untouched.
+- [x] The goods the user picked are on the shelf (and the Dog Door in the draw), each with an
+      icon and its card's words. (All three, the user's pick on 2026-11-23.)
+- [x] A Dog Door's room is a Pet room for the Barkers and Nana's Room.
+- [x] The paired-seed result is in the log entry, and the targets are untouched.
 
 ## How to check
 

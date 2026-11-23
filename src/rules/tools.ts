@@ -87,7 +87,17 @@ export function canUseTool(ctx: ToolCtx, state: RunState, action: UseToolAction)
       return Object.hasOwn(ctx.content.sets, def.use.set)
         ? { ok: true }
         : { ok: false, reason: 'That set isn’t in the game yet.' };
-    case 'weekModifiers':
+    case 'weekModifiers': {
+      // D-210: a ×Mult counts once a week however many times it's used (D-056), so a second
+      // Photo Shoot waits for another week rather than being spent for nothing.
+      const times = def.use.modifiers.some((m) => m.kind === 'xMult');
+      const on = state.timedEffects.some(
+        (t) => t.source === def.id && 'week' in t.until && t.until.week >= state.week,
+      );
+      return times && on
+        ? { ok: false, reason: `This week already has its ${def.name}.` }
+        : { ok: true };
+    }
     case 'advanceTimers':
     case 'reward':
       return { ok: true };

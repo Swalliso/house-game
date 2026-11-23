@@ -131,7 +131,7 @@ reading the code, not from building anything.
 | [S25](s25-pieces-that-pay-off.md) | A Sapling plants up to three; the Garage, Fire Pit, Playroom and Hot Tub pay more often | M | Content | | Built 2026-11-20 (D-195, `phase/pieces-pay-off`); waiting on the user's playtest |
 | [S26](s26-upgrades-that-deliver.md) | Storage Unit, Tool Belt and Drafting Table bring something you can see | M | Rules and content | The user's playtest of S16 | Built 2026-11-23 (D-209, `phase/upgrades-deliver`), before S16's playtest at the user's pick; waiting on the user's playtest |
 | [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Built 2026-11-20 (D-196, #125, on S22's branch); waiting on the user's playtest |
-| [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
+| [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Built 2026-11-23 (D-210, `phase/new-goods`): all three, the user's pick; waiting on the user's playtest |
 | [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Built 2026-11-20 (D-197); waiting on the user's playtest |
 | [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Built 2026-11-20 (D-198); waiting on the user's playtest |
 | [S31](s31-landmarks-with-reach.md) | A Pool, a Library, a Henhouse and a new Fountain pay what's within 2 tiles, shaded while you place them | M | Rules, content, UI and one sprite | | Built 2026-11-22 (D-199, `phase/landmarks-with-reach`); waiting on the user's playtest |
@@ -177,7 +177,8 @@ feels flat for the same reason. Its order: the shop first (S22, S23), then the b
 - S24 and S25 are content passes that each measure their own effect, so they can go side by
   side.
 - S26 waits for the user's playtest of S16, so they judge one new source of free cards at a
-  time. S28 waits for the playtest of S22 to S25, then the user's pick.
+  time. S28 waited for the playtest of S22 to S25, then the user's pick; the user had it
+  started on 2026-11-23, all three goods were built while they picked, and they picked all three.
 - S29 and S30 change Accepted decisions (D-160 and D-121; D-101). The user OK'd both on
   2026-11-20.
 - As with S15 to S21, none of them changes the milestone targets. Each reports a paired-seed

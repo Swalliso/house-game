@@ -43,9 +43,10 @@ export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
 
 /**
  * The art a fixture is drawn with on the board, where it has a sprite of its own (rooms.ts,
- * yard.ts): the Fireplace's stove, the Bunk Beds, the Kitchen Island, the Sprinkler, the Pergola.
- * The ones painted with their room (the Skylight's light, Blackout Curtains, Soundproofing, the
- * Bay Window, the Chandelier) and Garden Lights' pair of bollards show their icon instead.
+ * yard.ts): the Fireplace's stove, the Bunk Beds, the Kitchen Island, the Sprinkler, the Pergola,
+ * and the dog in its bed that a Dog Door lets in (D-210). The ones painted with their room (the
+ * Skylight's light, Blackout Curtains, Soundproofing, the Bay Window, the Chandelier) and Garden
+ * Lights' pair of bollards show their icon instead.
  */
 export const FIXTURE_ART: Partial<Record<FixtureId, ArtId>> = {
   fireplace: 'fireplace',
@@ -53,6 +54,7 @@ export const FIXTURE_ART: Partial<Record<FixtureId, ArtId>> = {
   kitchenIsland: 'kitchen-island',
   sprinkler: 'own-sprinkler',
   pergola: 'pergola',
+  dogDoor: 'own-dog-bed',
 };
 
 /**

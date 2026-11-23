@@ -16,6 +16,7 @@ import {
   setsOfPiece,
   setText,
   sunSideText,
+  toolText,
 } from './text.ts';
 import { TEST_CONTENT as C } from './testing.ts';
 import { CONTENT } from '../content/index.ts';
@@ -77,6 +78,31 @@ describe('modifier text', () => {
     expect(modifierText(CONTENT, { ...grant, target: { property: 'room' } })).toBe(
       'Rooms: +2 per touching Dining Room or Herb Garden',
     );
+  });
+
+  // D-210: a granted tag that names who lives there reads as a kind of room.
+  it('says a granted Pet makes a Pet room; an adjective stays as it was', () => {
+    const host = { host: true } as const;
+    expect(modifierText(CONTENT, { kind: 'grantTag', target: host, tag: 'Pet' })).toBe(
+      'Makes it a Pet room',
+    );
+    expect(modifierText(CONTENT, { kind: 'grantTag', target: host, tag: 'Sunny' })).toBe(
+      'Makes it Sunny',
+    );
+    expect(
+      modifierText(CONTENT, { kind: 'grantTag', target: { piece: 'bedroom' }, tag: 'Pet' }),
+    ).toBe('Bedrooms are Pet rooms');
+  });
+
+  // D-210: each new tool says what it does and for how long; Weekend Crew's line is as it was.
+  it('says what the Photo Shoot multiplies and for how long', () => {
+    expect(toolText(CONTENT, CONTENT.tools.photoShoot)).toEqual([
+      '×1.5 Charm',
+      'For this week’s tally only',
+    ]);
+    expect(toolText(CONTENT, CONTENT.tools.weekendCrew)).toEqual([
+      'Your next card this week doesn’t end the week: build two from your hand',
+    ]);
   });
 
   it('names what an earn modifier is for, for telling breakdown lines apart', () => {
@@ -262,6 +288,8 @@ describe('a compact hand card (D-121)', () => {
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
       pergola: ['Fits a Patio or Lawn', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],
+      // D-210: a noun tag reads as a kind of room, where "Makes it Pet" read as a slip.
+      dogDoor: ['Fits most rooms', 'Makes it a Pet room'],
     });
     // One the draw never deals (the Catalog's hand can): its set, in a few words.
     expect(handCardLines(CONTENT, { kind: 'fixture', id: 'chandelier' })).toEqual([
@@ -392,9 +420,10 @@ describe('set chips (D-122)', () => {
 
   it('the glossary names the Sparkle set at the content’s number, and the Garage’s drive (D-140, D-195)', () => {
     const g = glossary(CONTENT);
-    // Generated from the set, so a tuned number can't leave "×2" behind.
+    // Generated from the set, so a tuned number can't leave "×2" behind; and from the tools, so
+    // the Uncommon Photo Shoot is named (D-210).
     expect(g.sparkle.text).toBe(
-      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, and each needs a setup. Each source counts once a week.',
+      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, each with a setup, and the Photo Shoot for the week you use it. Each source counts once a week.',
     );
     // D-195: the Garage earns +2 off its drive, so it isn't among the pieces that earn nothing
     // without something; its garage sales still count for the budget.

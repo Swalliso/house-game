@@ -467,6 +467,17 @@ export const ICONS = {
     ..kkkk..
     ...kk...
   `,
+  /** The Dog Door (D-210): the foot of a door, and the dog through its flap. */
+  dogDoor: `
+    kkkkkkkk
+    khhhhhhk
+    kkkkkkkk
+    kdoooodk
+    kokookok
+    kowwwwok
+    kwwkkwwk
+    kkkkkkkk
+  `,
   // --- Tools (8×8): a tool's supply slot and its art slot in the shop (sprites.ts TOOL_ICONS) ---
   /** The Moving Truck: a box truck. */
   movingTruck: `
@@ -577,6 +588,17 @@ export const ICONS = {
     kYYYYYYk
     .kkkkkk.
     ........
+  `,
+  /** The Photo Shoot (D-210): a camera, its flash on top. */
+  photoShoot: `
+    ..kkk...
+    .kLLLk..
+    kkkkkkkk
+    kLLkkLuk
+    kLkCBkGk
+    kGkBbkGk
+    kGGkkGgk
+    kkkkkkkk
   `,
   // --- Blueprints (8×8; Dream Home 9×9, D-141): a blueprint's art slot in the shop and in a crate, and its slot
   // in your goods (sprites.ts BLUEPRINT_ICONS). Each draws its name, not its numbers ------------
