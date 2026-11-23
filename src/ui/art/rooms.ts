@@ -1395,6 +1395,18 @@ export function theirsIn(
   return first;
 }
 
+/** Whether a want stands beside the one before it: NL or NR on its wall, CL or CR on the floor. */
+function beside(w: Want | undefined): boolean {
+  return /^[NC][LR]$/.test(w?.slots[0] ?? '');
+}
+
+/** Where the group of want `i` ends: just past it and the wants after it that stand beside it. */
+function groupEnd(wants: readonly Want[], i: number): number {
+  let end = i + 1;
+  while (end < wants.length && beside(wants[end])) end++;
+  return end;
+}
+
 /**
  * `wants` with `extra` among them, in each place it can go: last first, where nothing makes way
  * for it, then one place earlier at a time, so the least of the room's furniture does, down to
@@ -1403,9 +1415,7 @@ export function theirsIn(
  * sofa that its doors push into the middle of the room).
  */
 function placesFor(wants: readonly Want[], extra: Want): Want[][] {
-  const beside = (w: Want | undefined) => /^[NC][LR]$/.test(w?.slots[0] ?? '');
-  let key = 1;
-  while (key < wants.length && beside(wants[key])) key++;
+  const key = groupEnd(wants, 0);
   const ways: Want[][] = [];
   for (let i = wants.length; i >= key; i--) {
     if (!beside(wants[i])) ways.push([...wants.slice(0, i), extra, ...wants.slice(i)]);
@@ -1453,7 +1463,8 @@ function coffinRoom(wants: readonly Want[], c: Ctx): Want[][] {
  */
 function inPlaceOf(wants: readonly Want[], sprite: ArtId, small: RegExp): Want[][] {
   const ways: Want[][] = [];
-  for (let i = 1; i < wants.length && /^[NC][LR]$/.test(wants[i]!.slots[0] ?? ''); i++) {
+  const key = groupEnd(wants, 0);
+  for (let i = 1; i < key; i++) {
     const w = wants[i]!;
     if (w.fixture || !w.sprites.every((sp) => small.test(sp))) continue;
     ways.push(wants.map((x, j) => (j === i ? { sprites: [sprite], slots: [w.slots[0]!] } : x)));
@@ -1487,12 +1498,8 @@ const DOG_BED: ArtId = 'own-dog-bed';
  * stands beside it, and a dining table (one that keeps an aisle for its chairs) with its chairs.
  */
 function keptBefore(wants: readonly Want[]): number {
-  const beside = (w: Want | undefined) => /^[NC][LR]$/.test(w?.slots[0] ?? '');
-  let key = 1;
-  while (key < wants.length && beside(wants[key])) key++;
-  let table = wants.findIndex((w) => w.aisle !== undefined);
-  if (table >= 0) while (table + 1 < wants.length && beside(wants[table + 1])) table++;
-  return Math.max(key, table + 1);
+  const table = wants.findIndex((w) => w.aisle !== undefined);
+  return Math.max(groupEnd(wants, 0), table < 0 ? 0 : groupEnd(wants, table));
 }
 
 /** The dogs' bed as a want: a south corner first, as the Barkers' (dogsBed). */
