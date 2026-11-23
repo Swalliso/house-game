@@ -34,6 +34,8 @@
 //   opens onto one): only its roof, rising over the row behind it, can hide part of a mat there.
 // - Parts of items above their piece's own cells (the Greenhouse's roof, the Treehouse, a
 //   Birdhouse's box, a car's roof) carry `over`, and go on the overhang layer above the walls.
+// - D-217: stepping stones from the front door's mat to the kerb, round whatever stands in the
+//   way (walkway.ts), ground no one piece owns, as the curb cuts are.
 //
 // A Fence is a picket line through the middle of its cells, out to the edges at its ends, with a
 // post at each end and turn (D-159). Where an end of one Fence meets another, their lines join (a
@@ -70,15 +72,16 @@ import {
   type Rect,
 } from '../board/house-model.ts';
 import { CELL, type SpriteId } from '../sprites.ts';
-import { artSize, HEN_PHASES, henDrawing } from './drawings.ts';
+import { artSize, HEN_PHASES, henDrawing, type ArtId } from './drawings.ts';
 import type { Item } from './rooms.ts';
+import { walkway } from './walkway.ts';
 
 export type Rgb = readonly [number, number, number];
 
 /** Something painted on the floor canvas, in lot art px. */
 export type Ground =
-  /** An atlas sprite, or the part of it in `src`. */
-  | { op: 'sprite'; sprite: SpriteId; x: number; y: number; src?: Rect }
+  /** An atlas sprite, or the part of it in `src`, or one of our drawings (a stepping stone, D-217). */
+  | { op: 'sprite'; sprite: ArtId; x: number; y: number; src?: Rect }
   /** A rectangle of color over what's there: edges, seams, soil. */
   | { op: 'rect'; rect: Rect; rgb: Rgb; alpha: number }
   /** An oval of color over what's there, in three steps of strength toward its middle (pixel light, not a ramp). */
@@ -102,7 +105,12 @@ export interface YardModel {
   pieces: ReadonlyMap<number, YardLayout>;
   /** Ground no one piece owns: the curb cuts in the street row. */
   curbs: readonly Ground[];
-  /** The cells the yard's ground covers (its pieces and curb cuts), or null. */
+  /**
+   * D-217: the stepping stones from the front door's mat to the kerb (walkway.ts), ground no one
+   * piece owns either. None for a piece drawn alone.
+   */
+  path: readonly Ground[];
+  /** The cells the yard's ground covers (its pieces, curb cuts and stepping stones), or null. */
   bounds: Rect | null;
 }
 
@@ -381,9 +389,18 @@ function build(
       }
     }
   }
+  // D-217: the stepping stones up to the front door, round what the yard's pieces stand.
+  const path = opts.street && m ? walkway(house, m, pieces) : [];
+  for (const g of path) {
+    if (g.op !== 'sprite') continue;
+    const { w, h } = artSize(g.sprite);
+    extend({ x: Math.floor(g.x / CELL), y: Math.floor(g.y / CELL) });
+    extend({ x: Math.floor((g.x + w - 1) / CELL), y: Math.floor((g.y + h - 1) / CELL) });
+  }
   return {
     pieces,
     curbs,
+    path,
     bounds: x0 === Infinity ? null : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 },
   };
 }

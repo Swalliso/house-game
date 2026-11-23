@@ -1,8 +1,9 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
 // the Sprinkler, the dogs' bed in Nana's Room (D-111), the Doghouse's dog, on its lead and loose
 // (D-179), rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items), the
-// Fountain (D-199), and a pantry's shelf and sack of flour (D-216). The hens peck, the dog in the
-// bed breathes (D-185) and the Fountain's water falls, each from its first frame, at rest.
+// Fountain (D-199), a pantry's shelf and sack of flour (D-216), and the stepping stones up to the
+// front door (D-217, painted on the floor canvas as ground). The hens peck, the dog in the bed
+// breathes (D-185) and the Fountain's water falls, each from its first frame, at rest.
 // They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light from the top
 // left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
@@ -72,6 +73,13 @@ export const KEY: Readonly<Record<string, Rgba>> = {
   X: [0xe0, 0xd0, 0xb2, 255], // sacking, lit
   Y: [0xc3, 0xac, 0x90, 255],
   Z: [0xb2, 0x97, 0x7e, 255], // sacking, shaded
+  // The stepping stones (D-217): warm grey flagstones, the pebbles' stone (LimeZu's) a step lighter,
+  // lit from the top left, a darker rim along their front, and a darker outline.
+  S: [0xd6, 0xca, 0xb3, 255], // stone, its lit edge
+  L: [0xc2, 0xb3, 0xa6, 255], // stone, lit
+  P: [0xab, 0x9a, 0x8f, 255], // stone, shaded
+  '+': [0x8a, 0x7a, 0x77, 255], // its rim
+  '#': [0x71, 0x64, 0x67, 255], // its outline
 };
 
 /**
@@ -471,6 +479,59 @@ const DOG_LOOSE = (() => {
 })();
 
 /**
+ * The stepping stones from the front door's mat to the kerb (D-217, walkway.ts): four
+ * flagstones, each a little wider than deep (a stride apart, a figure's feet fit on one), with
+ * the shadow along their front edge that everything on the ground has. Painted on the floor
+ * canvas, under everything that stands.
+ */
+const STONES = [
+  [
+    '...#######....',
+    '.##SSSLLLL##..',
+    '#SSLLLLLLLLP#.',
+    '#SLLLLLLLLLPP#',
+    '#LLLLLLLLLPPP#',
+    '#+PPPPPPPPPP+#',
+    '.#++++++++++#.',
+    '..##########..',
+    '...ssssssss...',
+  ],
+  [
+    '..######.....',
+    '.#SSSLLL###..',
+    '#SLLLLLLLLP#.',
+    '#SLLLLLLLLPP#',
+    '#LLLLLLLPPPP#',
+    '#+PPPPPPPPP+#',
+    '.##++++++++#.',
+    '...#########.',
+    '....ssssssss.',
+  ],
+  [
+    '....######..',
+    '..##SSSLLL#.',
+    '.#SSLLLLLLP#',
+    '#SLLLLLLLLP#',
+    '#LLLLLLLPPP#',
+    '#+PPPPPPPP+#',
+    '#++++++++++#',
+    '.##########.',
+    '..ssssssss..',
+  ],
+  [
+    '.########....',
+    '#SSSLLLLL##..',
+    '#SLLLLLLLLP##',
+    '#LLLLLLLLPPP#',
+    '#+LLLLLLPPPP#',
+    '.#+PPPPPPPP+#',
+    '..#++++++++#.',
+    '...########..',
+    '....ssssss...',
+  ],
+] as const;
+
+/**
  * Rain (S06, D-180): a streak falling down and to the left, 3 px down for each 1 across, as its
  * sheet steps (board/weather.ts). The near one is two steps of three; the far one is one, fainter.
  */
@@ -609,6 +670,10 @@ export const DRAWINGS = {
   'own-sack': { frames: [SACK] },
   'own-rain-near': { frames: [RAIN_NEAR] },
   'own-rain-far': { frames: [RAIN_FAR] },
+  'own-stone-0': { frames: [STONES[0]] },
+  'own-stone-1': { frames: [STONES[1]] },
+  'own-stone-2': { frames: [STONES[2]] },
+  'own-stone-3': { frames: [STONES[3]] },
   // Still in its first frame: the rest are drops landing, in the big puddle and then the small.
   'own-puddle': {
     frames: [
