@@ -651,6 +651,15 @@ export const TEST_FIXTURES: Record<FixtureId, FixtureDef> = {
     [{ kind: 'xMult', times: 125, when: { host: { inSet: 'entertainer' } } }],
     0,
   ),
+  // D-210: its room is a Pet room. Weight 0 here, so the test content's draws stay as they were.
+  dogDoor: fixture(
+    'dogDoor',
+    'Dog Door',
+    'common',
+    ROOM,
+    [{ kind: 'grantTag', target: HOST, tag: 'Pet' }],
+    0,
+  ),
 };
 
 const bp = (
@@ -1188,6 +1197,14 @@ export const TEST_TOOLS: Record<ToolId, ToolDef> = {
     set: 'fullHouse',
   }),
   weekendCrew: testTool('weekendCrew', 'Weekend Crew', 'rare', { kind: 'extraPlay' }),
+  // D-210: the ×Mult tool. Off the test shelf, so the shop tests' offers stay as they were.
+  photoShoot: testTool(
+    'photoShoot',
+    'Photo Shoot',
+    'uncommon',
+    { kind: 'weekModifiers', modifiers: [{ kind: 'xMult', times: 150 }] },
+    false,
+  ),
 };
 
 const testUpgrade = (

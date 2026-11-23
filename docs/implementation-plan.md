@@ -517,7 +517,7 @@ A week's score is **Points × Mult**, in the style of Balatro's Chips × Mult an
 
 - **Points:** what every piece earns from its neighbors. Common, local, and the bulk of every week.
 - **+Mult:** additive and fairly common: specs met, sets held, and a few blueprints and tools. It starts at ×1.
-- **×Mult:** multiplicative, rare, and powerful. Each source needs a setup you plan for: a set, the timing of the week, or something that builds up over the run. Only Rare blueprints, one Rare fixture, and the Full House set give it.
+- **×Mult:** multiplicative, rare, and powerful. Each source needs a setup you plan for: a set, the timing of the week, or something that builds up over the run. Only Rare blueprints, one Rare fixture, and the Full House set give it, and since D-210 one Uncommon tool, the Photo Shoot, for the week it's used.
 
 The research behind the split: Balatro puts ×Mult on 70% of its Rare jokers and 3% of its Common ones, and its players often confuse +Mult with ×Mult because both are red and called "mult". So the two get different colors and names.
 
@@ -1791,7 +1791,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - shop 1: Common only
     - shops 2–3: 70 / 25 / 5 (Common / Uncommon / Rare)
     - shops 4–6: 55 / 33 / 12
-  - **×Mult goods stay rare** (D-056): they're the three Rare ×Mult blueprints and the Rare Chandelier, so none can appear in shop 1. With these weights, a ×Mult blueprint is offered in roughly half of runs by the last shop (rough arithmetic for the sim to check). Any run can also plan for the Full House set's ×1.5 (D-140; ×2 before).
+  - **×Mult goods stay rare** (D-056): they're the three Rare ×Mult blueprints and the Rare Chandelier, so none can appear in shop 1. With these weights, a ×Mult blueprint is offered in roughly half of runs by the last shop (rough arithmetic for the sim to check). Any run can also plan for the Full House set's ×1.5 (D-140; ×2 before). *D-210:* the Uncommon Photo Shoot (×1.5 for the week it's used) is the one below Rare. Shop 1 sells no tools, so it's on the shelf from shop 2: 0.5 times a run in greedy's trial.
   - **Placeholder prices:**
     - blueprints: Common 4, Uncommon 6, Rare 8
     - special pieces: 3
@@ -1997,6 +1997,7 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 | Kitchen Island | kitchen | `earn host +25`; `grantEffect host neighbor [diningRoom, herbGarden] +2`, so its Kitchen's +2 for each becomes +4 (D-194; it was `countsAs host diningRoom`) | Uncommon | M3a |
 | Bunk Beds | bedroom | `countsAs host bedroom times 2` (counts twice in `count` conditions, such as the Hendersons' 4 Bedrooms, up to a `max` and never past it, D-198; once in sets) | Uncommon | M3a |
 | Bay Window | most exterior rooms (D-172: not a Bathroom, Closet or Garage) | `grantView host`; `earn host +25` (D-194) | Common | M3a |
+| Dog Door *(D-210)* | most rooms (not a Bathroom, Closet, Garage or Mudroom, a Pet room already) | `grantTag host Pet`; `earn host +25`: a Pet room, so the Barkers' taste, Nana's Room and the puppies reach it | Common | S28 |
 | Sprinkler | lawn | `earn host +100` | Common | M3a |
 | Pergola | patio or lawn (D-194) | `grantView host`; `earn host +50` | Uncommon | M3a |
 | Garden Lights | any yard piece | `grantTag host Pretty`; `earn host +25`; `earn {host ∧ in frontYard} +25` (so +50 in front; D-194) | Common | M3a |
@@ -2045,7 +2046,7 @@ The first five come from `content-brainstorm.md`; the other thirteen are new (D-
 | **Model Home** | Rare | `xMult times 100 plusPer {per {hasFixture any}, add 10}`: ×(1 + 0.1 per piece with a fixture); it grows as you install |
 | **Ahead of Schedule** | Rare | `xMult times 100 plusPer {per milestonesEarly, add 20}`: ×(1 + 0.2 per milestone completed early this run), which rewards cashing out early |
 
-### Tools (12, from 7 kinds; M3b)
+### Tools (14, from 8 kinds; M3b, Weekend Crew D-083, the Photo Shoot D-210)
 
 Combolands' potions and Islanders' boons are the models: one-shot, cheap, and they bend the board.
 
@@ -2063,6 +2064,8 @@ Combolands' potions and Islanders' boons are the models: one-shot, cheap, and th
 | Remodel Plans: Jack-and-Jill | Common | `levelSet jackAndJill` |
 | Remodel Plans: Entertainer | Common | `levelSet entertainer` |
 | Remodel Plans: Full House | Uncommon | `levelSet fullHouse` |
+| Weekend Crew | Uncommon (D-210; Rare at 5 before) | `extraPlay`: the week's next card from the hand doesn't end the week (D-083, D-163) |
+| Photo Shoot *(D-210)* | Uncommon | `weekModifiers [xMult 150]`: ×1.5 Mult this week, the one ×Mult good below Rare; a second can't be used in a week that has one |
 
 The four Remodel Plans work like Balatro's Planet cards: each permanently levels one set type, so a player can choose a set to build the run around (D-056). *2026-11-12 (D-164):* the five yard sets have levels but no Remodel Plans: five more tools would thin the shelf.
 

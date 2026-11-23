@@ -35,11 +35,11 @@
 //
 // Fixtures: the Fireplace, Bunk Beds and the Kitchen Island (in three sizes) are furniture here,
 // in every arrangement, tried through all their slots before a stand-in (the bed Bunk Beds
-// replace). The Skylight, Soundproofing, Blackout Curtains, the Chandelier and the Bay Window are
-// painted with the room (house-paint.ts, the model's bay); the layout says where Blackout Curtains
-// hang (in view, in front of the furniture). RoomLayout.fixtureShown is false when a room's
-// fixture can't be drawn or wouldn't be seen, so its badge shows instead and a purchase is always
-// visible.
+// replace), and a Dog Door (D-210) brings the dogs' bed after the rest of the room. The
+// Skylight, Soundproofing, Blackout Curtains, the Chandelier and the Bay Window are painted with
+// the room (house-paint.ts, the model's bay); the layout says where Blackout Curtains hang (in
+// view, in front of the furniture). RoomLayout.fixtureShown is false when a room's fixture can't
+// be drawn or wouldn't be seen, so its badge shows instead and a purchase is always visible.
 //
 // Rooms of one type differ in color (duvets, sofas, woods, rugs) and, for the common types, in
 // arrangement (D-173, ARRANGEMENTS): a Bedroom's bed beside its nightstands, a wardrobe or a desk;
@@ -123,6 +123,8 @@ export interface RoomLayout {
   pendant?: true;
   /** D-185: the house cat lying on its floor, one of `items` (catIn says which room has it). */
   cat?: Item;
+  /** D-210: a Dog Door's dog in the dogs' bed, one of `items`, laid down after everything else. */
+  dog?: Item;
 }
 
 /**
@@ -1426,6 +1428,60 @@ function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
   return [anywhere!, ...inPlaceOf(wants, 'own-dog-bed', /^(plant-|side-|lamp-)/), ...ways];
 }
 
+/**
+ * D-210: a Dog Door's room has a dog in it, in the dogs' bed: our own drawing, as in Nana's Room
+ * and the Barkers' Living Room.
+ */
+const DOG_BED: ArtId = 'own-dog-bed';
+
+/**
+ * D-210: how many of a room's wants never make way for a Dog Door's dog: the key piece and what
+ * stands beside it, and a dining table (one that keeps an aisle for its chairs) with its chairs.
+ */
+function keptBefore(wants: readonly Want[]): number {
+  const beside = (w: Want | undefined) => /^[NC][LR]$/.test(w?.slots[0] ?? '');
+  let key = 1;
+  while (key < wants.length && beside(wants[key])) key++;
+  let table = wants.findIndex((w) => w.aisle !== undefined);
+  if (table >= 0) while (table + 1 < wants.length && beside(wants[table + 1])) table++;
+  return Math.max(key, table + 1);
+}
+
+/** The dogs' bed as a want: a south corner first, as the Barkers' (dogsBed). */
+function dogBedWant(c: Ctx): Want {
+  const slots: Slot[] = [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N'];
+  return want(DOG_BED, ...slots, 'NW', 'NE');
+}
+
+/**
+ * D-210: a Dog Door's dog in its bed, laid down last of all, so nothing else in the room moves:
+ * in a south corner, else on the floor in front, by the south wall, a side wall or the north wall
+ * (dogBedWant), off the room's digit where it can (offDigit). Undefined where no floor is left:
+ * its badge shows instead.
+ */
+function dogBedOf(L: Layout, c: Ctx): Item | undefined {
+  const w = dogBedWant(c);
+  return offDigit(L, () => w.slots.some((slot) => placeSlot(L, w, slot, c)))
+    ? L.placed[L.placed.length - 1]!.item
+    : undefined;
+}
+
+/**
+ * D-210: puts the dogs' bed down (`put`) off the room's digit where it can, as the cat keeps off
+ * it (digitArea), so the number doesn't sit on the dog's head in a south-east corner; over it
+ * only where nowhere else fits.
+ */
+function offDigit(L: Layout, put: () => boolean): boolean {
+  const avoid = L.avoid;
+  L.avoid = [...avoid, digitArea(L.g.m, L.g.room)];
+  try {
+    if (put()) return true;
+  } finally {
+    L.avoid = avoid;
+  }
+  return put();
+}
+
 // ---------------------------------------------------------------------------------------
 // D-185: the house cat.
 
@@ -1483,15 +1539,23 @@ const CAT = {
   pair: 26,
 } as const;
 
-/** D-185: the floor the cat keeps off in `room` (CAT), as rects in lot art px. */
-function catKeepsOff(m: HouseModel, room: Room): Rect[] {
-  const { digit, badge, figure, pair } = CAT;
-  const cells = room.cells;
-  // The digit's cell, as label-layout.ts finds it: the bottom row's rightmost.
-  const d = [...cells].sort((a, b) => b.y - a.y || b.x - a.x)[0]!;
+/**
+ * The room's digit (CAT.digit) in its bottom-right cell's corner, as a rect in lot art px: the
+ * cell label-layout.ts puts it in, the bottom row's rightmost.
+ */
+function digitArea(m: HouseModel, room: Room): Rect {
+  const { digit } = CAT;
+  const d = [...room.cells].sort((a, b) => b.y - a.y || b.x - a.x)[0]!;
   const right = (d.x + 1) * CELL - inset(m, d.x, d.y, 'E');
   const bottom = (d.y + 1) * CELL - inset(m, d.x, d.y, 'S');
-  const out: Rect[] = [{ x: right - digit.w, y: bottom - digit.h, w: digit.w, h: digit.h }];
+  return { x: right - digit.w, y: bottom - digit.h, w: digit.w, h: digit.h };
+}
+
+/** D-185: the floor the cat keeps off in `room` (CAT), as rects in lot art px. */
+function catKeepsOff(m: HouseModel, room: Room): Rect[] {
+  const { badge, figure, pair } = CAT;
+  const cells = room.cells;
+  const out: Rect[] = [digitArea(m, room)];
   // The badges, and a Renovated room's stars beside the ⚠: along the top row, under its wall.
   const top = Math.min(...cells.map((c) => c.y));
   for (const c of cells) {
@@ -2274,9 +2338,16 @@ function cardTiles(defId: PieceId): number {
 /**
  * Room `uid`'s layout: its arrangement's wants, or `given` ones (D-183: a way the client's things
  * go in). `lit` false lays a finished room out as it stood before (D-181: without the lamp it
- * adds), to weigh the client's ways by.
+ * adds), to weigh the client's ways by. `dogWay` says `given` is a way a Dog Door's dog takes a
+ * small piece's place (D-210), so it isn't looked for again.
  */
-function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true): RoomLayout {
+function layOut(
+  m: HouseModel,
+  uid: number,
+  given?: readonly Want[],
+  lit = true,
+  dogWay = false,
+): RoomLayout {
   const room = m.rooms.get(uid);
   // A type without a layout of its own is furnished as its countsAs root (byType).
   const spec = room && byType(SPECS, room.defId);
@@ -2323,7 +2394,12 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();
   /** Places want `w` (the i-th) through its slots: an N piece with its group first. */
-  const place = (w: Want, i: number): boolean => {
+  const place = (w: Want, i: number): boolean =>
+    // D-210: the dogs' bed keeps off the room's digit where it can.
+    w.sprites.includes(DOG_BED) && w.slots[0] !== 'N'
+      ? offDigit(L, () => placeAt(w, i))
+      : placeAt(w, i);
+  const placeAt = (w: Want, i: number): boolean => {
     if (w.slots[0] === 'N' && w.sprites.length > 0) {
       const members: Want[] = [];
       for (let j = i + 1; j < wants.length; j++) {
@@ -2360,9 +2436,12 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
   const lights = lit && !!room.finished;
   const lamp = lights && !HANGS.has(room.defId) ? lampOf(L, c, drape) : undefined;
   const pendant = lights && !lamp;
-  // D-185: the house cat lies down after that, last of all. Only the board's house has one.
+  // D-185: the house cat lies down after that. Only the board's house has one.
   const pet = !look && catIn(m.rooms.values(), m.client) === uid ? CATS[m.client!] : undefined;
   const cat = pet ? catOf(L, c, pet) : undefined;
+  // D-210: a Dog Door's dog, last of all; a room with the dogs' bed already shows it by that one.
+  const hasBed = () => L.placed.some((p) => p.item.sprite === DOG_BED);
+  const dog = f === 'dogDoor' && !hasBed() ? dogBedOf(L, c) : undefined;
   // Back to front: rugs and runners first, then by bottom edge, west to east.
   const items = L.placed
     .map((p) => ({ p, flat: !p.rect, bottom: p.item.y + artSize(p.item.sprite).h }))
@@ -2371,7 +2450,8 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
     )
     .map(({ p }) => p.item);
   let fixtureShown = true;
-  if (f) {
+  if (f === 'dogDoor') fixtureShown = hasBed();
+  else if (f) {
     const drawn = wants.filter((w) => w.fixture);
     fixtureShown =
       drawn.length > 0 ? L.placed.some((p) => p.want.fixture) : paintedShown(m, room, f, drape);
@@ -2383,27 +2463,59 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
     ...(lamp ? { lamp } : {}),
     ...(pendant ? { pendant: true as const } : {}),
     ...(cat ? { cat } : {}),
+    ...(dog ? { dog } : {}),
   };
   // A spare stand-in (D-202) comes out again where the room keeps fewer of its other pieces with
   // it than without it.
   const spare = wants.find(
     (w) => w.spare && L.placed.some((p) => w.standIn?.includes(p.item.sprite)),
   );
+  let chosen = out;
   if (spare) {
     const without = layOut(
       m,
       uid,
       wants.map((w) => (w === spare ? { ...w, standIn: undefined } : w)),
       lit,
+      dogWay,
     );
-    if (pieces(without) >= pieces(out)) return without;
+    if (pieces(without) >= pieces(out)) chosen = without;
   }
-  return out;
+  // D-210: where no floor is left for a Dog Door's dog, it takes the place of a plant, a lamp or a
+  // nightstand beside the room's key piece, as the dogs' bed stands beside Nana's; one piece at
+  // most makes way for it, and the room keeps the rest of its furniture.
+  if (f === 'dogDoor' && !chosen.fixtureShown && !dogWay) {
+    const small = /^(plant-|side-|lamp-|nightstand-|nightlamp-)/;
+    const ways = [
+      ...inPlaceOf(wants, DOG_BED, small),
+      // Or the small piece gives way, and the bed goes wherever the floor is free.
+      ...inPlaceOf(wants, DOG_BED, small).map((way) => [
+        ...way.filter((w) => !w.sprites.includes(DOG_BED)),
+        dogBedWant(c),
+      ]),
+    ];
+    for (const way of ways) {
+      const layout = layOut(m, uid, way, lit, true);
+      if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
+    }
+    // Else one of the pieces after the key piece's group and any table's makes way: the bed goes
+    // down before it, one place earlier at a time, as placesFor puts the Barkers'.
+    const bed = dogBedWant(c);
+    for (let i = wants.length - 1; i >= keptBefore(wants); i--) {
+      const layout = layOut(m, uid, [...wants.slice(0, i), bed, ...wants.slice(i)], lit, true);
+      if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
+    }
+  }
+  return chosen;
 }
 
-/** How many pieces a layout stands in the room: what lies underfoot and the house cat left out. */
+/**
+ * How many pieces a layout stands in the room: what lies underfoot, the house cat and a Dog
+ * Door's dog (D-210) left out.
+ */
 function pieces(l: RoomLayout): number {
-  return l.items.filter((it) => !UNDERFOOT.test(it.sprite) && !isCat(it.sprite)).length;
+  return l.items.filter((it) => !UNDERFOOT.test(it.sprite) && !isCat(it.sprite) && it !== l.dog)
+    .length;
 }
 
 /** D-181: the rooms whose light hangs over the table: the kitchens'. */

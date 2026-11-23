@@ -127,9 +127,11 @@ describe('the light coming on', () => {
   });
 
   it('sends its glints from the lamp the board lights, in the client’s own room too (D-183)', async () => {
-    // The Barkers' first Living Room, grown by Extend, with their dogs' bed in it.
+    // The Barkers' first Living Room, grown by Extend, with their dogs' bed in it. Turned once:
+    // unturned, the bed keeps off the room's number (D-210), and the lamp stands where it would
+    // without the bed.
     startRun({ ...SETUP, clientId: 'barkers' });
-    const h = houseFrom(CONTENT, emptyRows(12, 12), [['livingRoom', 2, 2]]);
+    const h = houseFrom(CONTENT, emptyRows(12, 12), [['livingRoom', 2, 2, 1]]);
     run.value = {
       ...run.value,
       house: { ...h, pieces: h.pieces.map((p) => ({ ...p, extended: 1 })) },

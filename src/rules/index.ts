@@ -75,7 +75,10 @@ export type PieceId =
   // D-171: the Architect's card. Never placed: it only extends a room (PieceDef.addition).
   | 'addition';
 
-/** Fixtures (D-050): installed in a placed piece. 7 for rooms, 3 for the yard, and the Chandelier. */
+/**
+ * Fixtures (D-050): installed in a placed piece. 8 for rooms (the Dog Door since D-210), 3 for
+ * the yard, and the Chandelier.
+ */
 export type FixtureId =
   | 'fireplace'
   | 'skylight'
@@ -87,7 +90,8 @@ export type FixtureId =
   | 'sprinkler'
   | 'pergola'
   | 'gardenLights'
-  | 'chandelier';
+  | 'chandelier'
+  | 'dogDoor';
 
 /** Blueprints (D-051, D-056): run-long rule benders in their own slots. */
 export type BlueprintId =
@@ -112,7 +116,8 @@ export type BlueprintId =
 
 /**
  * Tools (M3b): one-shot free actions from the supplies. The Remodel Plans for Suite and Full
- * House join once M4a adds those sets. Weekend Crew is D-075's banked building.
+ * House join once M4a adds those sets. Weekend Crew is D-075's banked building. The Photo Shoot
+ * (D-210) is the one ×Mult tool.
  */
 export type ToolId =
   | 'movingTruck'
@@ -127,7 +132,8 @@ export type ToolId =
   | 'remodelEntertainer'
   | 'remodelSuite'
   | 'remodelFullHouse'
-  | 'weekendCrew';
+  | 'weekendCrew'
+  | 'photoShoot';
 
 /** Company upgrades (M3b): permanent `rule` modifiers, one offered per visit from shop 2. */
 export type UpgradeId =
