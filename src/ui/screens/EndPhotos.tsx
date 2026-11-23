@@ -16,7 +16,13 @@
 import { signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { CONTENT, SCORE_LABELS, type Action, type MilestoneRecord } from '../../rules/index.ts';
+import {
+  CONTENT,
+  SCORE_LABELS,
+  type Action,
+  type HouseState,
+  type MilestoneRecord,
+} from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { cameraEls, cameraScale, streetView } from '../board/camera.ts';
 import { timelapse } from '../board/timelapse.ts';
@@ -26,10 +32,19 @@ import { breakable, formatNumber } from '../format.ts';
 import { photoShown } from '../hud/actions.ts';
 import { Button, Icon, Sheet, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
+import { CELL } from '../sprites.ts';
 import { log, run } from '../store.ts';
 import { resultTag } from './EndScreen.tsx';
+import { endSignShown } from './Overlays.tsx';
 import { paintPhoto } from './photo-paint.ts';
-import { milestoneShots, photoFrame, type MilestoneShot, type PhotoFrame } from './photos.ts';
+import {
+  endPan,
+  houseBox,
+  milestoneShots,
+  photoFrame,
+  type MilestoneShot,
+  type PhotoFrame,
+} from './photos.ts';
 import './photos.css';
 
 const WOW = SCORE_LABELS.total;
@@ -44,21 +59,49 @@ let dealtFor: readonly Action[] | null = null;
 let framedFor: readonly Action[] | null = null;
 
 /**
- * Pans the board so the house is in the middle of the view the strip leaves (in a window too
- * small for the whole lot; at 1080p it's all in view and nothing moves): the house is the
- * end screen's hero. Once per run, so a pan the player makes afterwards stays.
+ * Where the "It's a house." sign ends on the screen (EndCaption), with the gap its column keeps
+ * under it, or null while it isn't up. From its layout box rather than its rect: it slides in
+ * (end.css), and mid-slide its rect sits higher than where it lands.
  */
-function showHouse(frame: PhotoFrame, still: boolean): void {
+function signBottom(): number | null {
+  const place = document.querySelector<HTMLElement>('.run-end-caption-place');
+  const sign = place?.querySelector<HTMLElement>('.run-end-caption');
+  if (!place || !sign) return null;
+  const gap = parseFloat(getComputedStyle(place).rowGap) || 0;
+  return place.getBoundingClientRect().top + sign.offsetTop + sign.offsetHeight + gap;
+}
+
+/**
+ * Pans the board so the house is the hero of the view the strip leaves (in a window too small
+ * for the whole lot; at 1080p it's all in view and nothing moves): its rooms in the middle of
+ * the view under the sign, or their top just under it where they're taller than that
+ * (photos.ts endPan). Centered in the whole view, a tall house's top rooms sat under the sign at
+ * 1280×720 and 1366×768 (D-204). Once per run, so a pan the player makes afterwards stays.
+ */
+function showHouse(house: HouseState, frame: PhotoFrame, still: boolean): void {
   const { scroll, board } = cameraEls;
   if (!scroll || !board) return;
   const scale = cameraScale.value;
   const b = board.getBoundingClientRect();
   const v = scroll.getBoundingClientRect();
-  scroll.scrollBy({
-    left: b.left + (frame.x + frame.w / 2) * scale - (v.left + v.width / 2),
-    top: b.top + (frame.y + frame.h / 2) * scale - (v.top + v.height / 2),
-    behavior: still ? 'auto' : 'smooth',
-  });
+  const box = houseBox(house);
+  const px = CELL * scale;
+  // On an empty lot, the photos' frame: the middle of the lot.
+  const rooms = box
+    ? {
+        left: b.left + box.x0 * px,
+        top: b.top + box.y0 * px,
+        right: b.left + box.x1 * px,
+        bottom: b.top + box.y1 * px,
+      }
+    : {
+        left: b.left + frame.x * scale,
+        top: b.top + frame.y * scale,
+        right: b.left + (frame.x + frame.w) * scale,
+        bottom: b.top + (frame.y + frame.h) * scale,
+      };
+  const pan = endPan(v, signBottom(), rooms);
+  scroll.scrollBy({ ...pan, behavior: still ? 'auto' : 'smooth' });
 }
 
 /** Paints the run's photos a frame apart, once per run; the last run's images are let go. */
@@ -121,25 +164,29 @@ function Strip() {
   // Dealt once per run, unless motion is reduced.
   const deal = useRef(!still && dealtFor !== actions);
   const mounted = useRef(performance.now());
+  // The house comes into view under the sign, so it waits for it: the sign waits for the
+  // run-end banner to clear (Overlays.tsx endSignShown).
+  const sign = endSignShown();
   useEffect(() => {
     paintAll(actions, shots, frame);
-    let raf = 0;
-    if (framedFor !== actions) {
-      framedFor = actions;
-      // Once the board has re-measured for the strip (a frame for the resize, one to lay out).
-      raf = requestAnimationFrame(() => {
-        raf = requestAnimationFrame(() => showHouse(frame, still));
-      });
-    }
-    const cancel = () => cancelAnimationFrame(raf);
-    if (!deal.current) return cancel;
+    if (!deal.current) return;
     dealtFor = actions;
     // A soft flick as each one lands, a little higher each time.
     shots.forEach((_, i) =>
       audio.play('place-yard', { rate: 1.1 + i * 0.05, gain: 0.45, delay: landsAt(i) / 1000 }),
     );
-    return cancel;
   }, [actions]);
+  useEffect(() => {
+    if (!sign || framedFor === actions) return;
+    // Once the board has re-measured for the strip (a frame for the resize, one to lay out).
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => {
+        framedFor = actions;
+        showHouse(s.house, frame, still);
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [actions, sign]);
   if (shots.length === 0) return null;
   const urls = photoUrls.value;
   const style = {
