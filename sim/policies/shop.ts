@@ -49,6 +49,7 @@ import {
   type RunState,
   type Selector,
   type ShopOffer,
+  type UpgradeId,
   type UseToolAction,
 } from '../../src/rules/index.ts';
 import { rankPlays, withoutLookalikes, type EarlyMode } from './greedy.ts';
@@ -321,6 +322,8 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
     }
     case 'upgrade': {
       const slots = rules.slots(s);
+      // D-209: what it brings, on top of its slot.
+      const brings = deliveryValue(rules, s, good.id, rng, bot);
       switch (good.id) {
         case 'biggerTruck':
           return weekly * left * 0.12;
@@ -328,14 +331,17 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
           return weekly * phasesLeft(rules, s) * 0.3;
         case 'storageUnit': {
           // Only bought pieces fill the slots: a crew's, an arrival's, the client's and the
-          // stock's cards sit in extra ones (D-160).
+          // stock's cards sit in extra ones (D-160), and so do its own (D-209).
           const used = s.reserve.filter((r) => !inExtraSlot(r)).length;
-          return used >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5;
+          return (used >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5) + brings;
         }
         case 'toolBelt':
-          return s.supplies.length >= slots.supplies ? weekly * left * 0.04 : weekly * 0.5;
+          return (
+            (s.supplies.length >= slots.supplies ? weekly * left * 0.04 : weekly * 0.5) + brings
+          );
         case 'draftingTable':
-          return s.blueprints.length >= slots.blueprints ? weekly * left * 0.08 : weekly * 0.5;
+          // Its pick fills the slot it adds, so a full row gains no room beyond it.
+          return (s.blueprints.length >= slots.blueprints ? 0 : weekly * 0.5) + brings;
         case 'supplierDiscount':
         case 'savingsAccount':
           return weekly * phasesLeft(rules, s) * 0.6;
@@ -343,6 +349,68 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
     }
   }
   return 0;
+}
+
+/** D-209: a delivery's worth is a guess at goods to come, so it's taken at this share. */
+const DELIVERY_TAKE = 0.6;
+
+/**
+ * D-209: what a company upgrade brings, over the rest of the run (rough), from the milestone
+ * after the shop (the phase the shop leads into) to the last:
+ * - a special piece each milestone: one sampled special piece the house doesn't have, from the
+ *   bot's own stream (as a crate's options are), at its best placement now, paid from each
+ *   milestone's start to the run's end;
+ * - a tool each milestone: the average offered tool of its rarity, valued now, once a
+ *   milestone (a tool it's blind to counts 0);
+ * - a pick as it's bought: the best of a few sampled blueprints of its rarity, as a crate's.
+ */
+function deliveryValue(rules: Rules, s: RunState, id: UpgradeId, rng: Rng, bot: ShopBot): number {
+  const c = rules.content;
+  const d = c.upgrades[id].delivers;
+  if (!d) return 0;
+  const n = c.balance.phases.length;
+  const W = c.balance.weeksPerPhase;
+  const first = s.screen === 'shop' ? s.phase : s.phase + 1;
+  const milestones = Math.max(0, n - first);
+  switch (d.kind) {
+    case 'specialPiece': {
+      const have = new Set([
+        ...s.house.pieces.map((p) => c.pieces[p.defId].countsAs ?? p.defId),
+        ...s.reserve.map((r) => r.id),
+      ]);
+      const pool = Object.values(c.pieces).filter(
+        (p) => p.special && !p.member && !p.addition && !have.has(p.id),
+      );
+      if (pool.length === 0 || milestones === 0) return 0;
+      const piece = rng.pick(pool);
+      const b = asBuild(s, { hand: [{ kind: 'piece', id: piece.id }], reserve: [] });
+      const perWeek = bestPlacement(rules, b, bot.salt);
+      // Weeks each one earns: (n − q) × W from milestone q's start.
+      let weeks = 0;
+      for (let q = first; q < n; q++) weeks += (n - q) * W;
+      return perWeek * weeks * DELIVERY_TAKE;
+    }
+    case 'tool': {
+      const tools = Object.values(c.tools).filter((t) => t.offered && t.rarity === d.rarity);
+      if (tools.length === 0) return 0;
+      let sum = 0;
+      for (const t of tools) sum += goodValue(rules, s, { kind: 'tool', id: t.id }, rng, bot);
+      return (sum / tools.length) * milestones * DELIVERY_TAKE;
+    }
+    case 'blueprintPick': {
+      const pool = Object.values(c.blueprints).filter(
+        (x) => x.offered && x.rarity === d.rarity && !s.blueprints.some((o) => o.id === x.id),
+      );
+      let best = 0;
+      for (let k = 0; k < d.options && pool.length > 0; k++) {
+        best = Math.max(
+          best,
+          goodValue(rules, s, { kind: 'blueprint', id: rng.pick(pool).id }, rng, bot),
+        );
+      }
+      return best * 0.9;
+    }
+  }
 }
 
 function offerValue(rules: Rules, s: RunState, o: OfferView, rng: Rng, bot: ShopBot): number {

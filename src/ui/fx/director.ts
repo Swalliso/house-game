@@ -294,16 +294,22 @@ export const neighborMoment = signal<{
 /** D-206: an overtime week the neighbor just gave: the top bar's new clock pops, each id once. */
 export const overtimeGift = signal<{ id: number } | null>(null);
 /**
- * D-160: the standing stock's or the client's cards, (D-171) the crew's, or (D-188) the wrong
- * delivery's piece, just in the reserve: the reserve slots (`slots`, by index) that pop in, after
- * `delayMs`. `from` is the last of the week's deliveries; `slots` holds them all.
+ * D-160: the standing stock's or the client's cards, (D-171) the crew's, (D-188) the wrong
+ * delivery's piece, or (D-209) a company upgrade's, just in the reserve: the reserve slots
+ * (`slots`, by index) that pop in, after `delayMs`. `from` is the last of the week's deliveries;
+ * `slots` holds them all.
  */
 export const justDelivered = signal<{
-  from: 'client' | 'stock' | 'crew' | 'surprise';
+  from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade';
   slots: readonly number[];
   delayMs: number;
   id: number;
 } | null>(null);
+/**
+ * D-209: a tool just in the supplies at a milestone's start, the crew's (D-171) or a company
+ * upgrade's (the Tool Belt's): the supply slots (by index) that pop in, as the reserve's do.
+ */
+export const justSupplied = signal<{ slots: readonly number[]; id: number } | null>(null);
 
 /**
  * The board registers these, so the director can wobble pieces, shake the screen, lean the
@@ -319,6 +325,14 @@ export const fxHooks: {
 let nextId = 1;
 /** D-188: the state the showing delivery pop was taken from, so a week's deliveries pop together. */
 let deliveredAfter: RunState | null = null;
+/** D-209: the state a milestone's goods (the crew's tool, an upgrade's piece or tool) came in. */
+let goodsNoteAfter: RunState | null = null;
+/** D-209: the tools that went into the supplies in that state, so they pop together. */
+let suppliedNow = 0;
+/** D-209: the neutral notes the action playing now brings, in order (`noteFlash`). */
+let noteBuffer: string[] = [];
+/** D-209: the later of an action's notes, waiting their turn. */
+let noteTimers: ReturnType<typeof setTimeout>[] = [];
 let skipping = false;
 let holding = false;
 let accelerator = 0;
@@ -1758,7 +1772,7 @@ function swapBeat(e: GameEvent): void {
     names.length <= 2
       ? names.join(' and ')
       : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
-  flash.value = { id: nextId++, text: `Swapped out ${list}: nowhere to go`, tone: 'note' };
+  noteFlash(`Swapped out ${list}: nowhere to go`);
 }
 
 /**
@@ -1798,13 +1812,7 @@ function shopBeat(e: GameEvent): void {
       audio.play('rotate', { rate: 1.2 });
       break;
     case 'shopClosed':
-      if (e.skipReward > 0) {
-        flash.value = {
-          id: nextId++,
-          text: `+${e.skipReward} budget for saving up`,
-          tone: 'note',
-        };
-      }
+      if (e.skipReward > 0) noteFlash(`+${e.skipReward} budget for saving up`);
       break;
     default:
       break;
@@ -1829,6 +1837,11 @@ function sheetBeat(e: GameEvent, after: RunState): void {
       break;
     case 'delivered':
       deliveredBeat(e, after);
+      // D-209: an upgrade's piece is named too, so it's seen with Your goods folded (D-121).
+      if (e.from === 'upgrade' && e.upgrade) {
+        const by = CONTENT.upgrades[e.upgrade].name;
+        goodsNote(`Your ${by} brought ${toolOrPiece(CONTENT.pieces[e.cards[0]!]!.name)}`, after);
+      }
       break;
     case 'neighborAsked':
       neighborAskedBeat(e, after);
@@ -1837,20 +1850,87 @@ function sheetBeat(e: GameEvent, after: RunState): void {
       // D-171: the crew's tool is in the supplies as the milestone's first week opens (or sold,
       // with the supplies full): a neutral flash names it, with the delivery's shimmer.
       const name = CONTENT.tools[e.tool].name;
-      flash.value = {
-        id: nextId++,
-        text:
-          e.sold === undefined
-            ? `Your crew brought a ${name}`
-            : `Supplies full: ${name} sold for ${num(e.sold)}`,
-        tone: 'note',
-      };
+      goodsNote(
+        e.sold === undefined
+          ? `Your crew brought ${toolOrPiece(name)}`
+          : `Supplies full: ${name} sold for ${num(e.sold)}`,
+        after,
+        e.sold === undefined,
+      );
+      audio.play('sparkle', { gain: 0.5 });
+      break;
+    }
+    case 'upgradeTool': {
+      // D-209: a company upgrade's tool (the Tool Belt's), as the crew's comes.
+      const name = CONTENT.tools[e.tool].name;
+      const by = CONTENT.upgrades[e.upgrade].name;
+      goodsNote(
+        e.sold === undefined
+          ? `Your ${by} brought ${toolOrPiece(name)}`
+          : `Supplies full: ${name} sold for ${num(e.sold)}`,
+        after,
+        e.sold === undefined,
+      );
       audio.play('sparkle', { gain: 0.5 });
       break;
     }
     default:
       break;
   }
+}
+
+/** "a Weekend Crew", "an Open House Party", and "Remodel Plans: Suite" (a plural takes none). */
+function toolOrPiece(name: string): string {
+  return /^Remodel Plans/.test(name) ? name : article(name);
+}
+
+/**
+ * D-209: the neutral flash that names a milestone's goods as they come: the crew's tool (D-171),
+ * a company upgrade's piece or tool. A week that brings several names each in turn (`noteFlash`),
+ * and the tools that went into the supplies (`supplied`) pop their slots together, as the
+ * reserve's do. They come as the milestone's first week starts, after anything else that week
+ * adds to the supplies, so the tools it brought are the supplies' last.
+ */
+function goodsNote(text: string, after: RunState, supplied = false): void {
+  if (goodsNoteAfter !== after) suppliedNow = 0;
+  goodsNoteAfter = after;
+  noteFlash(text);
+  if (!supplied) return;
+  suppliedNow++;
+  const n = after.supplies.length;
+  const slots = Array.from({ length: Math.min(suppliedNow, n) }, (_, k) => n - 1 - k);
+  const pop = { slots, id: nextId++ };
+  justSupplied.value = pop;
+  setTimeout(() => {
+    if (justSupplied.value?.id === pop.id) justSupplied.value = null;
+  }, FEEL.delivered.popMs);
+}
+
+/**
+ * D-209: a neutral note over the board. The notes one action brings (the saving-up bonus as the
+ * shop closes, each of the milestone's goods, a draw's swaps) show one after another, each for
+ * its `targetFlashMs`, in the order they came: set in one moment, the last replaced the others,
+ * so a swap hid the Tool Belt's tool. Each is its own note, since two joined ran past the board
+ * at 1728 px in the pixel font. The next action drops any still waiting.
+ */
+function noteFlash(text: string): void {
+  if (noteBuffer.length === 0) queueMicrotask(flushNotes);
+  noteBuffer.push(text);
+}
+
+function flushNotes(): void {
+  const notes = noteBuffer;
+  noteBuffer = [];
+  for (const t of noteTimers) clearTimeout(t);
+  noteTimers = [];
+  const gen = generation;
+  notes.forEach((text, k) => {
+    const show = () => {
+      if (gen === generation) flash.value = { id: nextId++, text, tone: 'note' };
+    };
+    if (k === 0) show();
+    else noteTimers.push(setTimeout(show, k * FEEL.targetFlashMs));
+  });
 }
 
 /**
@@ -2234,6 +2314,9 @@ onEvents((events, before, after) => {
   finishStrike();
   // D-186: so does a deal, and a hand drawn around a kept card deals in.
   finishDeal();
+  // D-209: the last action's notes still waiting give way to this one.
+  for (const t of noteTimers) clearTimeout(t);
+  noteTimers = [];
   let struck = false;
   for (const e of events) {
     if (e.t === 'cardPinned') pinBeat(e);
@@ -2261,6 +2344,10 @@ onEvents((events, before, after) => {
 onRunReset(() => {
   generation++;
   skipping = true;
+  // D-209: the last run's notes still to come go with it.
+  for (const t of noteTimers) clearTimeout(t);
+  noteTimers = [];
+  noteBuffer = [];
   // D-157: a strike's beat and its words go with the run, and D-186's deal.
   finishStrike();
   finishDeal();

@@ -1192,6 +1192,8 @@ class Checker {
       if (s.reserve[a.i]?.stock) this.see('place:stock');
       // D-188: the wrong delivery's piece.
       if (s.reserve[a.i]?.surprise) this.see('place:surprise');
+      // D-209: a company upgrade's piece (the Storage Unit's).
+      if (s.reserve[a.i]?.upgrade) this.see('place:upgrade');
     }
     if (a.t === 'answerChangeOrder') this.see(`answer:${a.i === 0 ? 'first' : 'second'}`);
     if (a.t === 'useTool') {
@@ -1290,6 +1292,12 @@ const COVERAGE: readonly string[] = [
   // D-188: the wrong delivery lands at Framing's start, and is placed.
   ...prefixed('delivered', ['surprise']),
   ...prefixed('place', ['surprise']),
+  // D-209: the Storage Unit's piece lands at a milestone's start and is placed, the Tool Belt's
+  // tool comes, and the Drafting Table's pick opens.
+  ...prefixed('delivered', ['upgrade']),
+  ...prefixed('place', ['upgrade']),
+  ...prefixed('event', ['upgradeTool']),
+  ...prefixed('crate', ['draftingTable']),
   // D-211: a room is finished, and pays.
   ...prefixed('event', ['roomFinished']),
   // D-206: the neighbor asks at Roofing's start, and their ask resolves at its milestone.
