@@ -165,6 +165,7 @@ import {
   clearNote,
   copyNote,
   NO_NUMBER,
+  oneAWeekNeeds,
   payingDef,
   rhythmOf,
   setNeeds,
@@ -769,15 +770,16 @@ export function createRules(content: Content): Rules {
       return { ...NO_PLAY, reason: `An Addition grows a room: lay it beside ${article(rooms)}.` };
     }
     // D-165: a house holds one Kitchen; another Kitchen card extends it where it can grow
-    // (D-168), and renovates it otherwise (D-169).
+    // (D-168), and renovates it otherwise (D-169). A type Extend can't grow only renovates.
     if (capReached(state, def)) {
       const room = content.pieces[rootType(def)].name;
+      const does = extendsAny(def) ? 'extends or renovates' : 'renovates';
       return {
         ...NO_PLAY,
         reason:
           perHouseOf(content, def) === 1
-            ? `The house has its ${room}: this card extends or renovates it.`
-            : `The house has its ${plural(room)}: this card extends or renovates one.`,
+            ? `The house has its ${room}: this card ${does} it.`
+            : `The house has its ${plural(room)}: this card ${does} one.`,
       };
     }
     if (
@@ -4102,11 +4104,17 @@ export function createRules(content: Content): Rules {
     const use = content.tools[id].use;
     // As if bought and used in the week valued, as tools.ts uses it.
     const s: RunState = { ...first, supplies: [...first.supplies, { kind: 'tool', id }] };
-    const used = (): RunState =>
-      useTool(toolCtx, s, { t: 'useTool', i: s.supplies.length - 1 }, []);
+    const action: UseToolAction = { t: 'useTool', i: s.supplies.length - 1 };
+    const used = (): RunState => useTool(toolCtx, s, action, []);
     const before = tallyOf(first, first.house, false);
     switch (use.kind) {
       case 'weekModifiers': {
+        // D-210: a second Photo Shoot can't be used in a week that has one. Used anyway it would
+        // add nothing, and its line said "Adds nothing to your house yet": it waits instead.
+        if (!canUseTool(toolCtx, s, action).ok) {
+          const needs = oneAWeekNeeds(content.tools[id].name, run.length > 1);
+          return { kind: 'needs', needs };
+        }
         const after = used();
         const tally = tallyOf(after, after.house, false);
         const gain = tally.total - before.total;

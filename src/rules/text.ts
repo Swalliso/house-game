@@ -629,7 +629,7 @@ export function cardText(content: Content, def: PieceDef): CardText {
     : undefined;
   const member = def.member ? memberText(content, def) : undefined;
   const cap = perHouseOf(content, def);
-  const perHouse = cap === undefined ? undefined : perHouseText(cap);
+  const perHouse = cap === undefined ? undefined : perHouseText(cap, extendsRoom(content, def));
   const tags = new Set<Tag>();
   const props = new Set<Property>();
   for (const e of def.effects) effectTags(e, tags, props);
@@ -678,12 +678,16 @@ export function perHouseOf(content: Content, def: PieceDef): number | undefined 
   return content.pieces[def.countsAs ?? def.id]?.perHouse;
 }
 
-/** "One per house: extend or renovate." */
-export function perHouseText(n: number): string {
+/**
+ * "One per house: extend or renovate.", and for a type Extend can't grow (a Library, a Home
+ * Office), "One per house: renovate."
+ */
+export function perHouseText(n: number, extend: boolean): string {
   const count = n === 1 ? 'One' : n === 2 ? 'Two' : `${n}`;
   // D-169: a spare card extends a room it can grow (D-168), and renovates otherwise: six words,
-  // as D-165's "another renovates it" had.
-  return `${count} per house: extend or renovate.`;
+  // as D-165's "another renovates it" had. A spare card of a type Extend can't grow only
+  // renovates, so its line says only that.
+  return `${count} per house: ${extend ? 'extend or renovate' : 'renovate'}.`;
 }
 
 /**
@@ -880,17 +884,23 @@ function timesText(n: number): string {
 }
 
 /**
+ * D-168: whether a room card can extend a room of its type: one of `extend.types` (an L-Kitchen
+ * by its Kitchen), and not a member's card. The Addition grows any of them (growGain).
+ */
+function extendsRoom(content: Content, def: PieceDef): boolean {
+  return (
+    !def.member &&
+    def.category === 'indoor' &&
+    content.balance.extend.types.includes(def.countsAs ?? def.id)
+  );
+}
+
+/**
  * D-168: what extending a room with this card adds: `extend.pointsPerTile` for each of its tiles,
  * flat, before the room's percentages. 0 for a card that can't extend a room.
  */
 export function growGain(content: Content, def: PieceDef): number {
-  const root = def.countsAs ?? def.id;
-  if (
-    !def.addition &&
-    (def.member || def.category !== 'indoor' || !content.balance.extend.types.includes(root))
-  ) {
-    return 0;
-  }
+  if (!def.addition && !extendsRoom(content, def)) return 0;
   const tiles = def.shape.reduce((n, row) => n + row.split('#').length - 1, 0);
   return tiles * content.balance.extend.pointsPerTile;
 }
@@ -1479,6 +1489,9 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       .map((t) => `the ${t.name}`),
     'and',
   );
+  // What has it besides the tools: "The Full House set (×1.5) and a few Rare goods". No "Rare:"
+  // before it, which put the Uncommon Photo Shoot under Rare (D-210).
+  const sparkleHas = capitalize(`${sparkleSets ? `${sparkleSets} and ` : ''}a few Rare goods`);
   return {
     comfort: {
       title: L.points,
@@ -1490,7 +1503,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     sparkle: {
       title: L.xMult,
-      text: `Multiplies ${L.mult} itself. Rare: ${sparkleSets ? `${sparkleSets} and ` : ''}a few Rare goods have it, ${sparkleTools ? `each with a setup, and ${sparkleTools} for the week you use it` : 'and each needs a setup'}. Each source counts once a week.`,
+      text: `Multiplies ${L.mult} itself. ${sparkleHas} have it, ${sparkleTools ? `each with a setup, and ${sparkleTools} for the week you use it` : 'and each needs a setup'}. Each source counts once a week.`,
     },
     wow: {
       title: L.total,
@@ -1525,11 +1538,14 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         'week’s build; from your supplies, it’s free. A new one replaces the old, and it goes ' +
         'if its piece is demolished.',
     },
+    // The reserve, the supplies and the blueprints say no number of slots: the Storage Unit, the
+    // Tool Belt and the Drafting Table add one each (D-051, D-209), and the panel's count is the
+    // run's.
     reserve: {
       title: 'Reserve',
       text:
-        `Bought pieces wait here (${r.reserveSlots} slots). Placing one ` +
-        // D-169: a refilled stock says so in the words "is free: it" took (35 words either way).
+        `Bought pieces wait here. Placing one ` +
+        // D-169: a refilled stock says so in the words "is free: it" took (33 words either way).
         (refills ? 'doesn’t ' : 'is free: it doesn’t ') +
         `use your week. Extra slots hold what your crew, the client and their household ` +
         `bring` +
@@ -1540,17 +1556,20 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     supplies: {
       title: 'Supplies',
-      text: `Bought fixtures wait here (${r.supplySlots} slots). Installing one is free: it doesn’t use your week. Sell for half price.`,
+      // Tools wait here too: bought, the crew's and the Tool Belt's (D-171, D-209).
+      text: 'Fixtures you buy and your tools wait here. Installing or using one is free: it doesn’t use your week. Sell for half price.',
     },
     // What one is before what it does (D-158): an outside playtester read the word as "a thing
     // I would build".
     blueprints: {
       title: 'Blueprints',
-      text: `Bonuses that stay on for the whole run. You don’t build them: they sit in your goods (${r.blueprintSlots} slots, no duplicates). Sell one for half its price.`,
+      text: 'Bonuses that stay on for the whole run. You don’t build them: they sit in your goods (no duplicates). Sell one for half its price.',
     },
     rarity: {
       title: 'Rarity',
-      text: `Common, Uncommon, or Rare. Later shops stock more Rare goods, and only Rare goods have ${L.xMult}.`,
+      // Not "only Rare goods have Sparkle": the Photo Shoot is Uncommon (D-210). The Sparkle tip
+      // says which goods have it.
+      text: 'Common, Uncommon, or Rare. Later shops stock more Rare goods.',
     },
     sale: {
       title: 'Sale',

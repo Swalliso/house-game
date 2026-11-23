@@ -18,6 +18,7 @@ import {
   sunSideText,
   toolText,
 } from './text.ts';
+import type { PieceId } from './index.ts';
 import { TEST_CONTENT as C } from './testing.ts';
 import { CONTENT } from '../content/index.ts';
 
@@ -106,8 +107,7 @@ describe('modifier text', () => {
     const shoot = CONTENT.tools.photoShoot;
     const tip = (tools: Partial<typeof CONTENT.tools>) =>
       glossary({ ...CONTENT, tools: { ...CONTENT.tools, ...tools } }).sparkle.text;
-    const rare =
-      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it';
+    const rare = 'Multiplies Charm itself. The Full House set (×1.5) and a few Rare goods have it';
     expect(tip({ photoShoot: { ...shoot, offered: false } })).toBe(
       `${rare}, and each needs a setup. Each source counts once a week.`,
     );
@@ -445,9 +445,9 @@ describe('set chips (D-122)', () => {
   it('the glossary names the Sparkle set at the content’s number, and the Garage’s drive (D-140, D-195)', () => {
     const g = glossary(CONTENT);
     // Generated from the set, so a tuned number can't leave "×2" behind; and from the tools, so
-    // the Uncommon Photo Shoot is named (D-210).
+    // the Uncommon Photo Shoot is named (D-210), and not under a "Rare:".
     expect(g.sparkle.text).toBe(
-      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, each with a setup, and the Photo Shoot for the week you use it. Each source counts once a week.',
+      'Multiplies Charm itself. The Full House set (×1.5) and a few Rare goods have it, each with a setup, and the Photo Shoot for the week you use it. Each source counts once a week.',
     );
     // D-195: the Garage earns +2 off its drive, so it isn't among the pieces that earn nothing
     // without something; its garage sales still count for the budget.
@@ -467,5 +467,52 @@ describe('set chips (D-122)', () => {
       '+3 if touching a Garage',
       '+2 every week in the front yard', // D-166
     ]);
+  });
+});
+
+// Words that read as true in every run: a review of develop found these false (2026-11-23).
+describe('the tips and the cards, true in any run', () => {
+  const g = glossary(CONTENT);
+
+  it('doesn’t say only Rare goods have Sparkle: the Photo Shoot is Uncommon (D-210)', () => {
+    expect(CONTENT.tools.photoShoot.rarity).toBe('uncommon');
+    expect(g.rarity.text).toBe('Common, Uncommon, or Rare. Later shops stock more Rare goods.');
+  });
+
+  it('gives Your goods’ rows no number of slots, and puts tools in the supplies (D-209)', () => {
+    // Each row's slots go up by one with its upgrade; the panel's header counts them.
+    const upgrades = ['storageUnit', 'toolBelt', 'draftingTable'] as const;
+    expect(upgrades.map((id) => CONTENT.upgrades[id].modifiers)).toEqual([
+      [{ kind: 'rule', key: 'reserveSlots', add: 1 }],
+      [{ kind: 'rule', key: 'supplySlots', add: 1 }],
+      [{ kind: 'rule', key: 'blueprintSlots', add: 1 }],
+    ]);
+    for (const term of ['reserve', 'supplies', 'blueprints'] as const) {
+      expect(g[term].text, term).not.toMatch(/\d+ slots?\b/);
+    }
+    expect(g.reserve.text).toMatch(
+      /^Bought pieces wait here\. Placing one doesn’t use your week\./,
+    );
+    expect(g.supplies.text).toBe(
+      'Fixtures you buy and your tools wait here. Installing or using one is free: it doesn’t use your week. Sell for half price.',
+    );
+    expect(g.blueprints.text).toContain(
+      'You don’t build them: they sit in your goods (no duplicates).',
+    );
+  });
+
+  it('says a spare card extends only where Extend grows its type (D-169)', () => {
+    const line = (id: PieceId) => cardText(CONTENT, CONTENT.pieces[id]).perHouse;
+    expect(line('kitchen')).toBe('One per house: extend or renovate.');
+    expect(line('lKitchen')).toBe('One per house: extend or renovate.');
+    expect(line('livingRoom')).toBe('Two per house: extend or renovate.');
+    expect(line('library')).toBe('One per house: renovate.');
+    expect(line('homeOffice')).toBe('Two per house: renovate.');
+    for (const def of Object.values(CONTENT.pieces)) {
+      const text = cardText(CONTENT, def).perHouse;
+      if (!text) continue;
+      const grows = CONTENT.balance.extend.types.includes(def.countsAs ?? def.id);
+      expect(text, def.id).toMatch(grows ? /: extend or renovate\.$/ : /: renovate\.$/);
+    }
   });
 });

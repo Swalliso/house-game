@@ -202,6 +202,28 @@ describe('Photo Shoot', () => {
     expect(used.supplies).toEqual([tool('photoShoot')]);
   });
 
+  it('a second one’s worth says it waits for next week, not that it adds nothing', () => {
+    // The review's run: seed photo-1, a card built, two Photo Shoots from the ?debug panel.
+    let s = rules.newRun({
+      seed: 'photo-1',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    const card = rules.legalPlacements(s).find((p) => p.from === 'hand')!;
+    s = rules.apply(s, card).state;
+    const give: Action = { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'photoShoot' } };
+    s = rules.apply(rules.apply(s, give).state, give).state;
+    expect(s.supplies).toEqual([tool('photoShoot'), tool('photoShoot')]);
+    expect(rules.toolValue(s, 'photoShoot')).toMatchObject({ kind: 'week' });
+    const used = useTool(s).state;
+    expect(rules.canUseTool(used, USE).ok).toBe(false);
+    expect(rules.toolValue(used, 'photoShoot')).toEqual({
+      kind: 'needs',
+      needs: 'Waits for next week: this week has a Photo Shoot',
+    });
+  });
+
   it('the once-a-week rule is for a ×Mult: a second Rush Order the same week adds again', () => {
     const s = build([['bedroom', 0, 0]], {
       supplies: [tool('rushOrder'), tool('rushOrder'), tool('photoShoot')],
