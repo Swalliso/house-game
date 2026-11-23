@@ -136,6 +136,12 @@ function effectProblems(effect: Effect, where: string, nested: boolean): string[
   switch (effect.kind) {
     case 'aura':
       if (!effect.pct && !effect.amount) problems.push(`${where}: an aura needs pct or amount`);
+      // D-199: a landmark reaches 1 to 3 tiles (Combolands' small buildings 1, its rarest 3).
+      if (typeof effect.scope === 'object') {
+        const r = effect.scope.within;
+        if (!Number.isInteger(r) || r < 1 || r > 3)
+          problems.push(`${where}: an aura reaches within 1 to 3 tiles, not ${r}`);
+      }
       break;
     case 'rhythm':
       positiveInt(effect.every, 'rhythm every');

@@ -17,7 +17,7 @@ const BACK: readonly PieceId[] = [
   'treehouse',
   'doghouse',
 ];
-const FRONT: readonly PieceId[] = ['flowerBed', 'driveway', 'porch'];
+const FRONT: readonly PieceId[] = ['flowerBed', 'driveway', 'porch', 'fountain'];
 
 describe('yard sides (D-166)', () => {
   it('back-yard pieces earn +1 out back; front-yard pieces +2 in front', () => {

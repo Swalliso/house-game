@@ -184,7 +184,8 @@ describe('Fireplace', () => {
     expect(
       earned(['T.........', ...emptyRows(10, 9)], [['livingRoom', 1, 0]], [[1, 'fireplace']]),
     ).toEqual([8]);
-    // A Library beside a Bedroom: 2 at +100%. Only its host: the Bedroom keeps its 3 + 1.
+    // A Library beside a Bedroom: 2 at +100%. Only its host: the Bedroom keeps its 3 + 1, and
+    // + 1 for being within the Library's reach (D-199).
     expect(
       earned(
         open,
@@ -194,7 +195,7 @@ describe('Fireplace', () => {
         ],
         [[1, 'fireplace']],
       ),
-    ).toEqual([4, 4]);
+    ).toEqual([4, 5]);
   });
 
   it('fits rooms only: not a Hallway or a Lawn', () => {

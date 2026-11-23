@@ -435,6 +435,27 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
       { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 4 },
     ],
   }),
+  // D-199's landmark of the draw. Weight 0 here too, so the test content's draws stay as they
+  // were, and not special, as it isn't in the content, so no shop sells it; its reach is the
+  // content's.
+  fountain: piece({
+    id: 'fountain',
+    name: 'Fountain',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Wet', 'Pretty'],
+    drawWeight: 0,
+    complexity: 2,
+    effects: [
+      {
+        kind: 'aura',
+        match: { any: [{ tag: 'Outdoor' }, { tag: 'Pretty' }] },
+        scope: { within: 2 },
+        pct: 10,
+      },
+      { kind: 'steady', amount: 1 },
+    ],
+  }),
   // Member rooms (M4b, D-103): weight 0, counting as Bedrooms, never drawn or sold. No test
   // client's household brings them unless a test gives it one (withHousehold).
   nursery: piece({

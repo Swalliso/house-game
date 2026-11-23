@@ -1039,6 +1039,24 @@ describe('our own drawings', () => {
       expect(Math.floor(hen.x / CELL) === Math.floor(coop.x / CELL)).toBe(false);
     }
   });
+
+  it('draw the Fountain (D-199) in its cell, its water falling a pixel a frame', () => {
+    for (const rot of [0, 1] as const) {
+      const l = yardOf(house([['fountain', 3, 3, rot]])).pieces.get(1)!;
+      expect(l.items.map((i) => i.sprite)).toEqual(['own-fountain']);
+      expect(problems(l)).toEqual([]);
+      expect(risingParts(l)).toEqual([]);
+    }
+    const { w, h } = artSize('own-fountain');
+    expect(w).toBeLessThanOrEqual(CELL);
+    expect(h).toBeLessThanOrEqual(CELL);
+    expect(artFrames('own-fountain')).toEqual({ frames: 3, stride: w, ms: FEEL.fountain.flowMs });
+    // The frames differ only in the water: the stone is the same in each.
+    const frames = DRAWINGS['own-fountain'].frames;
+    const stone = (f: readonly string[]) => f.map((r) => r.replace(/[Vz]/g, '.')).join('/');
+    expect(new Set(frames.map(stone)).size).toBe(1);
+    expect(new Set(frames.map((f) => f.join('/'))).size).toBe(3);
+  });
 });
 
 describe('the Doghouse’s dog (D-179)', () => {

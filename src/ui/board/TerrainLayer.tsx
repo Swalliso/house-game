@@ -24,7 +24,7 @@
 // Both redraw before the browser paints (once the atlas has loaded), so a tree cleared for a
 // piece goes in the same frame the piece appears. No canvas takes the pointer.
 // Over the group, under the pieces, a soft tint shows the house's fenced yards, and while a card
-// that reads one is picked, the front or the back yard (D-166).
+// that reads one is picked, the front or the back yard (D-166), and a landmark's reach (D-199).
 
 import type { JSX } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -33,6 +33,7 @@ import {
   type Cell,
   type HouseState,
   type Lot,
+  type ReachOf,
   type RunState,
   type Yard,
 } from '../../rules/index.ts';
@@ -493,6 +494,25 @@ export function SideTint({
       ))}
     </>
   );
+}
+
+/**
+ * D-199: a landmark's reach, the square of tiles its auras reach (rules.reachTiles), shaded in
+ * D-166's yard tint, under the pieces' props, with a solid edge: around the ghost while its card
+ * is picked, so the square follows it from spot to spot, and around a placed one while Inspect
+ * shows it. It never animates, so Reduce motion changes nothing.
+ */
+export function ReachTint({ state, of, scale }: { state: RunState; of: ReachOf; scale: number }) {
+  const { house } = state;
+  const key =
+    'uid' in of
+      ? `piece ${of.uid}`
+      : `${of.defId} ${of.cells.map((c) => `${c.x},${c.y}`).join(' ')}`;
+  const cells = useMemo(() => {
+    const w = house.lot.width;
+    return rules.reachTiles(state, of).map((i) => ({ x: i % w, y: Math.floor(i / w) }));
+  }, [house, key]); // The square depends only on the house and where the piece is.
+  return <Outline cells={cells} scale={scale} lot={house.lot} class="reach-tint" />;
 }
 
 /** The fenced yards (rules.fencedTiles), tinted under the pieces so players can see them. */

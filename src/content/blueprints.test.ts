@@ -253,8 +253,9 @@ describe('Curb Appeal', () => {
 describe('Quiet Hours', () => {
   it('Quiet pieces earn +75% (D-143)', () => {
     expectText('quietHours', ['Quiet pieces earn +75%']);
-    // Bedroom 3 + 1 for the Library: 7. Library 2: 3.5 → 4. A Kitchen (Social; +2 in the sun,
-    // D-120, and +3 of its own, D-165) and a Closet (no tags) aren't boosted.
+    // Bedroom 3 + 1 for touching the Library + 1 for being within its reach (D-199): 8.75 → 9.
+    // Library 2: 3.5 → 4. A Kitchen (Social; +2 in the sun, D-120, and +3 of its own, D-165)
+    // and a Closet (no tags) aren't boosted.
     expect(
       withAndWithout('quietHours', open, [
         ['bedroom', 0, 0],
@@ -263,8 +264,8 @@ describe('Quiet Hours', () => {
         ['closet', 9, 0],
       ]),
     ).toEqual([
-      [4, 2, 5, 1],
-      [7, 4, 5, 1],
+      [5, 2, 5, 1],
+      [9, 4, 5, 1],
     ]);
   });
 });

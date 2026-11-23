@@ -688,7 +688,7 @@ describe('crates', () => {
     // Member rooms (M4b) and the Addition (D-171) are weight 0 too, but never in a crate: the
     // Showroom's are the special pieces (D-200).
     const special = defs.filter((d) => d.special).map((d) => d.id);
-    expect(garden).toHaveLength(16); // 11 yard pieces (2 of them packs) and 5 outbuildings
+    expect(garden).toHaveLength(17); // 12 yard pieces (2 of them packs) and 5 outbuildings
     expect(special).toHaveLength(10); // the test content's Porch is weight 0 (D-145)
     const cases: [CrateId, PieceId[]][] = [
       ['gardenCenter', garden],

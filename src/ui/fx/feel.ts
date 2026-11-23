@@ -297,6 +297,11 @@ export const FEEL = {
    */
   dogBed: { breathMs: 2500, inMs: 1000, stepMs: 500 },
   /**
+   * The Fountain's water falls (D-199, drawings.ts): its jet and the two streams off its bowl
+   * move a whole art px down every `flowMs`, round three frames.
+   */
+  fountain: { flowMs: 160 },
+  /**
    * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
    * and walls are drawn with the whole house, so the flash shows which room is reacting.
    */

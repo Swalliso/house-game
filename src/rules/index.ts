@@ -61,6 +61,8 @@ export type PieceId =
   | 'birdhouse'
   // D-145: a late piece in the weekly draw from Drywall; every room it touches earns more.
   | 'porch'
+  // D-199: a landmark in the weekly draw from Framing; it brightens the yard within 2 tiles.
+  | 'fountain'
   // Member rooms (M4b, D-103): each arrives with a member of a client's household, into the
   // reserve. Never drawn, sold, or in the shop, a crate, or the Catalog; they count as Bedrooms.
   | 'nursery'
@@ -354,6 +356,12 @@ export type HouseCondition =
   | { not: HouseCondition };
 
 /**
+ * Where an aura reaches: the pieces it touches, the fenced yards it borders, or (D-199) a
+ * landmark's square of tiles, `within` 1 to 3 of its own (validateContent holds it there).
+ */
+export type AuraScope = 'adjacent' | 'region' | { within: number };
+
+/**
  * Effect kinds (§5). Timers count from the week a piece was placed: its age is
  * `week − placedWeek`, 0 in the week it's built. "Every 3rd week" pays when (age + 1) is a
  * multiple of 3, so the placement week counts as the first.
@@ -366,9 +374,10 @@ export type Effect =
   /**
    * Changes what each matching piece earns: `pct` to its percentage, `amount` to its flat
    * points. `adjacent`: touching pieces. `region`: pieces in the fenced yards it borders (the
-   * Mudroom).
+   * Mudroom). `{ within: r }` (D-199): a landmark's reach, every other piece with a tile within
+   * r tiles of one of its own, diagonals too, rooms and yard alike (layout.ts piecesWithin).
    */
-  | { kind: 'aura'; match: Selector; scope: 'adjacent' | 'region'; pct?: number; amount?: number }
+  | { kind: 'aura'; match: Selector; scope: AuraScope; pct?: number; amount?: number }
   /** Earns `amount` every `every`-th week of its life (the Pool). */
   | { kind: 'rhythm'; every: number; amount: number }
   /** Earns `perWeek` × the weeks it has stood, this one included, up to `max` (Good Bones). */
@@ -2358,6 +2367,12 @@ export interface TypeLimit {
  * change order's phase effect, M4b), so the inspect panel can say: "Dark · from Eternal night".
  */
 export type TagSource = { kind: 'card' } | { kind: 'interior' } | { kind: 'sunny' } | ModSource;
+
+/**
+ * D-199: whose reach rules.reachTiles works out: a placed piece's, or a card's on the tiles it
+ * would take (the ghost's), before it's placed.
+ */
+export type ReachOf = { uid: number } | { defId: PieceId; cells: readonly Cell[] };
 
 /** What the inspect panel says about a placed piece's place in the layout. */
 export interface PieceInfo {
