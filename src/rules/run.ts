@@ -171,6 +171,7 @@ import {
 } from './draw.ts';
 import { estimatePlay, type Estimate, type EstimateOptions } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
+import { isFinished } from './finished.ts';
 import {
   bounds,
   cellIndex,
@@ -1291,6 +1292,52 @@ export function createRules(content: Content): Rules {
       if (feature && reward) {
         s = payReward(s, reward, `find/${c.x},${c.y}`, events, { feature, x: c.x, y: c.y });
       }
+    }
+    return s;
+  }
+
+  /** D-211: whether a reward pays anything at all (an empty one pays nothing). */
+  const pays = (reward: Reward): boolean =>
+    !!(
+      reward.score ||
+      reward.budget ||
+      reward.rerolls ||
+      reward.demolitions ||
+      reward.overtime ||
+      reward.tool
+    );
+
+  /**
+   * D-211 (backlog S07, stage 2): the rooms finished in `after` that weren't in `before` (a
+   * fixture, and grown by Extend or Renovate: `isFinished`), in placement order. A play touches
+   * one room, so it finishes one at most. A new room is never finished, and finished never goes
+   * back (finished.ts), so a room is finished once in its life: only a demolished room's
+   * successor, a new room with a new uid, can be finished again.
+   */
+  function finishedBy(before: HouseState, after: HouseState): PlacedPiece[] {
+    const was = new Set(before.pieces.filter((p) => isFinished(p)).map((p) => p.uid));
+    return after.pieces.filter((p) => isFinished(p) && !was.has(p.uid));
+  }
+
+  /**
+   * D-211: each room a play finished pays `balance.finishReward` through payReward, once, on
+   * its own key (`finish/<uid>`), with a `roomFinished` event after the play's own. All three
+   * ways a play goes down call this: the free install from the supplies, a play that doesn't
+   * end the week, and the week's play (before its tally, as a find pays). `after` is the house
+   * the play left; `state` may still hold the one before it.
+   */
+  function payFinished(
+    state: RunState,
+    before: HouseState,
+    after: HouseState,
+    events: GameEvent[],
+  ): RunState {
+    const reward = b.finishReward;
+    if (!pays(reward)) return state;
+    let s = state;
+    for (const room of finishedBy(before, after)) {
+      events.push({ t: 'roomFinished', uid: room.uid, defId: room.defId, reward });
+      s = payReward(s, reward, `finish/${room.uid}`, events);
     }
     return s;
   }
@@ -2847,14 +2894,16 @@ export function createRules(content: Content): Rules {
       case 'extend': {
         const play = action.t === 'pass' ? null : action;
         if (play?.t === 'install' && play.from === 'supplies') {
-          // A free action: the fixture goes in, and the week goes on.
+          // A free action: the fixture goes in, and the week goes on. D-211: a room it finishes
+          // pays.
           const week = applyPlay(state, play);
           events.push(week.installed!);
-          return done({
+          const s: RunState = {
             ...state,
             house: week.house,
             supplies: state.supplies.filter((_, k) => k !== play.i),
-          });
+          };
+          return done(payFinished(s, state.house, week.house, events));
         }
         const check = play ? checkPlay(state, play) : undefined;
         const fromReserve = !!play && fromGoods(play);
@@ -2882,6 +2931,8 @@ export function createRules(content: Content): Rules {
             const uid = result.placed.uid;
             s = markBroken(s, breaksOf(state, result.house, uid), uid, events);
           }
+          // D-211: a room the play finished pays, then any find it dug up.
+          s = payFinished(s, state.house, result.house, events);
           return done(payFinds(s, check?.finds, events, state.house.lot));
         }
         const week = resolveWeek(state, play, true, check);
@@ -2896,7 +2947,9 @@ export function createRules(content: Content): Rules {
           const uid = week.placed.uid;
           s = markBroken(s, breaksOf(state, week.house, uid), uid, events);
         }
-        // A Time Capsule built over pays before the tally.
+        // D-211: a room the play finished pays before the tally, as a find does; then a Time
+        // Capsule built over.
+        s = payFinished(s, state.house, week.house, events);
         s = payFinds(s, check?.finds, events);
         // D-186: the pinned card comes into next week's hand, unless it's the card played.
         const keep = keepOf(s, play?.from === 'hand' ? play.i : undefined);
@@ -3965,6 +4018,8 @@ export function createRules(content: Content): Rules {
     // D-122: where the change comes from, named on the board.
     const specs = clientOf(state).specs;
     const specName = (id: string) => specs.find((sp) => sp.id === id)?.name ?? id;
+    // D-211: the room this play would finish, and what that pays (a play touches one room).
+    const finished = pays(b.finishReward) ? finishedBy(state.house, week.house)[0] : undefined;
     return {
       legal: true,
       ...(sunny ? { sunny: true as const } : {}),
@@ -4005,6 +4060,7 @@ export function createRules(content: Content): Rules {
             },
           }
         : {}),
+      ...(finished ? { finishes: { uid: finished.uid, reward: b.finishReward } } : {}),
       ...(breaks ? { breaks } : {}),
       parts: wowParts(content, beforeTally, week.tally, focus, specName),
     };

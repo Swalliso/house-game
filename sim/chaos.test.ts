@@ -439,6 +439,13 @@ class Checker {
       this.fail('preview.breaks disagrees with apply', { play, breaks: p.breaks });
     }
     if (p.breaks) this.see('check:preview:breaks');
+    // D-211: the preview names the room the play finishes, and what it pays, as apply pays it.
+    const finished = events.find((e) => e.t === 'roomFinished');
+    const paid = finished?.t === 'roomFinished' ? finished : undefined;
+    if (paid?.uid !== p.finishes?.uid || J(paid?.reward) !== J(p.finishes?.reward)) {
+      this.fail('preview.finishes disagrees with apply', { play, finishes: p.finishes, paid });
+    }
+    if (p.finishes) this.see('check:preview:finishes');
     // Breakdown lines: exactly the pieces whose earnings change, the new or host piece included.
     const was = new Map(pass.pieces.map((x) => [x.uid, x.earned]));
     const changed = new Set(
@@ -1211,6 +1218,8 @@ const COVERAGE: readonly string[] = [
   // D-188: the wrong delivery lands at Framing's start, and is placed.
   ...prefixed('delivered', ['surprise']),
   ...prefixed('place', ['surprise']),
+  // D-211: a room is finished, and pays.
+  ...prefixed('event', ['roomFinished']),
 ];
 
 /** The kinds of check that must each have run. */
@@ -1220,6 +1229,7 @@ const CHECKS: readonly string[] = [
   'check:preview:install:hand',
   'check:preview:install:supplies',
   'check:preview:renovate:hand',
+  'check:preview:finishes',
   'check:preview:free',
   'check:preview:xMult',
   'check:preview:timedEffect',
