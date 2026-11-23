@@ -21,7 +21,10 @@ import { bounds, shapeCells } from '../rules/grid.ts';
 import { computeLayout } from '../rules/layout.ts';
 import { tallyHouse } from '../rules/scoring.ts';
 import { emptyRows, houseFrom, type Placement } from '../rules/testing.ts';
+import { HOUSEHOLDS } from './households.ts';
+import { houseRules, roomForEveryone } from './house-rules.ts';
 import { CONTENT, validateContent } from './index.ts';
+import { eachMilestone } from '../rules/index.ts';
 
 const MEMBER_ROOMS: readonly PieceId[] = [
   'nursery',
@@ -42,7 +45,7 @@ function earned(rows: readonly string[], placements: readonly Placement[]): numb
 const open = emptyRows(10, 10);
 
 describe('each client’s household', () => {
-  it('has the arrivals D-103 and the brief name, at Framing or Drywall', () => {
+  it('has the arrivals D-103 and the brief name, at Framing or Drywall, and the Bigsbys’ five', () => {
     const arrivals = (id: ClientId) =>
       CONTENT.clients[id].household.arrivals.map((a) => [
         a.id,
@@ -64,6 +67,16 @@ describe('each client’s household', () => {
     for (const id of ['vladislav', 'barkers', 'juniper', 'dale'] as const) {
       expect(CONTENT.clients[id].household.bedrooms, id).toEqual([1, 2]);
     }
+    // D-219: the Bigsbys grow by one each milestone from Foundation to Finishes, each with a
+    // plain Bedroom card and no room of their own.
+    expect(CONTENT.clients.bigsbys.household.bedrooms).toEqual([2, 3]);
+    expect(arrivals('bigsbys')).toEqual([
+      ['auntBea', 'Foundation', ['bedroom'], undefined],
+      ['cousins', 'Framing', ['bedroom'], undefined],
+      ['grandpa', 'Roofing', ['bedroom'], undefined],
+      ['newlyweds', 'Drywall', ['bedroom'], undefined],
+      ['baby', 'Finishes', ['bedroom'], undefined],
+    ]);
     // One line each for the job board.
     for (const c of Object.values(CONTENT.clients)) {
       for (const a of c.household.arrivals) expect(a.text, a.id).toMatch(/^[A-Z].*\.$/);
@@ -82,6 +95,128 @@ describe('each client’s household', () => {
         'arrival has their own room: 2–3 and Renfield’s room from Framing.',
     );
     expect(text('juniper')).toContain('2–3 and Rowan’s room from Drywall.');
+    // D-219: five clauses would be a paragraph, so a household that grows each milestone says so.
+    expect(text('bigsbys')).toBe(
+      'Bedrooms for the household: 2–3 to start, then one more each milestone from Foundation ' +
+        'to Finishes, up to 7–8.',
+    );
+  });
+});
+
+describe('an arrival without a room of its own (D-219)', () => {
+  const BEDS = { piece: 'bedroom' } as const;
+
+  it('only raises Room for everyone’s range: the Bigsbys’ stages are a count each', () => {
+    expect(roomForEveryone(HOUSEHOLDS.bigsbys)).toEqual({
+      stages: [
+        { fromPhase: 0, condition: { count: BEDS, min: 2, max: 3 } },
+        { fromPhase: 1, condition: { count: BEDS, min: 3, max: 4 } },
+        { fromPhase: 2, condition: { count: BEDS, min: 4, max: 5 } },
+        { fromPhase: 3, condition: { count: BEDS, min: 5, max: 6 } },
+        { fromPhase: 4, condition: { count: BEDS, min: 6, max: 7 } },
+        { fromPhase: 5, condition: { count: BEDS, min: 7, max: 8 } },
+      ],
+    });
+  });
+
+  it('leaves the other households’ Room for everyone as it was', () => {
+    expect(roomForEveryone(HOUSEHOLDS.hendersons)).toEqual({
+      stages: [
+        { fromPhase: 0, condition: { count: BEDS, min: 2, max: 3 } },
+        {
+          fromPhase: 2,
+          condition: {
+            and: [
+              { count: BEDS, min: 3, max: 4 },
+              { count: { piece: ['nursery', 'kidsRoom'] }, min: 1 },
+            ],
+          },
+        },
+        {
+          fromPhase: 4,
+          condition: {
+            and: [
+              { count: BEDS, min: 4, max: 5 },
+              { count: { piece: ['nursery', 'kidsRoom'] }, min: 1 },
+              { count: { piece: ['grandmasRoom'] }, min: 1 },
+            ],
+          },
+        },
+      ],
+    });
+    expect(roomForEveryone(HOUSEHOLDS.dale)).toEqual({
+      stages: [
+        { fromPhase: 0, condition: { count: BEDS, min: 1, max: 2 } },
+        {
+          fromPhase: 2,
+          condition: {
+            and: [
+              { count: BEDS, min: 2, max: 3 },
+              { count: { piece: ['ivysRoom'] }, min: 1 },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  it('is said in short only for a household that grows each milestone', () => {
+    expect(eachMilestone(HOUSEHOLDS.bigsbys)).toBe(true);
+    for (const id of ['hendersons', 'vladislav', 'barkers', 'juniper', 'dale'] as const) {
+      expect(eachMilestone(HOUSEHOLDS[id]), id).toBe(false);
+    }
+    const [bea, cousins, , newlyweds] = HOUSEHOLDS.bigsbys.arrivals;
+    // One alone, or a milestone skipped, takes the clauses: a member with no room adds none.
+    expect(eachMilestone({ bedrooms: [1, 2], arrivals: [bea!] })).toBe(false);
+    const skipped = { bedrooms: [1, 2] as const, arrivals: [cousins!, newlyweds!] };
+    expect(eachMilestone(skipped)).toBe(false);
+    expect(houseRules({ household: skipped })[0]!.text).toBe(
+      'Bedrooms for the household: 1–2 to start, then one more for each arrival: 2–3 from ' +
+        'Framing, 3–4 from Drywall.',
+    );
+    // A member with a room beside one without: only theirs is named.
+    const mixed = {
+      bedrooms: [1, 2] as const,
+      arrivals: [...HOUSEHOLDS.dale.arrivals, newlyweds!],
+    };
+    expect(houseRules({ household: mixed })[0]!.text).toBe(
+      'Bedrooms for the household: 1–2 to start, then one more for each arrival: 2–3 and Ivy’s ' +
+        'room from Framing, 3–4 from Drywall.',
+    );
+  });
+
+  it('lands in the first week of its phase, a Bedroom card each, in a real Bigsbys run', () => {
+    let s = start('bigsbys', 'bigsbys-run');
+    const arrived: { week: number; arrival: string; cards: readonly PieceId[] }[] = [];
+    for (let k = 0; k < 600 && s.week <= 21 && s.screen !== 'lost' && s.screen !== 'won'; k++) {
+      let a: Action;
+      if (s.screen === 'shop') a = s.offers?.pick ? { t: 'pick', i: -1 } : { t: 'leaveShop' };
+      else if (s.screen === 'changeOrder') a = { t: 'answerChangeOrder', i: 0 };
+      else if (s.score < rules.target(s))
+        a = { t: 'debug', op: 'addScore', amount: rules.target(s) };
+      else a = { t: 'pass' };
+      const out = rules.apply(s, a);
+      for (const e of out.events) {
+        if (e.t === 'arrived')
+          arrived.push({ week: out.state.week, arrival: e.arrival, cards: e.cards });
+      }
+      s = out.state;
+    }
+    expect(arrived).toEqual([
+      { week: 5, arrival: 'auntBea', cards: ['bedroom'] },
+      { week: 9, arrival: 'cousins', cards: ['bedroom'] },
+      { week: 13, arrival: 'grandpa', cards: ['bedroom'] },
+      { week: 17, arrival: 'newlyweds', cards: ['bedroom'] },
+      { week: 21, arrival: 'baby', cards: ['bedroom'] },
+    ]);
+    // Each waits in the reserve, marked as theirs.
+    const theirs = s.reserve.filter((r) => r.arrival !== undefined);
+    expect(theirs).toEqual(
+      ['auntBea', 'cousins', 'grandpa', 'newlyweds', 'baby'].map((arrival) => ({
+        id: 'bedroom',
+        arrival,
+      })),
+    );
   });
 });
 
@@ -272,6 +407,28 @@ describe('validateContent', () => {
     expect(problems).toMatch(/client hendersons: household bedrooms/);
     expect(problems).toMatch(/arrival twins: arrives at a phase from 1 to 6/);
     expect(problems).toMatch(/arrival twins: none of its cards is its room/);
+  });
+
+  it('needs a member with no room of their own to bring a Bedroom, and an empty room list left out (D-219)', () => {
+    const b = CONTENT.clients.bigsbys;
+    const [bea, cousins, ...rest] = b.household.arrivals;
+    const broken: Content = {
+      ...CONTENT,
+      clients: {
+        ...CONTENT.clients,
+        bigsbys: {
+          ...b,
+          household: {
+            ...b.household,
+            arrivals: [{ ...bea!, cards: ['bathroom'] }, { ...cousins!, room: [] }, ...rest],
+          },
+        },
+      },
+    };
+    const problems = validateContent(broken).join('\n');
+    expect(problems).toMatch(/arrival auntBea: no room of their own, so a Bedroom/);
+    expect(problems).toMatch(/arrival cousins: no room/);
+    expect(validateContent(CONTENT)).toEqual([]);
   });
 
   it('needs the checklist to name each member’s room', () => {
