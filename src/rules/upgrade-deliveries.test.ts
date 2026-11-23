@@ -20,14 +20,25 @@ import type {
   PieceId,
   RunState,
   ShopOffer,
+  Supply,
   ToolId,
   UpgradeId,
 } from './index.ts';
 import { stream } from './rng.ts';
 import { decodeRunCode, encodeRunCode } from './runcode.ts';
 import { createRules, type Rules } from './run.ts';
-import { crateOptions, inExtraSlot, reserveUsed, SERVICES, sellPrice } from './shop.ts';
-import { setup, TEST_CONTENT, withClient, withPieces } from './testing.ts';
+import { crateOptions, giftRarity, inExtraSlot, reserveUsed, SERVICES, sellPrice } from './shop.ts';
+import {
+  drawnBefore,
+  emptyRows,
+  houseFrom,
+  keptInto,
+  rowSlot,
+  setup,
+  TEST_CONTENT,
+  withClient,
+  withPieces,
+} from './testing.ts';
 import { UPGRADES } from '../content/upgrades.ts';
 
 /** Four two-week phases with targets of 0, and the slot upgrades delivering as the real ones. */
@@ -220,6 +231,38 @@ describe('the Storage Unit (D-209): a special piece each milestone', () => {
     expect(run.state.reserve).toEqual([]);
   });
 
+  it('passes over one already built', () => {
+    const seed = 'which';
+    const [first, second] = order(seed, 'upgrade/storageUnit', SPECIALS);
+    const start = give(r, r.newRun(setup(seed)), 'storageUnit');
+    const built: RunState = { ...start, house: houseFrom(C, emptyRows(12, 12), [[first!, 0, 0]]) };
+    // No special piece here has a cap, so built it isn't at a limit: it's skipped as there.
+    expect(fromUpgrades(playUntil(built, at(1)).events)[0]!.cards).toEqual([second]);
+  });
+
+  it('with every one there and none a house holds two of, the first not at a limit; then the next', () => {
+    const seed = 'all in';
+    const all = order(seed, 'upgrade/storageUnit', SPECIALS);
+    // One of each per house (D-165), every one waiting in the reserve's extra slots, none built:
+    // none is at its cap yet.
+    const capped = createRules(
+      withPieces(Object.fromEntries(SPECIALS.map((id) => [id, { perHouse: 1 }])), C),
+    );
+    const start = give(capped, capped.newRun(setup(seed)), 'storageUnit');
+    const waiting: RunState = {
+      ...start,
+      reserve: SPECIALS.map((id) => ({ id, stock: true as const })),
+    };
+    expect(fromUpgrades(playUntil(waiting, at(1), capped).events)[0]!.cards).toEqual([all[0]]);
+    // The first built is at its cap: the next in the order comes.
+    const built: RunState = {
+      ...waiting,
+      house: houseFrom(capped.content, emptyRows(12, 12), [[all[0]!, 0, 0]]),
+      reserve: waiting.reserve.filter((x) => x.id !== all[0]),
+    };
+    expect(fromUpgrades(playUntil(built, at(1), capped).events)[0]!.cards).toEqual([all[1]]);
+  });
+
   it('never comes in an overtime week; the next milestone brings it', () => {
     const s0 = give(r, r.newRun(setup('late')), 'storageUnit');
     const week2 = playUntil(s0, at(0, 2)).state;
@@ -277,6 +320,41 @@ describe('the Tool Belt (D-209): a tool each milestone', () => {
       const tool = toolsOf(playUntil(s, at(1)).events)[0]!.tool;
       expect(C.tools[tool].use.kind, `plans ${k}`).not.toBe('levelSet');
     }
+  });
+
+  it('with every tool of its rarity held, brings the milestone’s own: into a free slot, or sold', () => {
+    const n = COMMON_TOOLS.length;
+    const roomy = createRules({
+      ...C,
+      balance: { ...C.balance, rules: { ...C.balance.rules, supplySlots: n + 1 } },
+    });
+    const seed = 'all held';
+    const own = order(seed, 'upgrade/toolBelt', COMMON_TOOLS)[1 % n]!;
+    const held: RunState = {
+      ...give(roomy, roomy.newRun(setup(seed)), 'toolBelt'),
+      supplies: COMMON_TOOLS.map((id): Supply => ({ kind: 'tool', id })),
+    };
+    expect(roomy.slots(held).supplies).toBe(n + 2);
+    const run = playUntil(held, at(1), roomy);
+    expect(toolsOf(run.events)).toEqual([
+      { t: 'upgradeTool', upgrade: 'toolBelt', tool: own, phase: 1 },
+    ]);
+    expect(run.state.supplies).toEqual([...held.supplies, { kind: 'tool', id: own }]);
+    // The supplies full as well: the milestone's own is sold.
+    const skylight: Supply = { kind: 'fixture', id: 'skylight' };
+    const full: RunState = { ...held, supplies: [...held.supplies, skylight, skylight] };
+    const before = playUntil(full, at(0, 2), roomy).state;
+    const sold = playUntil(before, at(1), roomy);
+    expect(toolsOf(sold.events)).toEqual([
+      {
+        t: 'upgradeTool',
+        upgrade: 'toolBelt',
+        tool: own,
+        phase: 1,
+        sold: sellPrice(C, before, C.tools[own].price),
+      },
+    ]);
+    expect(sold.state.supplies).toEqual(full.supplies);
   });
 
   it('with the supplies full, it’s sold at once for half its price, and the event says so', () => {
@@ -368,6 +446,258 @@ describe('the Drafting Table (D-209): a pick of three Common blueprints as it’
     for (const id of ['foreman', 'biggerTruck', 'storageUnit', 'toolBelt'] as const) {
       const other = r.apply(shelf(atShop, [{ kind: 'upgrade', id }]), { t: 'buy', i: 0 });
       expect(other.state.offers?.pick, id).toBeUndefined();
+    }
+  });
+
+  it('with fewer than three Common blueprints left, offers those; the ?debug panel’s gift opens none', () => {
+    const atShop = playUntil(r.newRun(setup('drafting')), inShop(1)).state;
+    const commons = (Object.keys(C.blueprints) as BlueprintId[]).filter(
+      (id) => C.blueprints[id].offered && C.blueprints[id].rarity === 'common',
+    );
+    const left = commons.slice(-2);
+    const owned: RunState = {
+      ...atShop,
+      blueprints: commons.slice(0, -2).map((id) => ({ id, boughtWeek: 1 })),
+    };
+    const rich = createRules({
+      ...C,
+      balance: { ...C.balance, rules: { ...C.balance.rules, blueprintSlots: commons.length } },
+    });
+    const out = rich.apply(shelf(owned, [{ kind: 'upgrade', id: 'draftingTable' }]), {
+      t: 'buy',
+      i: 0,
+    });
+    const opened = out.events.filter(
+      (e): e is Extract<GameEvent, { t: 'crateOpened' }> => e.t === 'crateOpened',
+    );
+    expect(opened).toHaveLength(1);
+    expect(opened[0]!.options.map((o) => o.id).sort()).toEqual([...left].sort());
+    expect(out.state.offers?.pick).toEqual({
+      source: 'draftingTable',
+      options: opened[0]!.options,
+    });
+    // The ?debug panel's gift brings the table and its slot, and no pick.
+    const gift = r.apply(atShop, {
+      t: 'debug',
+      op: 'giveGood',
+      good: { kind: 'upgrade', id: 'draftingTable' },
+    });
+    expect(gift.state.upgrades).toEqual(['draftingTable']);
+    expect(r.slots(gift.state).blueprints).toBe(C.balance.rules.blueprintSlots + 1);
+    expect(gift.events.map((e) => e.t)).not.toContain('crateOpened');
+    expect(gift.state.offers?.pick).toBeUndefined();
+  });
+
+  it('a pick of another rarity, and another size, offers just those (giftRarity)', () => {
+    const delivers = { kind: 'blueprintPick', rarity: 'uncommon', options: 2 } as const;
+    const UC: Content = {
+      ...C,
+      upgrades: { ...C.upgrades, draftingTable: { ...C.upgrades.draftingTable, delivers } },
+    };
+    expect(giftRarity(UC, 'draftingTable')).toBe('uncommon');
+    expect(giftRarity(UC, 'housewarming')).toBe('common');
+    for (const crate of Object.keys(UC.crates) as (keyof typeof UC.crates)[]) {
+      expect(giftRarity(UC, crate), crate).toBeNull();
+    }
+    const ru = createRules(UC);
+    const atShop = playUntil(ru.newRun(setup('drafting')), inShop(1), ru).state;
+    const { state } = ru.apply(shelf(atShop, [{ kind: 'upgrade', id: 'draftingTable' }]), {
+      t: 'buy',
+      i: 0,
+    });
+    const options = state.offers?.pick?.options ?? [];
+    expect(state.offers?.pick?.source).toBe('draftingTable');
+    expect(options).toHaveLength(2);
+    for (const o of options) {
+      expect(o.kind).toBe('blueprint');
+      expect(UC.blueprints[o.id as BlueprintId].rarity, o.id).toBe('uncommon');
+    }
+  });
+});
+
+describe('two upgrades that bring pieces (D-209)', () => {
+  it('come in the order bought, each on its own order, the second passing over the first’s', () => {
+    // The Bigger Truck brings a special piece too, here.
+    const two = createRules({
+      ...C,
+      upgrades: {
+        ...C.upgrades,
+        biggerTruck: { ...C.upgrades.biggerTruck, delivers: { kind: 'specialPiece' } },
+      },
+    });
+    // A seed whose two orders start on the same piece, so the second must pass over it.
+    let seed = '';
+    for (let k = 0; k < 200 && !seed; k++) {
+      const a = order(`two ${k}`, 'upgrade/storageUnit', SPECIALS);
+      const b = order(`two ${k}`, 'upgrade/biggerTruck', SPECIALS);
+      if (a[0] === b[0]) seed = `two ${k}`;
+    }
+    expect(seed).not.toBe('');
+    const firsts = (id: UpgradeId) => order(seed, `upgrade/${id}`, SPECIALS);
+    for (const bought of [
+      ['storageUnit', 'biggerTruck'],
+      ['biggerTruck', 'storageUnit'],
+    ] as const) {
+      let s = two.newRun(setup(seed));
+      for (const id of bought) s = give(two, s, id);
+      const e = fromUpgrades(playUntil(s, at(1), two).events);
+      expect(e.map((x) => x.upgrade)).toEqual(bought);
+      expect(e.map((x) => x.cards)).toEqual([[firsts(bought[0])[0]], [firsts(bought[1])[1]]]);
+    }
+  });
+});
+
+describe('when the deliveries come (D-209)', () => {
+  it('after the client’s cards, the stock, the crew’s card and the wrong delivery; the tools after', () => {
+    // The client's cards, the standing stock, the crew's own card, the wrong delivery and the
+    // crew's tool all come as the third phase starts too (D-160, D-171, D-188).
+    const base = withClient(
+      { deliveries: [{ phase: 2, cards: ['homeOffice'], text: 'They bring it.' }] },
+      {
+        ...C,
+        balance: {
+          ...C.balance,
+          standingStock: {
+            fromPhase: 2,
+            pieces: ['hallway', 'fence'],
+            firstJobPhase: 1,
+            firstJobSlot: 1,
+            refill: false,
+          },
+          surpriseDelivery: { phase: 2, pieces: ['pool', 'hotTub', 'henhouse'] },
+          changeOrderAfter: [2],
+        },
+      },
+    );
+    const { startReserve: _start, ...crew } = base.crews.landscaper;
+    const rr = createRules({
+      ...base,
+      crews: { ...base.crews, landscaper: { ...crew, stock: ['lawn'], orderTool: 'dumpster' } },
+    });
+    let s = rr.newRun({ ...setup('in order'), crewId: 'landscaper' });
+    s = give(rr, give(rr, s, 'storageUnit'), 'toolBelt');
+    // To the third phase's first week: shops left, a change order picked after the second.
+    const events: GameEvent[] = [];
+    for (let n = 0; n < 40 && !at(2)(s); n++) {
+      const a: Action =
+        s.screen === 'changeOrder'
+          ? { t: 'answerChangeOrder', i: 0 }
+          : s.screen === 'shop'
+            ? s.offers?.pick
+              ? { t: 'pick', i: -1 }
+              : { t: 'leaveShop' }
+            : { t: 'pass' };
+      const out = rr.apply(s, a);
+      events.push(...out.events);
+      s = out.state;
+    }
+    expect(at(2)(s)).toBe(true);
+    const start = events.slice(events.findLastIndex((e) => e.t === 'shopClosed') + 1);
+    const kinds = ['delivered', 'crewTool', 'upgradeTool', 'handDrawn'];
+    expect(
+      start
+        .filter((e) => kinds.includes(e.t))
+        .map((e) => (e.t === 'delivered' ? `${e.t}:${e.from}` : e.t)),
+    ).toEqual([
+      'delivered:client',
+      'delivered:stock',
+      'delivered:crew',
+      'delivered:surprise',
+      'delivered:upgrade',
+      'crewTool',
+      'upgradeTool',
+      'handDrawn',
+    ]);
+    // The Storage Unit passes over the wrong delivery's piece, waiting in Your goods.
+    const [surprise, piece] = start.flatMap((e) =>
+      e.t === 'delivered' && (e.from === 'surprise' || e.from === 'upgrade') ? e.cards : [],
+    );
+    expect(piece).not.toBe(surprise);
+    // In the supplies: the belt's tool from the second phase's start, then the crew's and the
+    // belt's from this one's.
+    const belt = toolsOf(events).map((e) => e.tool);
+    expect(belt).toHaveLength(2);
+    expect(s.supplies).toEqual(
+      [belt[0]!, 'dumpster' as const, belt[1]!].map((id): Supply => ({ kind: 'tool', id })),
+    );
+  });
+
+  it('bought mid-week in the ?debug panel’s shop, nothing comes until the next milestone', () => {
+    const shop = r.apply(r.newRun(setup('mid-week')), { t: 'debug', op: 'forceShop' }).state;
+    const bought = r.apply(shelf(shop, [{ kind: 'upgrade', id: 'storageUnit' }]), {
+      t: 'buy',
+      i: 0,
+    }).state;
+    const both = give(r, bought, 'toolBelt');
+    // Back to the same week, with a fresh hand, and nothing brought.
+    const back = r.apply(both, { t: 'leaveShop' });
+    expect([back.state.screen, back.state.phase, back.state.week]).toEqual(['build', 0, 1]);
+    expect(back.events.map((e) => e.t)).toEqual(['shopClosed', 'handDrawn']);
+    const week2 = playUntil(back.state, at(0, 2));
+    expect(fromUpgrades(week2.events)).toEqual([]);
+    expect(toolsOf(week2.events)).toEqual([]);
+    const next = playUntil(week2.state, at(1));
+    expect(fromUpgrades(next.events)).toHaveLength(1);
+    expect(toolsOf(next.events)).toHaveLength(1);
+  });
+});
+
+describe('a pin and the Storage Unit at one milestone (D-207, D-209)', () => {
+  it('the next phase’s first week brings both; codes saved in the shop and after it replay', () => {
+    const s0 = r.newRun(setup('pin and piece'));
+    const play = (actions: readonly Action[]) => {
+      let s = s0;
+      const events: GameEvent[] = [];
+      for (const a of actions) {
+        const out = r.apply(s, a);
+        events.push(...out.events);
+        s = out.state;
+      }
+      return { state: s, events };
+    };
+    const toLastWeek: Action[] = [
+      { t: 'debug', op: 'giveGood', good: { kind: 'upgrade', id: 'storageUnit' } },
+      { t: 'pass' },
+    ];
+    const lastHand = play(toLastWeek).state.hand;
+    // Pinned in the first phase's last week, whose tally meets its target (of 0).
+    const toShop: Action[] = [...toLastWeek, { t: 'pin', i: 2 }, { t: 'pass' }];
+    const card = lastHand[2]!;
+    const k = rowSlot(C, lastHand, 2);
+    const shop = play(toShop);
+    expect(shop.state.screen).toBe('shop');
+    expect(shop.state.pinnedOver).toEqual({ card, k });
+    const onward: Action[] = [...toShop, { t: 'leaveShop' }];
+    const next = play(onward);
+    // The piece in Your goods, before the hand is drawn with the card in it.
+    const e = fromUpgrades(next.events);
+    expect(e).toHaveLength(1);
+    expect(next.state.reserve).toEqual([{ id: e[0]!.cards[0]!, upgrade: 'storageUnit' }]);
+    const drawn = next.events.findLast((x) => x.t === 'handDrawn');
+    expect(next.events.indexOf(e[0]!)).toBeLessThan(next.events.indexOf(drawn!));
+    expect(next.state.hand[next.state.kept!]).toEqual(card);
+    // As the same run with no pin, the card aside: the same piece, and the same draw around it.
+    const plain = play(onward.filter((a) => a.t !== 'pin'));
+    expect(plain.state.reserve).toEqual(next.state.reserve);
+    const want = keptInto(
+      C,
+      drawnBefore(plain.events.findLast((x) => x.t === 'handDrawn')),
+      card,
+      k,
+    );
+    expect(drawnBefore(drawn)).toEqual(want.hand);
+    expect(next.state.kept).toBe(want.i);
+    // A code saved in the shop, with the card waiting, and one saved right after the delivery.
+    for (const [actions, state] of [
+      [toShop, shop.state],
+      [onward, next.state],
+    ] as const) {
+      const code = encodeRunCode({ build: 'test', contentHash: 'test', setup: s0.setup, actions });
+      const decoded = decodeRunCode(code);
+      if (!decoded.ok) throw new Error(decoded.error);
+      const again = r.replay(decoded.data.setup, decoded.data.actions);
+      expect(again.failedAt).toBeUndefined();
+      expect(again.state).toEqual(state);
     }
   });
 });

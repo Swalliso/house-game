@@ -265,6 +265,161 @@ describe('filling it', () => {
   });
 });
 
+describe('its view agrees with apply()', () => {
+  /** Two Flower Beds by the pond, Green cards and others in the hand, a Sapling in Your goods. */
+  const twoBeds = () =>
+    onLot(
+      POND,
+      [
+        ['flowerBed', 2, 3],
+        ['flowerBed', 6, 4],
+      ],
+      {
+        hand: [pc('lawn'), pc('flowerBed'), pc('bedroom'), pc('patio')],
+        reserve: [{ id: 'sapling' }],
+      },
+    );
+
+  it('counts what each legal play builds, and fills exactly when apply() pays', () => {
+    const s = twoBeds();
+    const plays = R.legalPlays(s);
+    let fills = 0;
+    for (const p of plays) {
+      const view = R.lotWish(s, p)!;
+      const out = R.apply(s, p);
+      expect(view.counted, JSON.stringify(p)).toEqual(R.lotWish(out.state)!.counted);
+      const fill = view.counted.length >= view.need;
+      expect(wishEvents(out.events), JSON.stringify(p)).toHaveLength(fill ? 1 : 0);
+      if (fill) fills++;
+    }
+    // From the hand and from Your goods, some plays fill it and some don't.
+    expect(fills).toBeGreaterThan(0);
+    expect(fills).toBeLessThan(plays.length);
+    expect(plays.some((p) => p.from === 'reserve' && R.lotWish(s, p)!.counted.length === 3)).toBe(
+      true,
+    );
+  });
+
+  it('never hands a view with a play to a look without one, or the other way round', () => {
+    const lawn = place(0, 3, 5);
+    const asIs = R.lotWish(twoBeds())!;
+    expect(asIs.counted).toEqual([1, 2]);
+    // With the play first, then without.
+    const a = twoBeds();
+    expect(R.lotWish(a, lawn)!.counted).toEqual([1, 2, 3]);
+    expect(R.lotWish(a)).toEqual(asIs);
+    // Without first, then with, then without again.
+    const b = twoBeds();
+    expect(R.lotWish(b)).toEqual(asIs);
+    expect(R.lotWish(b, lawn)!.counted).toEqual([1, 2, 3]);
+    expect(R.lotWish(b)).toEqual(asIs);
+    // An illegal play (on the pond) is the house as it stands; a legal one after it isn't.
+    const c = twoBeds();
+    expect(R.lotWish(c, place(0, 4, 4))).toEqual(asIs);
+    expect(R.lotWish(c, lawn)!.counted).toEqual([1, 2, 3]);
+    expect(R.lotWish(c)).toEqual(asIs);
+  });
+
+  it('once it has paid, a play looked at shows the house as it stands', () => {
+    const s = twoBeds();
+    const paid = R.apply(s, place(0, 3, 5, 'reserve')).state;
+    expect(paid.wishFilled).toBe('pond');
+    // A Lawn along the pond's top would be a fourth Green piece.
+    const lawn = place(0, 3, 1);
+    expect(R.checkPlay(paid, lawn).legal).toBe(true);
+    expect(R.lotWish(paid, lawn)).toEqual(R.lotWish(paid));
+    expect(R.lotWish(paid)).toMatchObject({ filled: true, counted: [1, 2, 3] });
+  });
+});
+
+describe('it settles after everything that changes the house', () => {
+  /** wishing() with the Pond's wish counting `count`, one of them for a Hot Tub. */
+  const pondWants = (count: FeatureWish['count'], over: Partial<Content['balance']> = {}) => {
+    const c = wishing(over);
+    const wish: FeatureWish = { count, need: 1, reward: { piece: 'hotTub' } };
+    return { ...c, features: { ...c.features, pond: { ...c.features.pond, wish } } };
+  };
+
+  it('a fixture from the supplies that makes a piece count: at once, after the room it finishes pays (D-211)', () => {
+    const content = pondWants({ hasFixture: 'any' }, { finishReward: { budget: 2 } });
+    const rules = createRules(content);
+    // Two Bedrooms along the pond's top, the first renovated (D-211: a fixture finishes it).
+    const s = onLot(
+      POND,
+      [
+        ['bedroom', 3, 1],
+        ['bedroom', 5, 1],
+      ],
+      {
+        supplies: [
+          { kind: 'fixture', id: 'skylight' },
+          { kind: 'fixture', id: 'skylight' },
+        ],
+      },
+      rules,
+      content,
+    );
+    const before: RunState = {
+      ...s,
+      house: {
+        ...s.house,
+        pieces: s.house.pieces.map((p) => (p.uid === 1 ? { ...p, level: 1 } : p)),
+      },
+    };
+    expect(rules.lotWish(before)!.counted).toEqual([]);
+    const { state, events } = rules.apply(before, { t: 'install', from: 'supplies', i: 0, uid: 1 });
+    expect(events.map((e) => e.t)).toEqual(['installed', 'roomFinished', 'wishFilled']);
+    expect(wishEvents(events)[0]).toMatchObject({ feature: 'pond', pieces: [1] });
+    expect(state).toMatchObject({ week: 1, slot: 1, wishFilled: 'pond' });
+    expect(state.budget).toBe(before.budget + 2);
+    expect(state.reserve).toEqual([{ id: 'hotTub', wish: true }]);
+    // The second Skylight, in the other Bedroom by the pond: nothing more.
+    const again = rules.apply(state, { t: 'install', from: 'supplies', i: 0, uid: 2 });
+    expect(again.events.map((e) => e.t)).toEqual(['installed']);
+    expect(rules.lotWish(again.state)).toMatchObject({ filled: true, counted: [1, 2] });
+    expect(again.state.reserve.filter((r) => r.wish)).toHaveLength(1);
+  });
+
+  it('a week’s growth that brings one: as the next week starts, before the draw, once', () => {
+    const content = pondWants({ piece: 'kidsRoom' });
+    const rules = createRules(content);
+    // Two Nurseries along the pond's top, growing into Kids' Rooms as weeks 2 and 3 start.
+    const s = onLot(
+      POND,
+      [
+        ['nursery', 3, 1],
+        ['nursery', 5, 1],
+      ],
+      {},
+      rules,
+      content,
+    );
+    const before: RunState = {
+      ...s,
+      house: {
+        ...s.house,
+        pieces: s.house.pieces.map((p) => ({ ...p, ageBonus: p.uid === 1 ? 7 : 6 })),
+      },
+    };
+    expect(rules.lotWish(before)!.counted).toEqual([]);
+    const week2 = rules.apply(before, PASS);
+    const types = week2.events.map((e) => e.t);
+    expect(types.indexOf('tally')).toBeLessThan(types.indexOf('transformed'));
+    expect(types.indexOf('transformed')).toBeLessThan(types.indexOf('wishFilled'));
+    expect(types.indexOf('wishFilled')).toBeLessThan(types.indexOf('handDrawn'));
+    expect(wishEvents(week2.events)).toEqual([
+      { t: 'wishFilled', feature: 'pond', x: 4, y: 3, reward: { piece: 'hotTub' }, pieces: [1] },
+    ]);
+    expect(week2.state).toMatchObject({ week: 2, wishFilled: 'pond' });
+    // The second grows as week 3 starts, and pays nothing more.
+    const week3 = rules.apply(week2.state, PASS);
+    expect(week3.events.filter((e) => e.t === 'transformed')).toHaveLength(1);
+    expect(wishEvents(week3.events)).toEqual([]);
+    expect(rules.lotWish(week3.state)).toMatchObject({ filled: true, counted: [1, 2] });
+    expect(week3.state.reserve.filter((r) => r.wish)).toHaveLength(1);
+  });
+});
+
 describe('the Old Shed’s wish', () => {
   const SHED_LOT = [
     '..........',
