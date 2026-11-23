@@ -11,12 +11,12 @@
 //   In a room with a set door (D-176), a kitchen's range and its counter (a key marked `south`)
 //   stand against a south wall instead where that keeps more of the group than any north wall
 //   does (D-202): the Entertainer's opening or door can take most of a short north wall. Never
-//   the key alone, and never the Fireplace. Where the counter still finds no room beside the
-//   range (an L-Kitchen's walls are a cell long), it may stand on its own (`alone`): elsewhere on a
-//   north wall, or against a south wall (D-208). The kitchen is laid out with it before its table
-//   and after it too, and keeps whichever way shows the most of its fixture, range, counter, table
-//   and sink, in that order (kitchenPlans), but never one that costs it the table or the fridge
-//   it has without a counter on its own.
+//   the key alone, and never the Fireplace. In any kitchen, where the counter still finds no room
+//   beside the range (an L-Kitchen's walls are a cell long, a Fireplace or a door takes the wall),
+//   it may stand on its own (`alone`): elsewhere on a north wall, or against a south wall (D-208).
+//   The kitchen is laid out with it before its table and after it too, and keeps whichever way
+//   shows the most of its fixture, range, counter, table and sink, in that order (kitchenPlans),
+//   but never one that costs it the table or the fridge it has without a counter on its own.
 // - NL/NR: beside what already stands on that run. NW/NE: at a run's west or east end.
 // - C: the free floor below what stands on the north wall. CL/CR: beside the last C piece.
 // - R: a rug or a hall's runner, centered on the floor, under everything else.
@@ -515,10 +515,10 @@ interface Want {
    */
   south?: boolean;
   /**
-   * D-208: in a room with a set door, the slots a member of an N piece's group may take on its own
-   * where it finds no room beside that piece (a kitchen's counter: elsewhere on a north wall, then
-   * against a south wall). The room is laid out with them before its table and after it, and keeps
-   * the better, unless it costs the room its table or its fridge (kitchenPlans).
+   * D-208: the slots a member of an N piece's group may take on its own where it finds no room
+   * beside that piece (a kitchen's counter: elsewhere on a north wall, then against a south wall).
+   * The room is laid out with them before its table and after it, and keeps the better, unless it
+   * costs the room its table or its fridge (kitchenPlans).
    */
   alone?: readonly Slot[];
   /**
@@ -884,7 +884,8 @@ function bedOr(c: Ctx, ...beds: ArtId[]): Want {
  * the sink won't fit), then the fridge where it still fits. Where its doors leave no north wall,
  * the range and its counter stand in the middle of the floor; where the Entertainer's opening or
  * door into the next room leaves no north wall for the counter beside the range, the two stand
- * against a south wall that has room for both (D-202), or the counter stands on its own, on
+ * against a south wall that has room for both (D-202). Wherever the counter finds no room beside
+ * the range (an L-Kitchen's short walls, the Fireplace there, a door), it stands on its own, on
  * another stretch of north wall or against a south wall, where that keeps the room's table or its
  * fixture too, and never in the fridge's place (D-208). A Fireplace takes the counter's place
  * beside the range; a Kitchen Island stands in the middle (a smaller one in an L-Kitchen's arm, or
@@ -916,9 +917,9 @@ function kitchen(c: Ctx): Want[] {
 }
 
 /**
- * D-208: where a kitchen's counter may stand on its own, in a room with a set door, when the
- * range's wall has no room beside it: elsewhere on a north wall (the other side of a door, an
- * L-Kitchen's other arm), then against a south wall.
+ * D-208: where a kitchen's counter may stand on its own when the range's wall has no room beside
+ * it: elsewhere on a north wall (the other side of a door, an L-Kitchen's other arm), then against
+ * a south wall.
  */
 const ALONE: readonly Slot[] = ['N', 'SR'];
 
@@ -2524,10 +2525,10 @@ function layOut(
     ...(cat ? { cat } : {}),
     ...(dog ? { dog } : {}),
   };
-  // D-208: a kitchen with a set door in its walls is laid out the other ways its counter can stand
-  // too, and keeps the first that shows the most of what makes it a kitchen. A counter on its own
-  // never costs the room the table or the fridge it has as D-202 stands its range and counter.
-  if (L.g.opened && wants.some((w) => w.alone)) {
+  // D-208: a kitchen is laid out the other ways its counter can stand too, and keeps the first that
+  // shows the most of what makes it a kitchen. A counter on its own never costs the room the table
+  // or the fridge it has as D-097 and D-202 stand its range and counter.
+  if (wants.some((w) => w.alone)) {
     const shows = (l: RoomLayout, re: RegExp) => l.items.some((it) => re.test(it.sprite));
     const keeps = (l: RoomLayout) => KEPT.every((re) => !shows(out, re) || shows(l, re));
     let best = out;
@@ -2591,11 +2592,11 @@ function pieces(l: RoomLayout): number {
 }
 
 /**
- * D-208: a kitchen's other ways to stand its counter, where a set door takes the wall beside its
- * range. In both the range keeps to a north wall (no south wall for its group, D-202), and a
- * counter that finds no room beside it stands on its own (`alone`): right after the range, before
- * the fridge and the table, or after the table and its chairs (or the Kitchen Island), so it never
- * costs the room either.
+ * D-208: a kitchen's other ways to stand its counter, where it finds no room beside its range. In
+ * both the range keeps to a north wall (no south wall for its group, D-202), and a counter that
+ * finds no room beside it stands on its own (`alone`): right after the range, before the fridge
+ * and the table, or after the table and its chairs (or the Kitchen Island), so it never costs the
+ * room either.
  */
 function kitchenPlans(wants: readonly Want[]): Want[][] {
   const counter = wants.find((w) => w.alone)!;
