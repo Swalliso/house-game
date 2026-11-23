@@ -54,10 +54,22 @@ export function arrivalTag(a: ArrivalDef): string {
 /**
  * Overtime weeks used so far: each makes the run a week longer (D-041), arrivals included. The
  * milestones' own counts and the overtime week on now, since D-206's gift can lift the weeks
- * left past what the run started with.
+ * left past what the run started with. A run that ends in an overtime week keeps that week on
+ * the state, and its last milestone has counted it already, so it counts once.
  */
 export function overtimeUsed(s: RunState): number {
-  return s.milestones.reduce((n, m) => n + m.overtimeUsed, 0) + s.overtimeWeek;
+  const over = s.screen === 'won' || s.screen === 'lost';
+  return s.milestones.reduce((n, m) => n + m.overtimeUsed, 0) + (over ? 0 : s.overtimeWeek);
+}
+
+/**
+ * The top bar's overtime clocks: one for every overtime week the run has had, the rule's and any
+ * neighbor's gift (D-206), the spent ones after those left. Weeks used before the gift stay
+ * spent clocks, so the bar never shows fewer weeks than the run has had.
+ */
+export function overtimeClocks(s: RunState): { total: number; left: number } {
+  const left = Math.max(0, s.overtimeLeft);
+  return { total: Math.max(rules.rule(s, 'overtime'), overtimeUsed(s) + left), left };
 }
 
 /**
