@@ -14,6 +14,7 @@ import type {
   GameEvent,
   HouseCondition,
   NeighborSide,
+  PlaceAction,
   RunState,
 } from './index.ts';
 import { meetsHouse, progressOf, tilesInRegion } from './conditions.ts';
@@ -215,70 +216,97 @@ describe('the neighbor’s ask (D-206)', () => {
     expect(first.state.neighbor).toBeUndefined();
   });
 
-  describe('passes over a side', () => {
-    const seed = 'side';
-    const side = firstSide(seed);
-    const x = col(side);
-    /** OPEN with `ch` at (cx, cy). */
-    const mark = (ch: string, cx: number, cy: number) =>
-      OPEN.map((row, y) => (y === cy ? row.slice(0, cx) + ch + row.slice(cx + 1) : row));
-    const sideTaken = (rows: readonly string[], placements?: readonly Placement[]) =>
-      asked(playUntil(runOn(rows, placements, seed), at(2)).events).map((e) => e.side);
-
-    it('with water in its strip: a pond, a creek or a lake', () => {
-      expect(sideTaken(OPEN)).toEqual([side]);
-      for (const ch of ['P', 'C', 'L']) {
-        expect(sideTaken(mark(ch, x + 1, 4)), ch).toEqual([other(side)]);
-      }
-      // Water just past the strip doesn't count.
-      expect(sideTaken(mark('P', side === 'left' ? 2 : 9, 4))).toEqual([side]);
-    });
-
-    it('with a kept Tree in its strip (Old Woods), but not a Tree it would clear', () => {
-      const rows = mark('T', x, 2);
-      expect(sideTaken(rows)).toEqual([side]);
-      const s = runOn(rows, undefined, seed);
-      const woods: RunState = {
-        ...s,
-        house: { ...s.house, lot: { ...s.house.lot, kind: 'oldWoods' } },
-      };
-      expect(asked(playUntil(woods, at(2)).events).map((e) => e.side)).toEqual([other(side)]);
-    });
-
-    it('met already', () => {
-      expect(sideTaken(OPEN, [['bedroom', 5, 3], fenceDown(x, 1, 5)])).toEqual([other(side)]);
-      // Short of it, it asks for the rest, and says what's there.
-      const e = asked(
-        playUntil(runOn(OPEN, [['bedroom', 5, 3], fenceDown(x, 1, 4)], seed), at(2)).events,
-      );
-      expect(e).toEqual([{ t: 'neighborAsked', side, phase: 2, tiles: 5, have: 4 }]);
-    });
-
-    it('without room in one group for what’s missing', () => {
-      // Boulders across the strip at rows 2 and 5: groups of 4, 4 and 4 tiles.
-      const rows = OPEN.map((row, y) =>
-        y === 2 || y === 5 ? row.slice(0, x) + 'BB' + row.slice(x + 2) : row,
-      );
-      expect(sideTaken(rows)).toEqual([other(side)]);
-      // A Fence of 1 already there needs only 4 more: a group of 4 holds them.
-      expect(sideTaken(rows, [['bedroom', 5, 3], fenceDown(x, 0, 1)])).toEqual([side]);
-      // Pieces fill a strip as Boulders do.
-      expect(
-        sideTaken(OPEN, [
-          ['bedroom', 5, 3],
-          ['bedroom', x, 1],
-          ['bedroom', x, 5],
-        ]),
-      ).toEqual([other(side)]);
-    });
-
-    it('both: no ask', () => {
-      const wet = OPEN.map((row, y) => (y === 4 ? 'C' + row.slice(1, 11) + 'C' : row));
-      const { state, events } = playUntil(runOn(wet, undefined, seed), () => false);
-      expect(asked(events)).toEqual([]);
-      expect(state.neighbor).toBeUndefined();
-    });
+  // Seeds that try the left side first ('side') and the right side first ('oak'), so every
+  // refusal is checked on both sides, with the fallback to the other.
+  it('has a seed for each side to try first', () => {
+    expect(['side', 'oak'].map((seed) => firstSide(seed))).toEqual(['left', 'right']);
   });
+
+  for (const seed of ['side', 'oak']) {
+    describe(`passes over the ${firstSide(seed)} side`, () => {
+      const side = firstSide(seed);
+      const x = col(side);
+      /** OPEN with `ch` at (cx, cy). */
+      const mark = (ch: string, cx: number, cy: number) =>
+        OPEN.map((row, y) => (y === cy ? row.slice(0, cx) + ch + row.slice(cx + 1) : row));
+      const sideTaken = (rows: readonly string[], placements?: readonly Placement[]) =>
+        asked(playUntil(runOn(rows, placements, seed), at(2)).events).map((e) => e.side);
+
+      it('with water in its strip: a pond, a creek or a lake', () => {
+        expect(sideTaken(OPEN)).toEqual([side]);
+        for (const ch of ['P', 'C', 'L']) {
+          expect(sideTaken(mark(ch, x + 1, 4)), ch).toEqual([other(side)]);
+        }
+        // Water just past the strip doesn't count.
+        expect(sideTaken(mark('P', side === 'left' ? 2 : 9, 4))).toEqual([side]);
+      });
+
+      it('with a kept Tree in its strip (Old Woods), but not a Tree it would clear', () => {
+        const rows = mark('T', x, 2);
+        expect(sideTaken(rows)).toEqual([side]);
+        const s = runOn(rows, undefined, seed);
+        const woods: RunState = {
+          ...s,
+          house: { ...s.house, lot: { ...s.house.lot, kind: 'oldWoods' } },
+        };
+        expect(asked(playUntil(woods, at(2)).events).map((e) => e.side)).toEqual([other(side)]);
+      });
+
+      it('met already', () => {
+        expect(sideTaken(OPEN, [['bedroom', 5, 3], fenceDown(x, 1, 5)])).toEqual([other(side)]);
+        // Short of it, it asks for the rest, and says what's there.
+        const e = asked(
+          playUntil(runOn(OPEN, [['bedroom', 5, 3], fenceDown(x, 1, 4)], seed), at(2)).events,
+        );
+        expect(e).toEqual([{ t: 'neighborAsked', side, phase: 2, tiles: 5, have: 4 }]);
+      });
+
+      it('without room in one group for what’s missing', () => {
+        // Boulders across the strip at rows 2 and 5: groups of 4, 4 and 4 tiles.
+        const rows = OPEN.map((row, y) =>
+          y === 2 || y === 5 ? row.slice(0, x) + 'BB' + row.slice(x + 2) : row,
+        );
+        expect(sideTaken(rows)).toEqual([other(side)]);
+        // A Fence of 1 already there needs only 4 more: a group of 4 holds them.
+        expect(sideTaken(rows, [['bedroom', 5, 3], fenceDown(x, 0, 1)])).toEqual([side]);
+        // Pieces fill a strip as Boulders do.
+        expect(
+          sideTaken(OPEN, [
+            ['bedroom', 5, 3],
+            ['bedroom', x, 1],
+            ['bedroom', x, 5],
+          ]),
+        ).toEqual([other(side)]);
+      });
+
+      it('whose free tiles meet only at a corner: a group is joined along its edges', () => {
+        // The outer column free in rows 0–3, the inner one in rows 4–7: two groups of 4 that
+        // touch only diagonally, so neither holds 5.
+        const [outer, inner] = side === 'left' ? [x, x + 1] : [x + 1, x];
+        const put = (row: string, cx: number, ch: string) =>
+          row.slice(0, cx) + ch + row.slice(cx + 1);
+        const rows = OPEN.map((row, y) => put(row, y < 4 ? inner : outer, 'B'));
+        expect(sideTaken(rows)).toEqual([other(side)]);
+        // One Boulder fewer joins them along an edge: a group of 9.
+        expect(sideTaken(rows.map((row, y) => (y === 3 ? put(row, inner, '.') : row)))).toEqual([
+          side,
+        ]);
+      });
+
+      it('both: no ask, for one reason on each side or the same one', () => {
+        const wet = OPEN.map((row, y) => (y === 4 ? 'C' + row.slice(1, 11) + 'C' : row));
+        const { state, events } = playUntil(runOn(wet, undefined, seed), () => false);
+        expect(asked(events)).toEqual([]);
+        expect(state.neighbor).toBeUndefined();
+        // Water along this side, Boulders across the other's strip every third row.
+        const far = col(other(side));
+        const mixed = mark('P', x, 4).map((row, y) =>
+          y % 3 === 2 ? row.slice(0, far) + 'BB' + row.slice(far + 2) : row,
+        );
+        expect(sideTaken(mixed)).toEqual([]);
+      });
+    });
+  }
 
   it('pays its reward at the milestone, once, with enough tiles there', () => {
     const seed = 'side';
@@ -374,6 +402,149 @@ describe('the neighbor’s ask (D-206)', () => {
     });
     expect(r.neighbor(s, play as never)?.have).toBe(3);
     expect(r.neighbor(runOn(OPEN))).toBeNull();
+  });
+
+  it('counts what apply() then builds for every legal play, and the house as it stands otherwise', () => {
+    const { state: s2 } = playUntil(runOn(OPEN), at(2));
+    // The week's hand with a Fence, and a Fence in Your goods (the standing stock's).
+    const s: RunState = {
+      ...s2,
+      hand: [...s2.hand, { kind: 'piece', id: 'fence' }],
+      reserve: [...s2.reserve, { id: 'fence', stock: true }],
+    };
+    const asIs = r.neighbor(s)!;
+    expect(asIs.have).toBe(0);
+    const plays = r.legalPlays(s);
+    const raised = new Set<string>();
+    for (const p of plays) {
+      const view = r.neighbor(s, p)!;
+      expect(view.have, JSON.stringify(p)).toBe(r.neighbor(r.apply(s, p).state)!.have);
+      if (view.have > 0) raised.add(p.from);
+      // A play looked at never changes the view without one.
+      expect(r.neighbor(s)).toEqual(asIs);
+    }
+    // A Fence from the hand counts, as one from Your goods does.
+    expect([...raised].sort()).toEqual(['hand', 'reserve']);
+    // An illegal play (over the Bedroom) is the house as it stands.
+    const fence = s.reserve.length - 1;
+    const over: PlaceAction = { t: 'place', from: 'reserve', i: fence, x: 5, y: 3, rot: 0 };
+    expect(r.checkPlay(s, over).legal).toBe(false);
+    expect(r.neighbor(s, over)).toEqual(asIs);
+    // Once it has resolved (missed), a Fence looked at in the strip changes nothing it shows.
+    const done = playUntil(s, at(3)).state;
+    expect(done.neighbor?.result).toBe('missed');
+    const lay: PlaceAction = {
+      t: 'place',
+      from: 'reserve',
+      i: done.reserve.findIndex((c) => c.id === 'fence'),
+      x: col(firstSide('side')),
+      y: 0,
+      rot: 0,
+      shape: ['#', '#', '#', '#', '#'],
+    };
+    expect(r.checkPlay(done, lay).legal).toBe(true);
+    expect(r.neighbor(done, lay)).toEqual(r.neighbor(done));
+    expect(r.neighbor(done)).toMatchObject({ have: 0, met: false, result: 'missed' });
+  });
+
+  it('resolves at a milestone completed early, and pays then', () => {
+    const side = firstSide('side');
+    const { state: s2 } = playUntil(runOn(OPEN), at(2));
+    const laid = layFence(s2, side, 0, 5);
+    expect(r.canCompleteEarly(laid).ok).toBe(true);
+    const { state, events } = r.apply(laid, { t: 'completeEarly' });
+    expect(events.find((e) => e.t === 'milestone')).toMatchObject({ phase: 2, result: 'early' });
+    expect(resolved(events)).toEqual([
+      {
+        t: 'neighborResolved',
+        side,
+        phase: 2,
+        tiles: 5,
+        have: 5,
+        result: 'met',
+        reward: { overtime: 1 },
+      },
+    ]);
+    expect(state.overtimeLeft).toBe(s2.overtimeLeft + 1);
+    expect(state.neighbor?.result).toBe('met');
+  });
+
+  it('gives a week the run still has: the last week waits for it, and takes a pin (D-207)', () => {
+    // The last phase's target is out of reach, so the run spends every overtime week it has.
+    const rr = createRules(asking({}, [0, 0, 0, 1e9]));
+    const side = firstSide('side');
+    const { state: s2 } = playUntil(runOn(OPEN, undefined, 'side', rr), at(2), rr);
+    // Met (5 tiles): two weeks of the rule's and the neighbor's one. Missed (4): the rule's two.
+    for (const [tiles, weeks] of [
+      [5, 3],
+      [4, 2],
+    ] as const) {
+      // The last phase's last week.
+      let s = playUntil(layFence(s2, side, 0, tiles, rr), at(3, 2), rr).state;
+      expect(s.overtimeLeft, `${tiles}`).toBe(weeks);
+      for (let k = 0; k < weeks; k++) {
+        expect(rr.lastWeekOfRun(s), `${tiles}: week ${k}`).toBe(false);
+        expect(rr.canPin(s, 0).ok, `${tiles}: week ${k}`).toBe(true);
+        s = rr.apply(s, { t: 'pass' }).state;
+        expect(s.overtimeWeek).toBe(k + 1);
+      }
+      // The last overtime week is the run's last: nothing comes after it to pin for.
+      expect(s.overtimeLeft).toBe(0);
+      expect(rr.lastWeekOfRun(s)).toBe(true);
+      expect(rr.canPin(s, 0)).toEqual({ ok: false, reason: 'No week comes after this one.' });
+      const end = rr.apply(s, { t: 'pass' }).state;
+      expect(end.screen).toBe('lost');
+      expect(end.milestones.at(-1)).toMatchObject({
+        phase: 3,
+        result: 'failed',
+        overtimeUsed: weeks,
+      });
+    }
+  });
+
+  it('replays a run code saved while it runs, its Fence laid, and resolves the same', () => {
+    // The Landscaper brings a Fence to Your goods (M4b), so the actions alone can lay it.
+    const start = r.newRun({ ...setup('side'), crewId: 'landscaper' });
+    const { state: s2, actions } = playUntil(start, at(2));
+    const n = s2.neighbor!;
+    expect(n).toBeDefined();
+    const i = s2.reserve.findIndex((c) => c.id === 'fence');
+    const x0 = col(n.side, s2.house.lot.width);
+    let lay: PlaceAction | undefined;
+    for (let y = 0; !lay && y + 5 <= s2.house.lot.height; y++) {
+      for (const x of [x0, x0 + 1]) {
+        const p: PlaceAction = {
+          t: 'place',
+          from: 'reserve',
+          i,
+          x,
+          y,
+          rot: 0,
+          shape: ['#', '#', '#', '#', '#'],
+        };
+        if (!lay && r.checkPlay(s2, p).legal) lay = p;
+      }
+    }
+    expect(lay).toBeDefined();
+    const laid = r.apply(s2, lay!).state;
+    expect(r.neighbor(laid)).toMatchObject({ have: 5, met: true });
+    expect(laid.neighbor?.result).toBeUndefined();
+    const code = encodeRunCode({
+      build: 'test',
+      contentHash: contentHash(C),
+      setup: start.setup,
+      actions: [...actions, lay!],
+    });
+    const decoded = decodeRunCode(code);
+    if (!decoded.ok) throw new Error(decoded.error);
+    const replayed = r.replay(decoded.data.setup, decoded.data.actions);
+    expect(replayed.failedAt).toBeUndefined();
+    expect(replayed.state).toEqual(laid);
+    // On to the milestone, the two resolve it alike.
+    const original = playUntil(laid, at(3));
+    const again = playUntil(replayed.state, at(3));
+    expect(again.state).toEqual(original.state);
+    expect(resolved(original.events).map((e) => e.result)).toEqual(['met']);
   });
 
   it('names the strip in Inspect only while it runs, on its side', () => {
