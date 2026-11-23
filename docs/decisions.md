@@ -5013,6 +5013,27 @@ Each landmark, off → on. *Its reach's Wow a copy* is what its reach added to t
 - **Wins rise 3.5 points,** at the edge of chance (p = 0.053). By client: the Hendersons +9.2 [+1.8, +16.5], Count Vladislav +6.7 [−0.9, +14.3], the Barkers +4.2 [−3.3, +11.6], Juniper Vale +3.3 [−4.3, +11.0], and Dale −5.8 [−13.3, +1.6]. The runs differ from Framing on, where the Fountain joins the draw: 58 of the 62 runs with no landmark placed end differently too. **No target changed.**
 - **Speed:** the trial's runs took 8% longer (2.14 s → 2.31 s a run, 64 → 68 ms a build, four at once on four cores). The benchmark gate's run (`bench-16`, the densest of 50 lots) took 2.51 to 2.85 s on develop (30 weeks) and 2.56 to 2.86 s on the branch (28 weeks), three runs each back to back: about the same a week (88 and 92 ms). Both fail the gate's 1 s in this container, which is slower than CI's runner (on 2026-11-20 develop's gate run read 1.5 s in a container and 0.68 s in CI); CI's sim job reports the gate on the pull request.
 
+**A second trial, on today's develop:** D-200 and D-201 merged into develop while this was finished, so the same trial ran again with both on both arms: develop at `f4adde7` against this branch at `aeb1954`, the same seeds and setup (D-202, merged after, is art only). The Henhouse and the Library are dealt from Framing here, so their pick rates from the hand are the first with reach.
+
+| | Off | On | Paired |
+|---|---|---|---|
+| **Wins** | 50.3% [46.3–54.3] | 50.7% [46.7–54.7] | +0.3 points [−3.1, +3.8]: 57 runs won only with reach, 55 only without (p = 0.93) |
+| Milestones 3 to 7 met | 95.0, 85.2, 72.8, 62.3, 50.3% | 95.8, 87.0, 71.2, 61.5, 50.7% | The first two are the same in both |
+| Wow at the end, median | 77,825 | 79,142 | A pair's ratio: median 1.000, geometric mean 1.006 [0.959, 1.055] |
+| Other pieces' share of the points a placement adds | 26.4% | 27.7% | |
+| Placements that change no other piece | 52.0% | 49.4% | |
+
+| | Placed (runs) | Picked from the hand | At its placement: changes another piece; their points | Own Wow a copy | Its reach's Wow a copy | Own zero weeks |
+|---|---|---|---|---|---|---|
+| Pool | 217 (212) → 315 (280) | not dealt | 10% → 93%; +0.3 → +5.0 | 1,204 → 1,077 | 903 | 10% → 27% |
+| Library | 329 (329) → 360 (360) | 16% → 17% of 1,378 and 1,338 offers | 57% → 77%; +1.4 → +3.3 | 3,740 → 3,440 | 705 | 2% → 2% |
+| Henhouse | 501 (326) → 614 (365) | 20% → **32%** of 682 and 664 | 14% → 76%; +0.8 → +5.6 | 528 → 262 | 860 | 9% → 40% |
+| Fountain | new: 128 (107) | 17% of 703 | 56%; +1.7 | 656 | 69 | 0% |
+
+- **Wins don't move here** (+0.3 points, p = 0.93), and no client's do past noise (Juniper Vale +5.8 [−2.0, +13.6], the others −2.5 to +0.8). The first trial's +3.5 was at the edge of chance, and with the Henhouse and the Library dealt on both arms it's gone. **No target changed.**
+- **Greedy picks the Henhouse from the hand far more with its reach:** 32% of the times it's dealt (20% without, as D-200's trial found), and builds 614 against 501. The Library's pick barely moves (17% against 16%), and the Fountain's is 17%.
+- **The reaches pay as in the first trial:** with its reach a Pool pays 1,980 a copy (1,204 on develop), a Henhouse 1,122 (528) and a Library 4,145 (3,740), and the reaches add 2.3% of all the Wow. At 1 tile the Henhouse's reach would add 359 a copy (42% of 2 tiles'). The Fountain's adds 69, and nothing in 47 of the 107 runs with one.
+
 **Why:**
 - The review's: every piece effect that reads another piece reads one it touches or one a Hallway links (the Mudroom's fenced yard aside). In 150 runs, 53% of placements changed no other piece's earnings, and other pieces got 24% of the points a placement added. A placed piece touches or links 3.4 others on average, 9.5% of the house; within 2 tiles it has 6.8 (18.9%).
 - The user wants the impact and range of Combolands' buildings (`research.md`): each has a radius, and its range lights up while you place it.
@@ -5021,22 +5042,23 @@ Each landmark, off → on. *Its reach's Wow a copy* is what its reach added to t
 **Considered:**
 - *A reach through the house's rooms:* nearly house-wide (above).
 - *A radius for each piece* (1 for small pieces, 3 for the rarest, as in Combolands): left out, as the story says; 2 everywhere first, and `validateContent` already allows 1 to 3.
-- *The Henhouse at 1 tile:* kept at 2 (the trial, above).
+- *The Henhouse at 1 tile:* kept at 2 (both trials, above).
 - *A hint for greedy beside `setHint` and `yardHint`:* not needed. The estimate counts the reach both ways, and the trial's landmarks change another piece at 70% to 93% of their placements.
 - *A reach that reads* (a piece earning for what's within 2 tiles of it), *views at range* (D-166's follow-up), *chains* (D-094, Parked), and *the Playroom, the Hot Tub and the Fire Pit as landmarks* until S25 has been played: left out, as the story says.
 
 **Changes:** D-020, D-035, D-036, D-037, D-051 and D-166 (Accepted): a dated note on each. `implementation-plan.md`: the aura's scope, the encodings of the Library, the Pool and the Henhouse, and the Fountain's row.
 
-**Checked:** CHECKS
+**Checked:** `npm test` (167 files: 2,810 tests pass and 1 is skipped, with D-200 to D-202 merged in), `npm run typecheck`, `npm run format:check` and `npm run build`; `contentHash(CONTENT)` is `aa5bf7de` (`15df9f1a` before the merges).
 - **New tests:** `src/rules/reach.test.ts` (4): the query on an L-shaped Kitchen (it reaches round its corner, diagonals count, it goes both ways, never lists the piece itself, and is kept per layout), the tiles (a square clipped to the lot, its own left out), and a card's reach (its widest aura's, a conditional one's too; 0 for an adjacent or a region aura). `src/content/landmarks.test.ts` (12): a Pool 2 tiles from a Patio gives it +25% and one 3 tiles away doesn't; two Pools' +25%s add, on one line; a Bedroom 2 tiles from a Pool loses 1 and Soundproofing shields it; a Bedroom touching a Pool reads both lines; the Library's +1 and −1; the Henhouse's +1 to Green pieces; the Fountain's +10%, which a 3-point Lawn rounds away and two Fountains don't; the cards' text and terms, the hand's "nearby" within a hand line, and the glossary's title; `validateContent` refusing a reach of 0, 4 or 1.5; a Pool's play, whose preview equals the tally and `scoreOnly` at three spots, lists the pieces it changes, and has parts that add up to its change; the estimate equal to the exact score both ways; and `reachTiles` around a ghost and a placed piece, and none for a piece with no reach. `src/ui/art/yard.test.ts` (1): the Fountain fits its cell, rises over nothing, and its three frames differ only in the water.
 - **Tests updated:** the base pool's counts (26 cards of 24 types, the Fountain at half weight from Framing), the cards whose lines link a term, the hand's first lines for the four landmarks, the front-yard pieces, the test content's Fountain (weight 0 there, as its Porch) among the special pieces the Catalog, the Showroom and the Garden Center draw from, a Library's reach in two fixture and blueprint sums, and the photos' frame test, whose spare cell assumed a frame the board's height never caps.
 - **In the dev build** at 1440×900, from `?debug` on a `reach-3` lot: a Kitchen, a Bedroom and a Patio placed, then a Pool picked: in reach, the square follows the ghost and the badges mark the Kitchen +1, the Bedroom −1 and the Patio +1; moved down out of reach, they go. The placed Pool under Inspect shades its square, the same under Reduce motion, and a Fountain picked in the front yard shades its 5 × 5 over the yard's tint. No console errors. Screenshots: `docs/playtests/s31-landmarks-sheet.png`.
+- **The hands,** as D-201 counted them: three 4-card hands holding the landmarks (a Library, a Bedroom, a Henhouse and a Fountain; a Kitchen, a Library, a Pool and a Henhouse; a Bedroom, a Living Room, a Fountain and a Patio), on develop (with a Porch for the Fountain) and on this branch, at 1280×720, 1366×768, 1440×900 (2×), 1470×840 (2×), 1536×864 (1.25×), 1728×963 (2×) and 1920×1080, in both fonts, counting each line's rows and the cards under the action bar. With "+25% to Social pieces nearby" the Pool's line took four rows in the pixel font at 1440×900 (2×) and put the second hand's fourth card under the bar, where develop's fits; with "+25% to Social nearby" every hand fits wherever develop's does, and the first fits at 1470×840 (2×), where develop's Library line ("+2 per touching Quiet (up to 3)", four rows) doesn't. At 1280×720 and 1366×768 the two match hand for hand: a fourth card is under the bar in 11 of the 12 cases on each.
 
 **Known gaps:**
 - **Not played by a person.** Whether the shading reads on a busy lot, and whether a landmark feels like a plan, are the playtest's questions. Touch, Firefox and Safari weren't run.
 - **The Fountain's +10% is small:** a piece must earn 5 or more for it to show (a Lawn's 3 stays 3; two Fountains make it 4), so its reach adds little (above). A bigger number, or points, is a tuning question for after the playtest.
 - **Its card says "Outdoor and Pretty pieces"** (each kind, in the cards' usual list), which could read as pieces that are both; the hand says "Outdoor or Pretty".
-- **The Pool, the Library and the Henhouse stay out of the hand** here; S32 (D-200, #131) deals the Henhouse and the Library from Framing, and whichever of the two merges second updates the base pool's counts.
+- **The Pool stays out of the hand:** S32's stage 2 waits for this playtest, and its bar is a 15% pick from the hand; the Henhouse and the Library come from Framing with D-200, and the second trial's pick rates are the first with reach.
 - **The Inspect panel doesn't list what a placed landmark reaches;** the board's square and each piece's breakdown line say it.
 
 ### D-201 · Categories, not names: a Patio pays by any Social room, a Dining Room warms any Social piece, and a Doghouse likes anything Green
