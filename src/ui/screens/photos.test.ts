@@ -17,7 +17,14 @@ import {
 } from '../../rules/index.ts';
 import { boardRows, isIndoor } from '../board/geometry.ts';
 import { CELL } from '../sprites.ts';
-import { buildSteps, milestoneShots, PHOTO_ASPECT, photoFrame } from './photos.ts';
+import {
+  buildSteps,
+  endPan,
+  houseBox,
+  milestoneShots,
+  PHOTO_ASPECT,
+  photoFrame,
+} from './photos.ts';
 
 // The greedy bot completing every milestone early that it can, on the first seeds where it wins
 // with early and overtime milestones, and loses with a missed one. Found by search, so tuning
@@ -315,5 +322,57 @@ describe('the photos’ frame', () => {
     expect(f.x).toBe(0);
     expect(f.w * 3).toBe(f.h * 4);
     expect(f.y + f.h).toBeLessThanOrEqual(boardRows(house.lot.height) * CELL);
+  });
+});
+
+describe('the end screen’s house', () => {
+  it('is the box of the rooms, or of the yard pieces when there are none', () => {
+    const house = won.state.house;
+    const cells = roomCells(house);
+    expect(houseBox(house)).toEqual({
+      x0: Math.min(...cells.map((c) => c.x)),
+      y0: Math.min(...cells.map((c) => c.y)),
+      x1: Math.max(...cells.map((c) => c.x)) + 1,
+      y1: Math.max(...cells.map((c) => c.y)) + 1,
+    });
+    const yard = house.pieces.filter((p) => !isIndoor(p.defId));
+    const box = houseBox({ ...house, pieces: yard })!;
+    for (const p of yard) {
+      for (const c of placedCells(p.shape ?? CONTENT.pieces[p.defId].shape, p.x, p.y, p.rot)) {
+        expect(c.x).toBeGreaterThanOrEqual(box.x0);
+        expect(c.y).toBeGreaterThanOrEqual(box.y0);
+        expect(c.x).toBeLessThan(box.x1);
+        expect(c.y).toBeLessThan(box.y1);
+      }
+    }
+    expect(houseBox(rules.newRun(won.state.setup).house)).toBeNull();
+  });
+
+  // D-204: the view the strip leaves at 1366×768, under a sign that ends 66 px down it.
+  const view = { left: 280, top: 64, right: 1086, bottom: 519 };
+  const sign = 64 + 66;
+
+  it('pans its rooms into the middle of the view under the sign', () => {
+    const rooms = { left: 395, top: 40, right: 971, bottom: 328 };
+    const pan = endPan(view, sign, rooms);
+    const top = rooms.top - pan.top;
+    const bottom = rooms.bottom - pan.top;
+    expect(top).toBeGreaterThanOrEqual(sign);
+    expect(top - sign).toBeCloseTo(view.bottom - bottom);
+    expect(rooms.left - pan.left - view.left).toBeCloseTo(view.right - (rooms.right - pan.left));
+  });
+
+  it('puts the top of rooms taller than that just under the sign', () => {
+    // Thirteen rows at 1×, taller than the 389 px under the sign: centered, the sign sat on them.
+    const rooms = { left: 395, top: 83, right: 971, bottom: 83 + 13 * 32 };
+    expect(endPan(view, sign, rooms).top).toBe(83 - sign);
+  });
+
+  it('centers them in the whole view while there is no sign', () => {
+    const rooms = { left: 395, top: 40, right: 971, bottom: 328 };
+    const pan = endPan(view, null, rooms);
+    expect(rooms.top - pan.top - view.top).toBeCloseTo(view.bottom - (rooms.bottom - pan.top));
+    // A sign above the view (it never is) changes nothing.
+    expect(endPan(view, view.top - 10, rooms)).toEqual(pan);
   });
 });
