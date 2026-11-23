@@ -1,6 +1,7 @@
 // What stands in each room (D-097): LimeZu furniture by slot rules, for every room type and
-// rotation, inside its walls, off its doorways and off each other; the same every time; rooms
-// of a type that don't look copy-pasted; fixtures drawn where they fit, badged where not.
+// rotation, inside its walls, off its doorways and off each other, a held set's openings among
+// them (D-176); the same every time; rooms of a type that don't look copy-pasted; fixtures drawn
+// where they fit, badged where not.
 
 import { readFileSync } from 'node:fs';
 import fc from 'fast-check';
@@ -21,9 +22,11 @@ import {
 import { lotFromRows } from '../../rules/lot.ts';
 import {
   EDGE,
+  OPENING,
   WALL,
   edge,
   hallLinks,
+  heldSets,
   houseModel,
   inset,
   overlaps,
@@ -90,6 +93,24 @@ function modelOf(h: HouseState, client?: ClientId): HouseModel {
     house: h,
   };
   return houseModel(h, hallLinks(state), null, client);
+}
+
+/** The board's model with the held sets' doors as well (D-176), and the sets it holds. */
+function setModelOf(h: HouseState): { m: HouseModel; sets: string[] } {
+  const state = {
+    ...rules.newRun({
+      seed: 'rooms',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    }),
+    house: h,
+  };
+  const held = heldSets(state);
+  return {
+    m: houseModel(h, hallLinks(state), null, undefined, held),
+    sets: held.map((s) => s.set),
+  };
 }
 
 const FLAT = /^(rug-|runner-|mat-|bath-mat)/;
@@ -986,7 +1007,7 @@ describe('the members’ rooms (D-111)', () => {
 });
 
 // Random houses with random room fixtures: every room's layout keeps to the rules.
-function randomHouse(seed: number): HouseState {
+function randomHouse(seed: number, kinds: readonly PieceId[] = INDOOR): HouseState {
   let s = seed >>> 0 || 1;
   const rand = (n: number) => {
     s = (Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) >>> 0;
@@ -1044,7 +1065,7 @@ function randomHouse(seed: number): HouseState {
     }
   };
   const rooms = 4 + rand(12);
-  for (let i = 0; i < rooms; i++) place(INDOOR[rand(INDOOR.length)]!);
+  for (let i = 0; i < rooms; i++) place(kinds[rand(kinds.length)]!);
   for (const y of ['patio', 'driveway', 'hotTub'] as const) place(y);
   return { lot: lotFromRows(rows), pieces, nextUid: pieces.length + 1 };
 }
@@ -1748,5 +1769,214 @@ describe('the client’s own things (D-183)', () => {
       // About half of these random houses' first Living Rooms, crowded with doors, have one.
       expect(lying).toBeGreaterThan(120);
     }, 20_000);
+  });
+});
+
+describe('a held set’s openings (D-176, D-202)', () => {
+  const ENTERTAINER: readonly PieceId[] = ['kitchen', 'diningRoom', 'livingRoom'];
+  /** The Entertainer's rooms, each with the fixtures drawn as its furniture. */
+  const MEMBERS: readonly (readonly [PieceId, readonly (FixtureId | undefined)[]])[] = [
+    ['kitchen', [undefined, 'fireplace', 'kitchenIsland']],
+    ['lKitchen', [undefined, 'fireplace', 'kitchenIsland']],
+    ['diningRoom', [undefined, 'fireplace']],
+    ['livingRoom', [undefined, 'fireplace']],
+  ];
+  const SIDES = ['N', 'E', 'S', 'W'] as const;
+  /** The room on (x, y) at a turn, flush against side `side` of a box, from its start. */
+  function against(
+    id: PieceId,
+    side: (typeof SIDES)[number],
+    box: { x: number; y: number; w: number; h: number },
+  ): Spec {
+    // The Living Room's long side along the wall: across a north or south one, down a side one.
+    const rot: Rot = id === 'livingRoom' && (side === 'N' || side === 'S') ? 1 : 0;
+    const cells = placedCells(CONTENT.pieces[id].shape, 0, 0, rot);
+    const w = Math.max(...cells.map((c) => c.x)) + 1;
+    const h = Math.max(...cells.map((c) => c.y)) + 1;
+    const at = {
+      N: [box.x, box.y - h],
+      S: [box.x, box.y + box.h],
+      W: [box.x - w, box.y],
+      E: [box.x + box.w, box.y],
+    }[side];
+    return [id, at[0]!, at[1]!, rot];
+  }
+  const isOpening = (m: HouseModel, uid: number) =>
+    m.doors.some(
+      (d) =>
+        (d.a === uid || d.b === uid) &&
+        d.why === 'set' &&
+        (d.dir === 'v' ? d.gap.h : d.gap.w) > WALL.door,
+    );
+
+  it('lay out the Entertainer’s rooms in every arrangement, turn and fixture, opening on each side, without clashes', () => {
+    for (const [id, fixtures] of MEMBERS) {
+      const type = CONTENT.pieces[id].countsAs ?? id;
+      const [a, b] = ENTERTAINER.filter((t) => t !== type);
+      const shapes = new Map<string, Rot>();
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        const key = JSON.stringify(placedCells(CONTENT.pieces[id].shape, 0, 0, rot));
+        if (!shapes.has(key)) shapes.set(key, rot);
+      }
+      const opened = new Set<string>();
+      for (let style = 0; style < arrangements(id); style++) {
+        for (const fixture of fixtures) {
+          for (const rot of shapes.values()) {
+            const cells = placedCells(CONTENT.pieces[id].shape, 4, 4, rot);
+            const box = {
+              x: 4,
+              y: 4,
+              w: Math.max(...cells.map((c) => c.x)) - 3,
+              h: Math.max(...cells.map((c) => c.y)) - 3,
+            };
+            // One of the others against each side in turn, and the third against the next side.
+            for (const [i, side] of SIDES.entries()) {
+              const next = SIDES[(i + 1) % 4]!;
+              const specs: Spec[] = [
+                [id, 4, 4, rot, fixture],
+                against(a!, side, box),
+                against(b!, next, box),
+              ];
+              const h = restyle(house(specs), style);
+              const { m, sets } = setModelOf(h);
+              const at = `${id} ${style} ${fixture ?? ''} r${rot} ${side}${next}`;
+              const uid = h.pieces[0]!.uid;
+              expect(sets, at).toEqual(['entertainer']);
+              if (isOpening(m, uid)) opened.add(side);
+              for (const p of h.pieces) expect(problems(m, p.uid), at).toEqual([]);
+            }
+          }
+        }
+      }
+      // Each of its walls has had an opening in it.
+      expect([...opened].sort(), id).toEqual(['E', 'N', 'S', 'W']);
+    }
+  });
+
+  it('stand a Kitchen’s range and its counter against the south wall where its Living Room’s opening takes the north wall', () => {
+    // D-176's house 4: a Kitchen below its Living Room, its Dining Room beside it.
+    const specs: Spec[] = [
+      ['kitchen', 3, 5],
+      ['livingRoom', 3, 2],
+      ['diningRoom', 5, 5],
+    ];
+    for (let style = 0; style < arrangements('kitchen'); style++) {
+      const h = restyle(house(specs), style);
+      const uid = h.pieces[0]!.uid;
+      const { m, sets } = setModelOf(h);
+      expect(sets).toEqual(['entertainer']);
+      const north = m.doors.find((d) => d.b === uid && d.dir === 'h')!;
+      expect(north.gap.w, `${style}`).toBe(OPENING.width);
+      const box = m.rooms.get(uid)!.box;
+      const south = box.y + box.h - WALL.out;
+      const items = roomItems(m, uid);
+      const range = items.find((it) => it.sprite === 'range')!;
+      const counter = items.find((it) => /^counter-sink/.test(it.sprite))!;
+      // Side by side, their feet on the south wall's band.
+      expect(range.y + artSize(range.sprite).h, `${style}`).toBe(south);
+      expect(counter.y + artSize(counter.sprite).h, `${style}`).toBe(south);
+      expect(counter.x + artSize(counter.sprite).w === range.x || range.x + 16 === counter.x).toBe(
+        true,
+      );
+      expect(problems(m, uid)).toEqual([]);
+      // Without the set, the north wall keeps them, as before.
+      const plain = roomItems(modelOf(h), uid).find((it) => it.sprite === 'range')!;
+      expect(plain.y + artSize('range').h, `${style}`).toBeLessThan(box.y + CELL);
+    }
+  });
+
+  it('give a Dining Room’s hutch the narrow cabinet’s place where an opening takes its wall, never at a chair’s cost', () => {
+    const HUTCH = 2; // the arrangement with the hutch and the round table
+    const chairs = (items: readonly Item[]) => items.filter((it) => /^chair-/.test(it.sprite));
+    // Its Kitchen north of it, its Living Room to the east: the cabinet stands where the hutch
+    // would, and the table and its two chairs below it.
+    const roomy = restyle(
+      house([
+        ['diningRoom', 5, 5],
+        ['kitchen', 5, 3],
+        ['livingRoom', 7, 3],
+      ]),
+      HUTCH,
+    );
+    // Its Living Room north of it and the front door in its south wall: below the cabinet the
+    // front door's walkway would take a chair, so it goes without.
+    const tight = restyle(
+      house([
+        ['diningRoom', 5, 5],
+        ['livingRoom', 5, 2],
+        ['kitchen', 7, 4],
+      ]),
+      HUTCH,
+    );
+    for (const [h, cabinet] of [
+      [roomy, true],
+      [tight, false],
+    ] as const) {
+      const uid = h.pieces[0]!.uid;
+      const { m, sets } = setModelOf(h);
+      expect(sets).toEqual(['entertainer']);
+      expect(isOpening(m, uid)).toBe(true);
+      const items = roomItems(m, uid);
+      expect(items.some((it) => /^(hutch|sideboard)/.test(it.sprite))).toBe(false);
+      expect(items.some((it) => it.sprite === 'curio-1')).toBe(cabinet);
+      expect(chairs(items)).toHaveLength(2);
+      expect(problems(m, uid)).toEqual([]);
+      // Without the set, the hutch stands on the north wall.
+      expect(roomItems(modelOf(h), uid).some((it) => it.sprite === 'hutch')).toBe(true);
+    }
+  });
+
+  it('lay out any house heavy in the sets’ rooms inside its walls, off its doorways and off itself', () => {
+    // Bedrooms, Bathrooms and Closets for the Suites and Jack-and-Jills, the Entertainer's rooms,
+    // and Hallways to join some only through.
+    const SET_ROOMS: readonly PieceId[] = [
+      'bedroom',
+      'bedroom',
+      'bathroom',
+      'closet',
+      'kitchen',
+      'lKitchen',
+      'diningRoom',
+      'livingRoom',
+      'hallway',
+    ];
+    let openings = 0;
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
+        const { m } = setModelOf(randomHouse(seed, SET_ROOMS));
+        openings += [...m.rooms.keys()].filter((uid) => isOpening(m, uid)).length;
+        for (const uid of m.rooms.keys()) expect(problems(m, uid), `seed ${seed}`).toEqual([]);
+      }),
+      { numRuns: 300 },
+    );
+    // Rooms with an opening in their walls: about 60 in 300 houses (the Entertainer is one a house).
+    expect(openings).toBeGreaterThan(40);
+  });
+
+  it('seat a dining table’s chairs on both sides beside an opening in a side wall', () => {
+    // Its Kitchen to the west, through an opening; its Living Room below.
+    const specs: Spec[] = [
+      ['diningRoom', 5, 3],
+      ['kitchen', 3, 3],
+      ['livingRoom', 5, 5],
+    ];
+    for (const style of [0, 1]) {
+      const h = restyle(house(specs), style);
+      const uid = h.pieces[0]!.uid;
+      const { m } = setModelOf(h);
+      const west = m.doors.find((d) => d.b === uid && d.dir === 'v')!;
+      expect(west.gap.h).toBe(OPENING.width);
+      const items = roomItems(m, uid);
+      // Two a side: facing east on the west side, by the opening, and facing west on the east.
+      expect(
+        items.filter((it) => /^chair-east/.test(it.sprite)),
+        `${style}`,
+      ).toHaveLength(2);
+      expect(
+        items.filter((it) => /^chair-west/.test(it.sprite)),
+        `${style}`,
+      ).toHaveLength(2);
+      expect(problems(m, uid)).toEqual([]);
+    }
   });
 });
