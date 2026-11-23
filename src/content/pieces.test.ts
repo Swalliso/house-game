@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { PieceId, Rot, RunState, Tally } from '../rules/index.ts';
-import { cardText, createRules } from '../rules/index.ts';
+import { cardText, createRules, matchesDef } from '../rules/index.ts';
 import { bounds, cellIndex, shapeCells, uniqueRotations } from '../rules/grid.ts';
 import { computeLayout, layoutCache } from '../rules/layout.ts';
 import { lotFromRows } from '../rules/lot.ts';
@@ -126,6 +126,18 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   ivysRoom: 1,
   addition: 1,
 };
+
+/**
+ * The cards a piece's first line of a kind reads, by its selector on their own tags and kind
+ * (D-201: the Patio, the Dining Room and the Doghouse read a tag, where they named pieces).
+ */
+function readBy(id: PieceId, kind: 'neighbor' | 'aura'): PieceId[] {
+  const line = CONTENT.pieces[id].effects.find((e) => e.kind === kind);
+  if (line?.kind !== 'neighbor' && line?.kind !== 'aura') throw new Error(`${id}: no ${kind}`);
+  return Object.values(CONTENT.pieces)
+    .filter((p) => matchesDef(line.match, p))
+    .map((p) => p.id);
+}
 
 /** The card's complexity matches Appendix A, and its text reads cleanly. */
 function expectCard(id: PieceId, effects?: readonly string[]): void {
@@ -289,12 +301,38 @@ describe('indoor rooms', () => {
     ).toEqual([16, 2, 0]);
   });
 
-  it('Dining Room: Kitchens and Living Rooms next to it earn +50%, and two add up', () => {
-    expectCard('diningRoom', [
-      'Touching Kitchens and Living Rooms earn +50%',
-      '+2 every week while Sunny',
+  it('Dining Room: Social pieces next to it earn +50%, and two add up', () => {
+    expectCard('diningRoom', ['Touching Social neighbors earn +50%', '+2 every week while Sunny']);
+    // D-201: every Social piece, where it named the Kitchen and the Living Room.
+    expect(readBy('diningRoom', 'aura')).toEqual([
+      'kitchen',
+      'lKitchen',
+      'diningRoom',
+      'livingRoom',
+      'patio',
+      'hotTub',
+      'firePit',
     ]);
     expect(earned(open, [['diningRoom', 0, 0]])).toEqual([2]);
+    // A Patio it touches: the Patio's +2 for a Social room and +1 out back, at +50%, is 4.5, so
+    // 5 (it was 1).
+    expect(
+      earned(open, [
+        ['diningRoom', 0, 0],
+        ['patio', 2, 0],
+      ]),
+    ).toEqual([2, 5]);
+    // A Patio that touches it and a Fire Pit takes both +50%s (D-195's and D-201's): its +2 at
+    // +100% is 4 (it's half in the front yard, below the house's front row, so no +1). The Fire
+    // Pit warms the Dining Room too (+2 in the sun at +50%: 3), and the Dining Room the Fire Pit
+    // (+1 out back: 1.5, so 2).
+    const both = tally(open, [
+      ['diningRoom', 0, 0],
+      ['patio', 2, 1],
+      ['firePit', 2, 0],
+    ]);
+    expect(both.pieces.map((p) => p.earned)).toEqual([3, 4, 2]);
+    expect(both.pieces[1]!.pct).toBe(100);
     // A Living Room with a view (+2 from the Flower Bed) and the sun (+2) earns 6; the Dining
     // Room below it is in its shade (D-120), and the Bedroom isn't boosted.
     expect(
@@ -798,12 +836,20 @@ describe('yard pieces', () => {
     ).toEqual([9, 0]);
   });
 
-  it('Patio: earns only touching a room; +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
+  it('Patio: earns only touching a room; +2 per Social room, +1 per view (up to 3)', () => {
     expectCard('patio', [
       'Earns nothing unless touching a room',
-      '+2 per touching Living Room or Kitchen',
+      '+2 per touching Social room',
       '+1 per touching view (up to 3)',
       '+1 every week in the back yard',
+    ]);
+    // D-201: every Social room, where it named the Living Room and the Kitchen. A Hot Tub and a
+    // Fire Pit are Social, but not rooms.
+    expect(readBy('patio', 'neighbor')).toEqual([
+      'kitchen',
+      'lKitchen',
+      'diningRoom',
+      'livingRoom',
     ]);
     // A Kitchen, a Living Room, a Flower Bed, and a Tree: 2 + 2 + 1 + 1, and +1 in the back
     // yard (D-166): between the two rooms, behind the house's front row.
@@ -833,6 +879,27 @@ describe('yard pieces', () => {
         ['lKitchen', 0, 0],
       ]),
     ).toEqual([3, 5]);
+    // Beside a Dining Room (D-201): 2 + 1, and its +50% makes 4.5, so 5. Its breakdown names
+    // the Dining Room for both.
+    const dining = tally(open, [
+      ['patio', 2, 0],
+      ['diningRoom', 0, 0],
+    ]);
+    expect(dining.pieces.map((p) => p.earned)).toEqual([5, 2]);
+    expect(dining.pieces[0]!.lines).toEqual([
+      { label: 'Touching a Dining Room', op: 'add', value: 2, from: [{ kind: 'piece', uid: 2 }] },
+      { label: 'Every week (in the back yard)', op: 'add', value: 1, from: [] },
+      { label: 'Dining Room next door', op: 'pct', value: 50, from: [{ kind: 'piece', uid: 2 }] },
+    ]);
+    // A Fire Pit is Social but no room: beside one and a Bedroom, the Patio earns its +1 out
+    // back only. (The Fire Pit touches no room, so it earns nothing and warms nothing.)
+    expect(
+      earned(open, [
+        ['patio', 2, 0],
+        ['bedroom', 0, 0],
+        ['firePit', 4, 0],
+      ]),
+    ).toEqual([1, 3, 0]);
     // The Patio rule (D-105): by a Tree but touching no room, it earns nothing, though it's
     // still legal. A Hallway isn't a room, and links only rooms, so one beside it doesn't help.
     const tree = ['.T........', ...emptyRows(10, 9)];
@@ -1078,13 +1145,22 @@ describe('yard pieces', () => {
 });
 
 describe('"-house" outbuildings', () => {
-  it('Doghouse: earns only in a fenced yard (but can be built anywhere); 1, +1 per Lawn', () => {
+  it('Doghouse: earns only in a fenced yard (but can be built anywhere); 1, +1 per Green neighbor', () => {
     expectCard('doghouse', [
       'Earns nothing unless in a fenced yard',
       '+1 every week',
-      '+1 per touching Lawn',
+      '+1 per touching Green neighbor',
       '+1 every week in the back yard',
     ]);
+    // D-201: anything Green, where it named the Lawn. A Tree is Green too, and the card says so.
+    expect(readBy('doghouse', 'neighbor')).toEqual([
+      'lawn',
+      'sapling',
+      'flowerBed',
+      'herbGarden',
+      'greenhouse',
+    ]);
+    expect(cardText(CONTENT, CONTENT.pieces.doghouse).notes).toEqual(['Trees are Green.']);
     expect(CONTENT.pieces.doghouse.tags).toEqual(['Pet', 'House']);
     const rows = emptyRows(6, 6);
     // Out in the open, next to a Lawn: nothing, with a warning line. It's still legal.
@@ -1108,6 +1184,14 @@ describe('"-house" outbuildings', () => {
     expect(fencedSizes(emptyRows(6, 8), yard)).toEqual([16]);
     // Both out back, behind the Bedrooms' front row: +1 each (D-166).
     expect(earned(emptyRows(6, 8), yard)).toEqual([4, 4, 6, 3, 2]);
+    // D-201: a Flower Bed in the Lawn's place counts as the Lawn did: 1 + 1, and +1 out back.
+    const bed: Placement[] = [...yard.slice(0, 4), ['flowerBed', 3, 0]];
+    expect(earned(emptyRows(6, 8), bed)).toEqual([4, 4, 6, 3, 1]);
+    // And a Tree below it: +1 more. The first Bedroom counts the Tree too (+1, Quiet).
+    const tree = ['......', '..T...', ...emptyRows(6, 6)];
+    expect(earned(tree, bed)).toEqual([5, 4, 6, 4, 1]);
+    // A Bedroom and a Fence aren't Green: by the Bedroom alone it earns 1 + 1 out back.
+    expect(earned(emptyRows(6, 8), yard.slice(0, 4))).toEqual([4, 4, 6, 2]);
   });
 
   it('Treehouse: must touch a Tree; 2, +2 per Kid neighbor other than Treehouses', () => {

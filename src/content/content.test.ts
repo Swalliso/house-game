@@ -154,17 +154,17 @@ describe('content', () => {
   });
 
   it('says what a Tree does, from the cards, in a tip the Sapling’s card links (D-195)', () => {
-    // Who wants one counts its tags and its view too: a Library wants Quiet neighbors, and a
-    // Living Room or a Patio a view.
+    // Who wants one counts its tags and its view too: a Library wants Quiet neighbors, a Living
+    // Room or a Patio a view, and a Doghouse Green ones (D-201).
     expect(featureWantedText(CONTENT, 'tree')).toBe(
-      'Bedrooms, Living Rooms, Patios, Libraries, and Birdhouses earn more beside one.',
+      'Bedrooms, Living Rooms, Patios, Doghouses, Libraries, and Birdhouses earn more beside one.',
     );
     expect(glossary(CONTENT).tree).toEqual({
       title: 'Tree',
       text:
         'Quiet and Green, and a view. Each Tree tile counts as its own neighbor: Bedrooms, ' +
-        'Living Rooms, Patios, Libraries, and Birdhouses earn more beside one, and Pools less. ' +
-        'A Treehouse must be built touching one.',
+        'Living Rooms, Patios, Doghouses, Libraries, and Birdhouses earn more beside one, and ' +
+        'Pools less. A Treehouse must be built touching one.',
     });
     const sapling = cardText(CONTENT, CONTENT.pieces.sapling);
     expect(sapling.effects).toEqual(['+1 every week', 'Each tile becomes a Tree after 4 weeks']);

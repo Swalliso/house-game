@@ -177,8 +177,10 @@ describe('a compact hand card (D-121)', () => {
       kitchen: ['+2 per Dining Room or Herb Garden'],
       lKitchen: ['+2 per Dining Room or Herb Garden'],
       // An aura leads with what it gives (D-148): "Touching Kitchens and…" lost its +50%. Its
-      // "touching" line runs 39 letters, four lines at 1280×720.
-      diningRoom: ['+50% to Kitchen or Living Room'],
+      // "touching" line for two names ran 39 letters, four lines at 1280×720. For a tag (D-201)
+      // it says the tag, as the Library's does: "touching Social pieces" took a fourth row beside
+      // a 2× thumbnail, and put a fourth card under the bar at 1440×900 and 1470×840 at 2×.
+      diningRoom: ['+50% to touching Social'],
       livingRoom: ['+2 per touching view (up to 3)'],
       closet: ['+1 every week'],
       // Playtest 4's fix (D-114), behind "Links the rooms it touches…" before this.
@@ -195,8 +197,9 @@ describe('a compact hand card (D-121)', () => {
       herbGarden: ['+1 per tile in the sun'],
       // Its "if touching a room" doesn't fit after the pay (D-148): Inspect and the lot's
       // warning say it. The Hot Tub's and the Fire Pit's too. "+2 per touching Living Room or
-      // Kitchen" (38 letters) fits whole, but its extra row put fourth cards under the Pass bar.
-      patio: ['+2 per Living Room or Kitchen'],
+      // Kitchen" (38 letters) fit whole, but its extra row put fourth cards under the Pass bar;
+      // the Social rooms' line (D-201) runs 27.
+      patio: ['+2 per touching Social room'],
       fence: ['+1 per fenced tile (up to +6)'],
       // Its job (D-140), not "Must be built touching the street or a Driveway" or its +1.
       driveway: ['+3 if touching a Garage'],
@@ -212,7 +215,8 @@ describe('a compact hand card (D-121)', () => {
       sunroom: ['+6 every week while Sunny'],
       // D-195: "+3 per touching Patio, Pool, or Fire Pit" runs 41 letters.
       hotTub: ['+3 per Patio, Pool, or Fire Pit'],
-      firePit: ['+50% to touching Social pieces'],
+      // The Dining Room's line (D-201), from D-195's "+50% to touching Social pieces".
+      firePit: ['+50% to touching Social'],
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
@@ -270,7 +274,7 @@ describe('a compact hand card (D-121)', () => {
 
   it('keeps the full sentences for Inspect and the shop', () => {
     expect(cardText(CONTENT, CONTENT.pieces.diningRoom).effects[0]).toBe(
-      'Touching Kitchens and Living Rooms earn +50%',
+      'Touching Social neighbors earn +50%',
     );
     expect(cardText(CONTENT, CONTENT.pieces.patio).effects).toContain(
       'Earns nothing unless touching a room',
