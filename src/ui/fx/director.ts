@@ -292,7 +292,10 @@ export const neighborMoment = signal<{
   delayMs: number;
   id: number;
 } | null>(null);
-/** D-206: an overtime week the neighbor just gave: the top bar's new clock pops, each id once. */
+/**
+ * D-206: an overtime week the neighbor just gave: the top bar's new clock pops, each id once,
+ * and it's let go once the neighbor has gone.
+ */
 export const overtimeGift = signal<{ id: number } | null>(null);
 /**
  * D-160: the standing stock's or the client's cards, (D-171) the crew's, (D-188) the wrong
@@ -1703,7 +1706,10 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           }
           neighborResolvedBeat(e, after);
           const f = FEEL.neighbor;
-          await wait(e.result === 'met' ? f.metMs : f.metMs / 2);
+          // In real time, as their heart and their going are (NeighborAskLayer.tsx), at any tally
+          // speed: the sheet after the milestone would cover the heart mid-pop. Holding hurries
+          // it and a click skips it, as for the milestone's banner.
+          await wait(e.result === 'met' ? f.metMs : f.metMs / 2, undefined, undefined, realSpeed);
           break;
         }
         case 'changeOrderAnswered': {
@@ -2067,7 +2073,15 @@ function neighborResolvedBeat(
     },
     (met ? f.metMs : f.metMs / 2) + f.outMs,
   );
-  if (met && e.reward?.overtime) overtimeGift.value = { id: nextId++ };
+  if (met && e.reward?.overtime) {
+    // The new clock pops once (topbar.css). Once they've gone it's a clock like the others, so a
+    // top bar drawn again later (the menu's title and back) doesn't pop it again.
+    const gift = { id: nextId++ };
+    overtimeGift.value = gift;
+    setTimeout(() => {
+      if (overtimeGift.value?.id === gift.id) overtimeGift.value = null;
+    }, f.metMs + f.outMs);
+  }
   if (skipping) return;
   const at = neighborCell(after, e.side);
   const words = met && e.reward ? `${rewardText(CONTENT, e.reward)}!` : `✕ ${e.have}/${e.tiles}`;
@@ -2200,10 +2214,12 @@ function growBeats(events: readonly GameEvent[], after: RunState, gen: number): 
     return;
   }
   setTimeout(() => {
-    // Not for a run that's gone, or over a tally that has started since (the prize just shows).
+    // Not for a run that's gone, or over a tally that has started since: then this action's
+    // prize, if it filled the wish, just shows, and a prize the newer action holds back waits
+    // for that action's own beat.
     if (gen !== generation) return;
-    if (busy.value) wishHeld.value = false;
-    else beats();
+    if (!busy.value) beats();
+    else if (wished) wishHeld.value = false;
   }, FEEL.transform.afterArrivalMs);
 }
 
