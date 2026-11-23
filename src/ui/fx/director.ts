@@ -33,6 +33,7 @@ import {
   type ChangeOrderResult,
   type ClientId,
   type GameEvent,
+  type NeighborSide,
   type PieceId,
   type PieceScore,
   type RunState,
@@ -44,6 +45,7 @@ import {
 import { lampSpot } from '../art/house-paint.ts';
 import { audio } from '../audio/audio.ts';
 import { hallLinks, heldSets, houseModel, sunLight } from '../board/house-model.ts';
+import { neighborFeet } from '../board/neighbor-ask.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
 import { CELL } from '../sprites.ts';
@@ -278,6 +280,19 @@ export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(nul
  * from the street to the front door (board/PeopleLayer.tsx), each id once.
  */
 export const walkIn = signal<{ arrival: ArrivalId; id: number } | null>(null);
+/**
+ * D-206: the neighbor's moments on the board (board/NeighborAskLayer.tsx), each id once: `asked`
+ * as their ask comes (they walk over from their house, after `delayMs`, and their bubble pops),
+ * then `met` (a heart over them, and they go) or `missed` (they go) as it resolves.
+ */
+export const neighborMoment = signal<{
+  kind: 'asked' | 'met' | 'missed';
+  side: NeighborSide;
+  delayMs: number;
+  id: number;
+} | null>(null);
+/** D-206: an overtime week the neighbor just gave: the top bar's new clock pops, each id once. */
+export const overtimeGift = signal<{ id: number } | null>(null);
 /**
  * D-160: the standing stock's or the client's cards, (D-171) the crew's, or (D-188) the wrong
  * delivery's piece, just in the reserve: the reserve slots (`slots`, by index) that pop in, after
@@ -1519,10 +1534,21 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
             const was = base.changeOrders[k];
             return was && was.result === undefined && r.result !== undefined ? [k] : [];
           });
+          // D-206: so do the neighbor's ask and its overtime week, after them.
+          const gift = events
+            .slice(i + 1)
+            .find((x): x is Extract<GameEvent, { t: 'neighborResolved' }> => x.t === 'neighborResolved');
+          const asking = gift
+            ? {
+                neighbor: base.neighbor,
+                overtimeLeft: after.overtimeLeft - (gift.reward?.overtime ?? 0),
+              }
+            : {};
           afterMilestone =
-            pending.length > 0
+            pending.length > 0 || gift
               ? {
                   ...after,
+                  ...asking,
                   budget: after.budget - owed,
                   changeOrders: after.changeOrders.map((r, k) =>
                     pending.includes(k) ? base.changeOrders[k]! : r,
@@ -1600,6 +1626,25 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
             else if (e.result !== 'ended') audio.play('rotate', { rate: 0.6, gain: 0.6 });
           }
           await wait(good ? FEEL.changeOrder.resolvedMs : FEEL.changeOrder.resolvedMs / 2);
+          break;
+        }
+        case 'neighborResolved': {
+          // D-206, after the milestone and its change orders: met, a heart over the neighbor, the
+          // overtime week they give pops in on the top bar, and its words pop over them; missed,
+          // a quiet line, and they go. The checklist's row turns with it (Checklist.tsx).
+          if (afterMilestone) {
+            const shown: RunState = afterMilestone;
+            const turned: RunState = {
+              ...shown,
+              neighbor: after.neighbor,
+              overtimeLeft: after.overtimeLeft,
+            };
+            afterMilestone = turned;
+            setShownRun({ ...turned, budget: turned.budget + paid });
+          }
+          neighborResolvedBeat(e, after);
+          const f = FEEL.neighbor;
+          await wait(e.result === 'met' ? f.metMs : f.metMs / 2);
           break;
         }
         case 'changeOrderAnswered': {
@@ -1751,6 +1796,9 @@ function sheetBeat(e: GameEvent, after: RunState): void {
     case 'delivered':
       deliveredBeat(e, after);
       break;
+    case 'neighborAsked':
+      neighborAskedBeat(e, after);
+      break;
     case 'crewTool': {
       // D-171: the crew's tool is in the supplies as the milestone's first week opens (or sold,
       // with the supplies full): a neutral flash names it, with the delivery's shimmer.
@@ -1839,6 +1887,74 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
   // D-177: then they walk up from the street to wait at the door (FEEL.arrival.walk). Hurried or
   // with Reduce motion, they're simply there.
   if (!skipping && motion()) walkIn.value = { arrival: e.arrival, id: nextId++ };
+}
+
+/** D-206: where the neighbor stands, in cells from the lot's top-left, for a burst there. */
+function neighborCell(s: RunState, side: NeighborSide): { x: number; y: number } {
+  const feet = neighborFeet(s.house.lot, side);
+  return { x: feet.x / CELL, y: feet.y / CELL };
+}
+
+/**
+ * D-206: a neighbor asks (board/NeighborAskLayer.tsx): the doorbell, a touch lower than a
+ * member's, then they walk over from their house to the lot's edge on their side, a ring spreads
+ * where they stop, and their bubble pops: the Fence and its count. A member moving in the same
+ * week rings first, and this waits for them. It doesn't hold the week up. With Reduce motion
+ * they're simply there, with the bell.
+ */
+function neighborAskedBeat(e: Extract<GameEvent, { t: 'neighborAsked' }>, after: RunState): void {
+  const f = FEEL.neighbor;
+  const delayMs = justArrived.value !== null ? f.afterArrivalMs : 0;
+  const walkMs = motion() ? (f.walkPx / f.walkPxPerSecond) * 1000 : 0;
+  const m = { kind: 'asked' as const, side: e.side, delayMs, id: nextId++ };
+  neighborMoment.value = m;
+  setTimeout(
+    () => {
+      if (neighborMoment.value?.id === m.id) neighborMoment.value = null;
+    },
+    delayMs + walkMs + f.bubbleMs + f.popMs,
+  );
+  audio.play('doorbell', { delay: delayMs / 1000, rate: f.bellRate });
+  const stopped = (delayMs + walkMs) / 1000;
+  audio.play('bubble', { delay: stopped + f.bubbleMs / 1000, rate: 0.85 });
+  if (!skipping && motion()) {
+    afterPaint(() => boardBurst('ring', neighborCell(after, e.side)), delayMs + walkMs);
+  }
+}
+
+/**
+ * D-206: the neighbor's ask resolves at its milestone (the caller holds the beat): met, a heart
+ * pops over them and the overtime week they give pops onto the top bar, with its words over
+ * them and a chime; missed, a quiet line. Then they go.
+ */
+function neighborResolvedBeat(
+  e: Extract<GameEvent, { t: 'neighborResolved' }>,
+  after: RunState,
+): void {
+  const f = FEEL.neighbor;
+  const met = e.result === 'met';
+  const m = { kind: met ? ('met' as const) : ('missed' as const), side: e.side, delayMs: 0 };
+  const moment = { ...m, id: nextId++ };
+  neighborMoment.value = moment;
+  setTimeout(
+    () => {
+      if (neighborMoment.value?.id === moment.id) neighborMoment.value = null;
+    },
+    (met ? f.metMs : f.metMs / 2) + f.outMs,
+  );
+  if (met && e.reward?.overtime) overtimeGift.value = { id: nextId++ };
+  if (skipping) return;
+  const at = neighborCell(after, e.side);
+  const words = met && e.reward ? `${rewardText(CONTENT, e.reward)}!` : `✕ ${e.have}/${e.tiles}`;
+  // Over the heart's bubble, which reaches about 1.6 cells over their feet.
+  popup(at.x, Math.max(1.5, at.y - 2.1), words, met ? 'order' : 'quiet', f.metMs);
+  if (met) {
+    audio.play('bubble', { rate: 1.1 });
+    audio.play('chime', { rate: 1.25, delay: 0.12 });
+    audio.play('sparkle', { gain: 0.5, delay: 0.2 });
+  } else {
+    audio.play('rotate', { rate: 0.6, gain: 0.6 });
+  }
 }
 
 /**
@@ -2134,6 +2250,8 @@ onRunReset(() => {
     lightsHeld.value = new Set();
     lightSwitched.value = null;
     clientVisit.value = null;
+    neighborMoment.value = null;
+    overtimeGift.value = null;
   });
   clearParticles();
 });

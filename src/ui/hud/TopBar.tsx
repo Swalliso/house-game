@@ -11,7 +11,7 @@
 
 import { signal } from '@preact/signals';
 import { CONTENT, rules, SCORE_LABELS, type RunState } from '../../rules/index.ts';
-import { busy, shownRun, shownScore, skip, targetHit } from '../fx/director.ts';
+import { busy, overtimeGift, shownRun, shownScore, skip, targetHit } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
 import { Button, Icon, Switch } from '../kit/kit.tsx';
 import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } from '../store.ts';
@@ -80,8 +80,7 @@ function PhaseBlock() {
   const phases = CONTENT.balance.phases;
   const weeks = CONTENT.balance.weeksPerPhase;
   // Each overtime week used makes the run a week longer (D-041).
-  const overtimeUsed = Math.max(0, rules.rule(s, 'overtime') - s.overtimeLeft);
-  const runWeeks = phases.length * weeks + overtimeUsed;
+  const runWeeks = phases.length * weeks + overtimeUsed(s);
   const ended = s.screen === 'won' || s.screen === 'lost';
   const shopping = s.screen === 'shop';
   // The milestone's weeks as pips along the plaque's foot (D-154), filling week by week, the
@@ -229,8 +228,11 @@ function NextArrival({ s }: { s: RunState }) {
 
 function Resources() {
   const s = shownRun.value ?? run.value;
-  const total = rules.rule(s, 'overtime');
+  // D-206: a neighbor's gift can leave more weeks than the run started with: a clock each.
+  const total = Math.max(rules.rule(s, 'overtime'), s.overtimeLeft);
   const left = Math.max(0, s.overtimeLeft);
+  // The week just given pops in (topbar.css), once per gift.
+  const gift = overtimeGift.value;
   const overtimeTitle = 'Overtime weeks left: spent automatically when a target is missed';
   // The first job brings each in when it first matters (D-149, first-job.ts).
   const on = shown.value;
@@ -251,9 +253,16 @@ function Resources() {
           aria-label={`Overtime weeks left: ${left} of ${total}`}
           role="img"
         >
-          {Array.from({ length: Math.max(total, left) }, (_, i) => (
-            <Icon key={i} name="clock" class={i < left ? '' : 'spent'} />
-          ))}
+          {Array.from({ length: total }, (_, i) => {
+            const given = gift !== null && i === left - 1;
+            return (
+              <Icon
+                key={given ? `gift-${gift.id}` : i}
+                name="clock"
+                class={i < left ? (given ? 'given' : '') : 'spent'}
+              />
+            );
+          })}
         </div>
       )}
     </>

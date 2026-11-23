@@ -1651,9 +1651,9 @@ export function neighborAskText(content: Content): string {
   const columns = a.depth === 1 ? 'the column' : `the ${a.depth} columns`;
   return (
     `Once a run, as ${phase} starts, a neighbor may ask for ${a.tiles} tiles of ${piece} in ` +
-    `${columns} along their side of the lot. Have them there by the ${phase} milestone and ` +
-    `they give you ${rewardText(content, a.reward).replace(/^./, (c) => c.toLowerCase())}. ` +
-    `They don’t ask on a first job, or along a side with water or old Trees.`
+    `${columns} along their side of the lot, shaded on the board while they wait. Have them ` +
+    `there by the ${phase} milestone for ${rewardText(content, a.reward)}. They don’t ask on ` +
+    `a first job, or along a side with water or old Trees.`
   );
 }
 
