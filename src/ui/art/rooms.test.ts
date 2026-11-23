@@ -872,15 +872,18 @@ describe('fixtures', () => {
             if (sides === '' && style === 0 && ['bedroom', 'livingRoom'].includes(id)) {
               expect(layout.fixtureShown, at).toBe(true);
             }
+            // Every Kitchen does, where its table stood if the floor is full: it picks where its
+            // counter stands (D-208) as if the dog weren't there, then lays it down.
+            if (id === 'kitchen') expect(layout.fixtureShown, at).toBe(true);
             cases++;
             if (layout.fixtureShown) shown++;
           }
         }
       }
     }
-    // More than half of them show it (2026-11-23: 383 of 672); the rest show its badge.
+    // More than half of them show it (2026-11-23: 379 of 672); the rest show its badge.
     expect(shown / cases).toBeGreaterThan(0.5);
-    // Nearly all keep off the digit (2026-11-23: 336 of 371, against 212 before they tried to);
+    // Nearly all keep off the digit (2026-11-23: 334 of 367, against 214 before they tried to);
     // the rest have nowhere else, as in a small room with doors all round.
     expect(clear / laid).toBeGreaterThan(0.85);
   }, 30_000);

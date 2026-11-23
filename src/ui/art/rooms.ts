@@ -2396,8 +2396,8 @@ function cardTiles(defId: PieceId): number {
 /**
  * Room `uid`'s layout: its arrangement's wants, or `given` ones (D-183: a way the client's things
  * go in). `lit` false lays a finished room out as it stood before (D-181: without the lamp it
- * adds), to weigh the client's ways by. `dogWay` says `given` is a way a Dog Door's dog takes a
- * small piece's place (D-210), so it isn't looked for again.
+ * adds), to weigh the client's ways by. `dogWay` says not to look for a piece that makes way for
+ * a Dog Door's dog (D-210): `given` is such a way already, or a kitchen's plan, weighed first.
  */
 function layOut(
   m: HouseModel,
@@ -2528,22 +2528,26 @@ function layOut(
   // D-208: a kitchen is laid out the other ways its counter can stand too, and keeps the first that
   // shows the most of what makes it a kitchen. A counter on its own never costs the room the table
   // or the fridge it has as D-097 and D-202 stand its range and counter.
+  let chosen = out;
+  // What makes way for a Dog Door's dog is looked for among the wants the room is laid out by
+  // (D-210), as in any room: a kitchen's are the plan it keeps, its counter staying where it stood.
+  let laid: readonly Want[] = wants.map((w) => (w.alone ? { ...w, alone: undefined } : w));
   if (wants.some((w) => w.alone)) {
     const shows = (l: RoomLayout, re: RegExp) => l.items.some((it) => re.test(it.sprite));
     const keeps = (l: RoomLayout) => KEPT.every((re) => !shows(out, re) || shows(l, re));
-    let best = out;
     for (const plan of kitchenPlans(wants)) {
-      const other = layOut(m, uid, plan, lit);
-      if (keeps(other) && beats(kitchenScore(other), kitchenScore(best))) best = other;
+      // The dog lies down in each on free floor only.
+      const other = layOut(m, uid, plan, lit, true);
+      if (keeps(other) && beats(kitchenScore(other), kitchenScore(chosen))) {
+        [chosen, laid] = [other, plan];
+      }
     }
-    return best;
   }
   // A spare stand-in (D-202) comes out again where the room keeps fewer of its other pieces with
   // it than without it.
   const spare = wants.find(
     (w) => w.spare && L.placed.some((p) => w.standIn?.includes(p.item.sprite)),
   );
-  let chosen = out;
   if (spare) {
     const without = layOut(
       m,
@@ -2560,9 +2564,9 @@ function layOut(
   if (f === 'dogDoor' && !chosen.fixtureShown && !dogWay) {
     const small = /^(plant-|side-|lamp-|nightstand-|nightlamp-)/;
     const ways = [
-      ...inPlaceOf(wants, DOG_BED, small),
+      ...inPlaceOf(laid, DOG_BED, small),
       // Or the small piece gives way, and the bed goes wherever the floor is free.
-      ...inPlaceOf(wants, DOG_BED, small).map((way) => [
+      ...inPlaceOf(laid, DOG_BED, small).map((way) => [
         ...way.filter((w) => !w.sprites.includes(DOG_BED)),
         dogBedWant(c),
       ]),
@@ -2574,8 +2578,8 @@ function layOut(
     // Else one of the pieces after the key piece's group and any table's makes way: the bed goes
     // down before it, one place earlier at a time, as placesFor puts the Barkers'.
     const bed = dogBedWant(c);
-    for (let i = wants.length - 1; i >= keptBefore(wants); i--) {
-      const layout = layOut(m, uid, [...wants.slice(0, i), bed, ...wants.slice(i)], lit, true);
+    for (let i = laid.length - 1; i >= keptBefore(laid); i--) {
+      const layout = layOut(m, uid, [...laid.slice(0, i), bed, ...laid.slice(i)], lit, true);
       if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
     }
   }
@@ -2627,12 +2631,14 @@ const KEPT: readonly RegExp[] = [KITCHEN_TABLE, /^fridge/];
 
 /**
  * D-208: what a kitchen's layout shows, the most important first: its fixture (where it has one),
- * the range, a counter, its table, the counter with the sink, then how many pieces stand in it.
+ * the range, a counter, its table, the counter with the sink, then how many pieces stand in it. A
+ * Dog Door's dog counts for none of them: it lies down after, in the kitchen as it would stand
+ * without it (D-210).
  */
 function kitchenScore(l: RoomLayout): number[] {
   const shows = (re: RegExp) => Number(l.items.some((it) => re.test(it.sprite)));
   return [
-    Number(l.fixtureShown),
+    Number(l.fixtureShown && !l.dog),
     shows(/^range/),
     shows(/^counter/),
     shows(KITCHEN_TABLE),
