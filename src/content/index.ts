@@ -12,7 +12,14 @@ import type {
   Tag,
 } from '../rules/index.ts';
 import { isConnected, packShapeProblem, parseShape, shapeCells } from '../rules/grid.ts';
-import { cardText, changeOrderText, modifierText, specText, toolText } from '../rules/text.ts';
+import {
+  cardText,
+  changeOrderText,
+  modifierText,
+  specText,
+  toolText,
+  upgradeText,
+} from '../rules/text.ts';
 import { DRAW_ROWS, drawableTypes, drawWeights, rowOf } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
 import { isRunMode } from '../rules/milestones.ts';
@@ -724,6 +731,28 @@ export function validateContent(content: Content): string[] {
     if (!Number.isInteger(def.price) || def.price < 1) problems.push(`${where}: price must be ≥ 1`);
     if (def.modifiers.some((m) => m.kind !== 'rule')) {
       problems.push(`${where}: company upgrades are rule modifiers`);
+    }
+    // D-209: what it brings has something to draw on; a pick has a slot of its own to fill.
+    const d = def.delivers;
+    if (d?.kind === 'specialPiece') {
+      const any = Object.values(content.pieces).some((p) => p.special && !p.member && !p.addition);
+      if (!any) problems.push(`${where}: no special piece to deliver`);
+    } else if (d?.kind === 'tool') {
+      const any = Object.values(content.tools).some((t) => t.offered && t.rarity === d.rarity);
+      if (!any) problems.push(`${where}: no offered ${d.rarity} tool to deliver`);
+    } else if (d?.kind === 'blueprintPick') {
+      if (!Number.isInteger(d.options) || d.options < 1) {
+        problems.push(`${where}: a pick needs options ≥ 1`);
+      }
+      const any = Object.values(content.blueprints).some((x) => x.offered && x.rarity === d.rarity);
+      if (!any) problems.push(`${where}: no offered ${d.rarity} blueprint to pick from`);
+      const slot = def.modifiers.some(
+        (m) => m.kind === 'rule' && m.key === 'blueprintSlots' && (m.add ?? 0) > 0,
+      );
+      if (!slot) problems.push(`${where}: a blueprint pick needs the blueprint slot it fills`);
+    }
+    if (upgradeText(content, def).some((t) => !t || t.includes('undefined'))) {
+      problems.push(`${where}: text didn't generate`);
     }
   }
 

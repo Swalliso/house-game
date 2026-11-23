@@ -10,6 +10,9 @@
 *2026-11-20: replaced by [S26](s26-upgrades-that-deliver.md). The user keeps both upgrades
 ("okay to have and could be useful"), so S26 makes them deliver instead. Don't build this.*
 
+*2026-11-23: S26 is built (D-209): the Storage Unit and the Tool Belt bring a special piece and a
+Common tool each milestone, and the bot buys them now.*
+
 ## Story
 
 The shop's one company-upgrade slot stops offering Storage Unit and Tool Belt, so it more

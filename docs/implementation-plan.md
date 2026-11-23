@@ -354,7 +354,7 @@ interface RunState {
   phaseStartScore: number
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
-  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160) and the wrong delivery's piece (surprise, D-188)
+  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160), the wrong delivery's piece (surprise, D-188) and a company upgrade's (upgrade: the Storage Unit's, D-209)
   stocked?: true                       // D-163: the standing stock has come (without `refill`, it comes once)
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
@@ -433,7 +433,7 @@ type Action =
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment), `roomFinished` (D-211: the play just before it finished a room, which paid `finishReward` once, before the week's tally)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
 - `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`, `extended` (D-168)
-- `delivered` (D-160: the client's cards, the standing stock's top-up, D-171 the crew's own card, and D-188 the wrong delivery's piece, `from: 'surprise'`) and `crewTool` (D-171: the crew's tool came, or was sold with the supplies full)
+- `delivered` (D-160: the client's cards, the standing stock's top-up, D-171 the crew's own card, D-188 the wrong delivery's piece, `from: 'surprise'`, and D-209 a company upgrade's piece, `from: 'upgrade'` with the upgrade), `crewTool` (D-171: the crew's tool came, or was sold with the supplies full) and `upgradeTool` (D-209: an upgrade's tool came, or was sold with the supplies full)
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -821,7 +821,11 @@ type ToolUse =                                         // one small function per
   | { kind: 'reward'; reward: Reward }                 // Dumpster
   | { kind: 'levelSet'; set: SetId }                   // Remodel Plans: +1 level for a set type, for the rest of the run
 
-interface UpgradeDef { id: UpgradeId; name; tier; price: number; modifiers: Modifier[] }   // `rule` modifiers, permanent
+interface UpgradeDef { id: UpgradeId; name; tier; price: number; modifiers: Modifier[]; delivers?: UpgradeDelivery }   // `rule` modifiers, permanent
+type UpgradeDelivery =                                 // D-209: what it brings to fill its slot
+  | { kind: 'specialPiece' }                           // Storage Unit: a special piece into the reserve's extra slots, each milestone
+  | { kind: 'tool'; rarity: Rarity }                   // Tool Belt: a tool of that rarity into the supplies, each milestone
+  | { kind: 'blueprintPick'; rarity: Rarity; options: number }   // Drafting Table: pick 1 of `options` blueprints as it's bought
 
 interface CrateDef {                                   // a pack: open it, see 3 options, keep 1
   id: CrateId; name; tier; price: number
@@ -942,7 +946,8 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   | `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` | A strike's new card for the row's k-th slot (D-157): n is the hand's draw, m the run's struck types with this one. It isn't a draw. |
   | `shop/<phase>/<refresh>` | Shop offers |
   | `co/<phase>` | The two change orders offered, in the order shown (D-144) |
-  | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate) |
+  | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate, and D-209's Drafting Table pick, `<slot>` its id) |
+  | `upgrade/<id>` | D-209: the order a company upgrade brings its goods in, drawn once a run (the Storage Unit's special pieces, the Tool Belt's tools) |
   | `find/<x>,<y>` | A find's random reward |
   | `bot/<phase>/<screen>/<n>` | Sim bots only |
 
@@ -1800,10 +1805,10 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171) and the wrong delivery's piece (D-188) use extra slots (D-103, D-160).
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171), the wrong delivery's piece (D-188) and the Storage Unit's (D-209) use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
-  - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
+  - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table), and each brings something to fill it (D-209, below).
 - **Blueprints:**
   - active from the next tally, and apply to existing pieces
   - Good Bones counts from purchase, capped
@@ -1845,6 +1850,10 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **The standing stock** (D-160, D-162, D-163): in week 1 the reserve's extra slots are filled to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`), once: `refill: false` (D-163). With `refill: true` they're topped up again at the start of each later milestone (never in overtime), as D-160 had it. A card of the type already in an extra slot counts (the Landscaper's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's comes in Foundation's third week (`firstJobPhase`, `firstJobSlot`). Placing one doesn't use the week (D-163), and a strike of the type leaves the stock alone.
 - **Deliveries** (D-160): `ClientDef.deliveries` land at the start of their phase's first week, after the arrivals, marked `client`, in extra slots: Dale's Home Office and the Barkers' Doghouse in week 1. A delivery isn't a household member: it moves no Room for everyone and isn't in `arrived`.
 - **The wrong delivery** (D-188): once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse lands free in the reserve's extra slots, marked `surprise`, after the stock and the crew's card (`surpriseDelivery` in `balance.ts`: the phase and the pieces, all special pieces; the draw deals the Henhouse from Framing too, D-200). Which one comes from the seed alone: the first, in an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the client; if none fits, nothing comes. Never in a first job or an overtime week; a struck type still comes, as the stock does.
+- **What the company upgrades bring** (D-209): from the first milestone after the shop that sold it, at each milestone's start (its first week, never an overtime week), after the wrong delivery and the crew's tool:
+  - the **Storage Unit** adds a special piece to the reserve's extra slots, marked `upgrade`: the first, in an order drawn once a run from `upgrade/storageUnit`, that the house doesn't have yet, built or waiting in Your goods, and whose type isn't at a limit; with every one there, the first a house can hold two of (a second Pool, never a second Library), then the first not at a limit; with none, nothing. So it brings a different one each milestone, and skips the wrong delivery's.
+  - the **Tool Belt** adds a Common tool to the supplies: the milestone's in its order (`upgrade/toolBelt`, the offered Common tools), passing over one already there and one that can't pay in the house as it stands (D-192), or sells it at once for half its price when the supplies are full, as the crew's tool is (`upgradeTool`).
+  - the **Drafting Table** opens a pick of 3 Common blueprints as it's bought, as shop 1's Housewarming crate does, on its own stream (`crate/<shop>/<refresh>/draftingTable`), for the slot it adds. With every Common blueprint owned, no pick opens. The debug panel's gift opens none.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her A compact house (D-160's name): 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
@@ -2072,9 +2081,9 @@ The model is Balatro's vouchers: one per visit, pricier, and permanent for the r
 
 | Upgrade | Encoding |
 |---|---|
-| Storage Unit | `rule reserveSlots +1` |
-| Tool Belt | `rule supplySlots +1` |
-| Drafting Table | `rule blueprintSlots +1` |
+| Storage Unit | `rule reserveSlots +1`; `delivers specialPiece` (D-209): a special piece in Your goods each milestone |
+| Tool Belt | `rule supplySlots +1`; `delivers tool common` (D-209): a Common tool in the supplies each milestone |
+| Drafting Table | `rule blueprintSlots +1`; `delivers blueprintPick common 3` (D-209): pick 1 of 3 Common blueprints as it's bought |
 | Bigger Truck | `rule roomsRow +1`: 3 Rooms cards and 2 Layout cards a week (D-121) |
 | Foreman | `rule rerollsPerPhase +1` |
 | Supplier Discount | `rule shopPricePct −25` (not services or the refresh) |

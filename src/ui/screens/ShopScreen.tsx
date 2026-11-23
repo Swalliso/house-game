@@ -34,6 +34,8 @@ import {
   rules,
   type Availability,
   type BlueprintId,
+  type CrateId,
+  type CratePick,
   type FixtureId,
   type FixtureValue,
   type OfferView,
@@ -44,6 +46,7 @@ import {
   type ShopVisit,
   type ToolId,
   type ToolValue,
+  type UpgradeId,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
@@ -594,6 +597,18 @@ function CrateLid({ best }: { best: 'common' | 'uncommon' | 'rare' }) {
 export const GIFT_NOTE =
   'Free: keep one. A blueprint is a bonus that stays on for the whole run; you don’t build it.';
 const CRATE_NOTE = 'Keep one. Sell from your goods on the right to make room.';
+/** D-209: a company upgrade's pick (the Drafting Table's), for the slot it just added. */
+const upgradePickNote = (name: string) => `Free with your ${name}: keep one for its new slot.`;
+
+/** An open pick's title and its line: a crate's, the Housewarming gift's, or an upgrade's. */
+function pickWords(source: CratePick['source']): { title: string; detail: string } {
+  if (source === 'housewarming') return { title: 'A housewarming gift', detail: GIFT_NOTE };
+  if (Object.hasOwn(CONTENT.upgrades, source)) {
+    const name = CONTENT.upgrades[source as UpgradeId].name;
+    return { title: name, detail: upgradePickNote(name) };
+  }
+  return { title: CONTENT.crates[source as CrateId].name, detail: CRATE_NOTE };
+}
 
 /**
  * An opened crate (or the Housewarming gift): its options turn over one at a time, each with
@@ -606,8 +621,7 @@ function CratePickSheet() {
   const legal = new Set(
     rules.legalActions(s).flatMap((a) => (a.t === 'pick' && a.i >= 0 ? [a.i] : [])),
   );
-  const title =
-    open.source === 'housewarming' ? 'A housewarming gift' : CONTENT.crates[open.source].name;
+  const { title, detail } = pickWords(open.source);
   // Its best option's rarity glows through the lid before it opens (§12, Hearthstone's packs).
   const rarities = open.options.map((o) => goodRarity(o as GoodRef));
   const best = rarities.includes('rare')
@@ -617,7 +631,6 @@ function CratePickSheet() {
       : 'common';
   const lidMs = FEEL.moments.crateShakeMs;
   const lidKey = open.options.map((o) => o.id).join(',');
-  const detail = open.source === 'housewarming' ? GIFT_NOTE : CRATE_NOTE;
   return (
     <div class="shop-scrim" role="dialog" aria-label={title}>
       <Panel

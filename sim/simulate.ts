@@ -42,7 +42,8 @@ import type { Policy } from './policies/index.ts';
 import { goodValue } from './policies/shop.ts';
 
 /** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
-export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise';
+export type ReserveSource =
+  'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise' | 'upgrade';
 
 export function reserveSource(r: ReservePiece): ReserveSource {
   if (r.crew) return 'crew';
@@ -50,6 +51,7 @@ export function reserveSource(r: ReservePiece): ReserveSource {
   if (r.client) return 'client';
   if (r.stock) return 'stock';
   if (r.surprise) return 'surprise';
+  if (r.upgrade !== undefined) return 'upgrade';
   return 'own';
 }
 
@@ -106,8 +108,8 @@ export interface RunRecord {
   struck: { type: string; week: number; phase: number }[];
   /**
    * D-160: reserve cards played (placed or renovated with), by where they came from: bought,
-   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's, and
-   * (D-188) the wrong delivery's.
+   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's,
+   * (D-188) the wrong delivery's, and (D-209) a company upgrade's (the Storage Unit's).
    */
   reservePlays: Record<ReserveSource, number>;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
@@ -524,6 +526,7 @@ export function simulateRun(
     client: 0,
     stock: 0,
     surprise: 0,
+    upgrade: 0,
   };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
   const stockWallOffers = Array.from({ length: phaseCount }, () => 0);
