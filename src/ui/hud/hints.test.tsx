@@ -3,10 +3,12 @@
 // it, instead of offering to fit the lot again. And M4's keys: a change order's sheet takes
 // only Enter, Esc and D, and a pack (D-106) never turns. And the supplies: a tool or a fixture
 // from them is free, so the strip says how it's aimed and never offers Enter (the polish review).
-// And strike mode (D-157): a card's click or number key, twice. And P, a pin (D-186).
+// And strike mode (D-157): a card's click or number key, twice. And P, a pin (D-186), which the
+// run's last week has none of (D-207).
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
+import { CONTENT } from '../../rules/index.ts';
 import { zoom } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
 import { firstJobSeed, movingUid, run, selected, source, tentative, tool } from '../store.ts';
@@ -376,5 +378,29 @@ describe('a pin’s key (D-186)', () => {
     selected.value = null;
     tool.value = 'strike';
     expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
+  });
+
+  it('has none in the run’s last week, which no week follows (D-207)', () => {
+    const last = {
+      ...start,
+      screen: 'build' as const,
+      hand: [card, card, card, card],
+      phase: CONTENT.balance.phases.length - 1,
+      slot: CONTENT.balance.weeksPerPhase,
+      overtimeLeft: 0,
+    };
+    run.value = last;
+    expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
+    source.value = 'hand';
+    selected.value = 0;
+    expect(strip().some((h) => h.keys.includes('P'))).toBe(false);
+    // With overtime left, a week may follow it.
+    run.value = { ...last, overtimeLeft: 1 };
+    expect(strip()).toContainEqual({ keys: ['P'], words: 'pin it' });
+    selected.value = null;
+    expect(strip()).toContainEqual({ keys: ['P'], words: 'pin' });
+    // So may the last phase's earlier weeks.
+    run.value = { ...last, slot: 1 };
+    expect(strip()).toContainEqual({ keys: ['P'], words: 'pin' });
   });
 });
