@@ -30,7 +30,7 @@ import {
   struckText,
   type ReservePiece,
 } from '../../rules/index.ts';
-import { justArrived, justDelivered } from '../fx/director.ts';
+import { justArrived, justDelivered, justSupplied } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS, supplyIcon } from '../sprites.ts';
@@ -107,8 +107,9 @@ function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number):
 
 /**
  * How a reserve card pops in (inventory.css' slot-arrive), or null: a member's cards after the
- * doorbell (FEEL.arrival), and the stock's, the client's, the crew's or the wrong delivery's at
- * once as they land (FEEL.delivered; D-160, D-171, D-188), only the cards that just came.
+ * doorbell (FEEL.arrival), and the stock's, the client's, the crew's, the wrong delivery's or a
+ * company upgrade's at once as they land (FEEL.delivered; D-160, D-171, D-188, D-209), only the
+ * cards that just came.
  */
 function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale: number } | null {
   const member = justArrived.value;
@@ -126,8 +127,8 @@ function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale
 
 /**
  * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins", "Dale", "Stock",
- * "Mix-up") with where it came from in its tip (household.ts extraSlotWords). A card that just
- * came pops in (popOf).
+ * "Mix-up", "Storage") with where it came from in its tip (household.ts extraSlotWords). A card
+ * that just came pops in (popOf).
  */
 function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
   const s = run.value;
@@ -275,11 +276,21 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                 sup.kind === 'fixture'
                   ? 'install it for free (click a piece twice)'
                   : 'use it for free';
+              // D-209: a tool that came as the milestone started (the crew's, the Tool Belt's).
+              const popped = justSupplied.value?.slots.includes(i) ?? false;
               return (
                 <span key={`s-${i}-${sup.id}`} class="inv-item">
                   <button
                     type="button"
-                    class={`inv-slot slot-${sup.kind} rarity-${def.rarity} ${isSelected('supplies', i) ? 'selected' : ''} ${building && !fits ? 'no-fit' : ''}`}
+                    class={`inv-slot slot-${sup.kind} rarity-${def.rarity} ${isSelected('supplies', i) ? 'selected' : ''} ${building && !fits ? 'no-fit' : ''} ${popped ? 'just-arrived' : ''}`}
+                    style={
+                      popped
+                        ? {
+                            animationDuration: `${FEEL.delivered.popMs}ms`,
+                            '--pop-scale': `${FEEL.delivered.popScale}`,
+                          }
+                        : undefined
+                    }
                     onMouseDown={noFocus}
                     onMouseEnter={() => hover('supply', i)}
                     onClick={() => (building ? selectCard(i, 'supplies') : hover('supply', i))}
