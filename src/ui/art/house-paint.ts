@@ -41,9 +41,9 @@ import {
   type SunLight,
 } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
-import type { Cell, PieceId } from '../../rules/index.ts';
+import type { Cell, HouseState, PieceId } from '../../rules/index.ts';
 import { artFrames, artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
-import { byType, itemRows, roomLayout, type Item } from './rooms.ts';
+import { byType, itemRows, roomItems, roomLayout, type Item } from './rooms.ts';
 import type { Ground, YardLayout, YardModel } from './yard.ts';
 
 /** RGBA pixels (not premultiplied, like ImageData) at (x, y) on the lot, in art px. */
@@ -68,8 +68,9 @@ type Rgb = readonly [number, number, number];
 export const INK: Rgb = [0x3a, 0x3a, 0x50];
 /** The wall band's fill. */
 export const BAND: Rgb = [0xf8, 0xf8, 0xf8];
-const GLASS: Rgb = [0xba, 0xd2, 0xe0];
-const GLINT: Rgb = [0xe2, 0xf2, 0xf3];
+/** A window's glass and its glints: what the dusk lights (dusk.ts, D-218). */
+export const GLASS: Rgb = [0xba, 0xd2, 0xe0];
+export const GLINT: Rgb = [0xe2, 0xf2, 0xf3];
 const MULLION: Rgb = [0x73, 0x8c, 0xa8];
 const RAIL: Rgb = [0xca, 0xc3, 0xd5];
 const RAIL_LINE: Rgb = [0x9d, 0xa3, 0xb7];
@@ -414,6 +415,31 @@ export class Mask {
   }
 }
 
+/** A piece of the house where the board stacks it (housePieces): a room, or a yard piece. */
+export interface StackedPiece {
+  uid: number;
+  room: boolean;
+  box: Rect;
+  /** Back to front. */
+  items: readonly Item[];
+}
+
+/**
+ * The house's pieces as the board's items and overhang layers stack them: south in front, each by
+ * its bottom row, ties in the house's order (the DOM's). The photos paint them in this order
+ * (photo-paint.ts paintHouse), and the dusk reads it to tell what's a room's from what's the
+ * yard's (dusk.ts, D-218).
+ */
+export function housePieces(house: HouseState, m: HouseModel, yard: YardModel): StackedPiece[] {
+  const out: (StackedPiece & { i: number })[] = [];
+  house.pieces.forEach((p, i) => {
+    const room = m.rooms.get(p.uid);
+    const at = room ? { box: room.box, items: roomItems(m, p.uid) } : yard.pieces.get(p.uid);
+    if (at) out.push({ uid: p.uid, room: room !== undefined, box: at.box, items: at.items, i });
+  });
+  return out.sort((a, b) => a.box.y + a.box.h - (b.box.y + b.box.h) || a.i - b.i);
+}
+
 /**
  * Paints ground (yard.ts): sprites, rects of color, and ovals of color in three steps. With
  * `cells`, only on those cells: a yard piece's ground (a lamp's light, a wet patch) stays its own.
@@ -566,7 +592,7 @@ export function paintFloors(
 }
 
 /** A room's floor inside its walls (over its box) and the floor's top under the north faces. */
-function floorBox(m: HouseModel, r: Room): Rect {
+export function floorBox(m: HouseModel, r: Room): Rect {
   return floorOver(m, r.cells, r.box);
 }
 
@@ -823,7 +849,7 @@ function artPixel(atlas: AtlasPixels, id: ArtId, x: number, y: number, k = 0): r
 }
 
 /** Whether item `it` draws lot pixel (px, py). */
-function drawnAt(atlas: AtlasPixels, it: Item, px: number, py: number): boolean {
+export function drawnAt(atlas: AtlasPixels, it: Item, px: number, py: number): boolean {
   const s = artSize(it.sprite);
   const ix = px - it.x;
   const iy = py - it.y;

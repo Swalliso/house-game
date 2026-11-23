@@ -15,15 +15,17 @@
 
 import { rules, type HouseState, type RunState } from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
+import { duskPixels, paintDusk } from '../art/dusk.ts';
 import type { Plot } from '../company.ts';
 import {
   Canvas,
+  housePieces,
   paintFloors,
   paintLight,
   paintWalls,
   type AtlasPixels,
 } from '../art/house-paint.ts';
-import { itemRows, roomItems, type Item } from '../art/rooms.ts';
+import { itemRows, type Item } from '../art/rooms.ts';
 import { unmetOf, yardModel, type YardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
 import {
@@ -32,7 +34,6 @@ import {
   houseModel,
   sunLight,
   type HouseModel,
-  type Rect,
 } from '../board/house-model.ts';
 import { opaqueBox, plotPart } from '../board/neighbors.ts';
 import { draw, streetFront } from '../board/TerrainLayer.tsx';
@@ -78,14 +79,8 @@ export function paintHouse(
   yard: YardModel,
   atlas: AtlasPixels,
 ): void {
-  const pieces: { uid: number; box: Rect; items: readonly Item[]; i: number }[] = [];
-  house.pieces.forEach((p, i) => {
-    const room = model.rooms.get(p.uid);
-    const at = room ? { box: room.box, items: roomItems(model, p.uid) } : yard.pieces.get(p.uid);
-    if (at) pieces.push({ uid: p.uid, box: at.box, items: at.items, i });
-  });
   // South in front: each piece by its bottom row, ties in the house's order (the DOM's).
-  pieces.sort((a, b) => a.box.y + a.box.h - (b.box.y + b.box.h) || a.i - b.i);
+  const pieces = housePieces(house, model, yard);
   for (const p of pieces) for (const it of p.items) blitPart(cv, atlas, it, 'bottom');
   const walls = paintWalls(model);
   if (walls) cv.over(walls);
@@ -100,11 +95,17 @@ export function paintHouse(
  * The house at `state`, through `frame`, as a canvas at art resolution. Without `ground`, the
  * house alone on a clear canvas: no terrain, water or tree crowns. With `only`, only those
  * pieces (by uid), lit and linked as they are in the whole house, its sets' doors included.
+ * With `dusk` (S12, D-218: stage 1's still, which nothing in the game shows yet), the same house
+ * at dusk, every room lit (art/dusk.ts): no sun on its floors, the evening on everything else.
  */
 export async function paintPhoto(
   state: RunState,
   frame: PhotoFrame,
-  { ground: withGround = true, only }: { ground?: boolean; only?: ReadonlySet<number> } = {},
+  {
+    ground: withGround = true,
+    only,
+    dusk = false,
+  }: { ground?: boolean; only?: ReadonlySet<number>; dusk?: boolean } = {},
 ): Promise<HTMLCanvasElement> {
   const [img, atlas] = await Promise.all([atlasImage(), atlasPixels()]);
   const whole = state.house;
@@ -129,11 +130,11 @@ export async function paintPhoto(
 
   // The house, as the board draws it: the client's own things in their room too (D-183), the held
   // sets' doors (D-176), and a Doghouse's dog as it was then, on its lead or loose (D-179), from
-  // the rules' tally of the whole house.
+  // the rules' tally of the whole house. At dusk, no sun (D-120).
   const model = houseModel(
     house,
     hallLinks(state),
-    sunLight(state),
+    dusk ? null : sunLight(state),
     state.setup.clientId,
     heldSets(state),
   );
@@ -141,6 +142,7 @@ export async function paintPhoto(
   const floors = paintFloors(model, atlas, { yard });
   if (floors) cv.over(floors);
   paintHouse(cv, house, model, yard, atlas);
+  if (dusk) paintDusk(cv, house, model, yard, atlas, new Set(model.rooms.keys()));
 
   // The trees' crowns over everything.
   const crowns = canopyBox(lot, objects);
@@ -148,6 +150,7 @@ export async function paintPhoto(
     const c = canvas(crowns.w, crowns.h);
     paintCanopy(c, img, objects, crowns);
     const d = c.getImageData(0, 0, crowns.w, crowns.h);
+    if (dusk) duskPixels(d.data);
     cv.over({ x: crowns.x, y: crowns.y, w: crowns.w, h: crowns.h, data: d.data });
   }
 
