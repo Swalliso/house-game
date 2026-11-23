@@ -480,6 +480,16 @@ describe("the listing's flaw", () => {
     expect(flaw(finished('dale', [...quiet, ['doghouse', 0, 6], ['doghouse', 2, 6]]))).toBe(
       '2 Doghouses earn nothing: each must be in a fenced yard.',
     );
+    // One of the house's two, under the line that counts both: "One Doghouse", not "The".
+    const barkers = finished(
+      'barkers',
+      [...YARD_18_LINE, ['doghouse', 0, 0], ['mudroom', 4, 3], ['doghouse', 7, 5]],
+      YARD_18,
+    );
+    expect(texts(barkers).slice(1)).toEqual([
+      'Built for the Barkers: an 18-tile fenced yard, 2 Doghouses and a Mudroom.',
+      'One Doghouse earns nothing: it must be in a fenced yard.',
+    ]);
     // The first such piece is the one named, with the others of its kind and its reason.
     expect(flaw(finished('dale', [...quiet, ['patio', 6, 6], ['doghouse', 0, 6]]))).toBe(
       'The Patio earns nothing: it must be touching a room.',

@@ -8,6 +8,7 @@
 // - timersNote: what a Fertilizer would bring forward in this house.
 // - copyNote: what a Copy Machine would copy here.
 // - clearNote: what a Dumpster's demolitions could clear on this lot.
+// - oneAWeekNeeds: what a second Photo Shoot waits for in a week that has one (D-210).
 // - NO_NUMBER: why the tools whose worth hangs on a later choice have no number.
 
 import type {
@@ -156,6 +157,17 @@ export function clearNote(content: Content, house: HouseState): string {
   if (shed) names.push(`the ${content.features.oldShed.name}`);
   if (names.length === 0) return 'Nothing in the way on your lot';
   return `On your lot to clear: ${countedNames(names)}`;
+}
+
+/**
+ * D-210: what a ×Mult tool waits for in a week that has one already, where it can't be used (a
+ * second Photo Shoot): "Waits for next week: this week has a Photo Shoot". In the run's last
+ * week, with no week after it, only why.
+ */
+export function oneAWeekNeeds(name: string, weeksAfter: boolean): string {
+  return weeksAfter
+    ? `Waits for next week: this week has ${article(name)}`
+    : `This week already has its ${name}`;
 }
 
 /**
