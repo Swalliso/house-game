@@ -1138,6 +1138,7 @@ class Checker {
       if (e.t === 'changeOrderResolved') this.see(`changeOrder:${e.result}`);
       if (e.t === 'arrived') this.see(e.forced ? 'arrived:forced' : 'arrived:due');
       if (e.t === 'delivered') this.see(`delivered:${e.from}`);
+      if (e.t === 'neighborResolved') this.see(`neighbor:${e.result}`);
     }
   }
 }
@@ -1211,6 +1212,9 @@ const COVERAGE: readonly string[] = [
   // D-188: the wrong delivery lands at Framing's start, and is placed.
   ...prefixed('delivered', ['surprise']),
   ...prefixed('place', ['surprise']),
+  // D-206: the neighbor asks at Roofing's start, and their ask resolves at its milestone.
+  ...prefixed('event', ['neighborAsked']),
+  ...prefixed('neighbor', ['met', 'missed']),
 ];
 
 /** The kinds of check that must each have run. */

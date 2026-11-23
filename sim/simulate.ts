@@ -25,6 +25,7 @@ import type {
   GameEvent,
   HouseState,
   MilestoneResult,
+  NeighborSide,
   PieceId,
   PickOption,
   ReservePiece,
@@ -133,6 +134,12 @@ export interface RunRecord {
     passedOver: ChangeOrderRecord['passedOver'];
     result?: ChangeOrderResult;
   }[];
+  /**
+   * D-206: the neighbor's ask, if one came: their side, and how it resolved, with the tiles of
+   * Fence in their strip then (neither if the run ended before its milestone was met). The bots
+   * take no action for it: a met ask is Fence they laid there for its own sake.
+   */
+  neighbor?: { side: NeighborSide; result?: 'met' | 'missed'; have?: number };
   ms: number;
 }
 
@@ -466,6 +473,8 @@ export function simulateRun(
   let rerolls = 0;
   let fencePlacements = 0;
   let overtimeUsed = 0;
+  /** D-206: the Fence tiles in the neighbor's strip when their ask resolved. */
+  let neighborHave: number | undefined;
   let enclosure: EnclosureCost | null = null;
   let probed = false;
   let step = 0;
@@ -855,6 +864,8 @@ export function simulateRun(
         drawn ||= !e.reroll && !e.special;
       } else if (e.t === 'delivered') {
         if (e.from === 'stock') stockWalls(e.phase, e.cards);
+      } else if (e.t === 'neighborResolved') {
+        neighborHave = e.have;
       } else if (e.t === 'milestone') {
         milestones.push({ phase: e.phase, result: e.result, score: e.score, target: e.target });
         overtimeUsed += e.overtimeUsed;
@@ -986,6 +997,14 @@ export function simulateRun(
         passedOver: r.passedOver,
         ...(r.result ? { result: r.result } : {}),
       })),
+      ...(s.neighbor
+        ? {
+            neighbor: {
+              side: s.neighbor.side,
+              ...(s.neighbor.result ? { result: s.neighbor.result, have: neighborHave } : {}),
+            },
+          }
+        : {}),
       ms: performance.now() - start,
     },
     actions,

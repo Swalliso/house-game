@@ -268,8 +268,13 @@ export type Property =
  * - frontYard: non-indoor tiles in rows nearer the street than the house's front row
  * - backYard: every other non-indoor tile, side yards included
  * - fencedYard: an enclosed area that borders a Fence and the house and not the street
+ * - leftSide, rightSide (D-206): the lot's left or right edge, `balance.neighborAsk.depth`
+ *   columns deep, every row and whatever stands there: the strip along a neighbor's lot
  */
-export type Region = 'sunny' | 'frontYard' | 'backYard' | 'fencedYard';
+export type Region = 'sunny' | 'frontYard' | 'backYard' | 'fencedYard' | 'leftSide' | 'rightSide';
+
+/** D-206: a side of the lot a neighbor's lot is on, and its strip (the region `${side}Side`). */
+export type NeighborSide = 'left' | 'right';
 
 export type Rot = 0 | 1 | 2 | 3;
 export type Tier = 'core' | 'stretch' | 'later';
@@ -327,6 +332,11 @@ export type HouseCondition =
   | { fencedYardTiles: { min: number } }
   /** The largest connected group of matching pieces' tiles. */
   | { group: Selector; minTiles: number }
+  /**
+   * D-206: tiles of matching pieces inside a region, however many pieces they're in (a Fence
+   * pack is one piece of several tiles), at least `min`.
+   */
+  | { tilesIn: { of: Selector; region: Region; min: number } }
   /** Held instances of a set. */
   | { set: SetId; min?: number }
   /** M4b: demolitions since the change order was accepted. */
@@ -1057,6 +1067,22 @@ export interface Balance {
     phase: number;
     pieces: readonly PieceId[];
   };
+  /**
+   * D-206: the neighbor's ask. Once a run, in the first week of `phase` (never in a first job or
+   * an overtime week), a neighbor asks for `tiles` tiles of `piece` in the strip along their side
+   * of the lot, `depth` columns deep (the regions leftSide and rightSide), by that phase's
+   * milestone; met then, it pays `reward`. The side comes from the stream `neighbor/<phase>`; a
+   * side with water or kept Trees in its strip, one already met, and one without enough free
+   * tiles in one run for what's missing are passed over, and with neither side open nothing is
+   * asked. No tiles: off.
+   */
+  neighborAsk: {
+    phase: number;
+    piece: PieceId;
+    depth: number;
+    tiles: number;
+    reward: Reward;
+  };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -1333,6 +1359,19 @@ export interface ChangeOrderRecord {
 }
 
 /**
+ * D-206: the neighbor's ask in a run (balance.neighborAsk): `tiles` tiles of its piece in the
+ * strip along the lot's `side`, by the milestone of `phase`, which resolves it.
+ */
+export interface NeighborAsk {
+  side: NeighborSide;
+  /** The phase it runs through (0-based). */
+  phase: number;
+  tiles: number;
+  /** Once its phase's milestone resolves it: met (its reward paid) or missed. */
+  result?: 'met' | 'missed';
+}
+
+/**
  * How a run is played. `firstJob` (D-151) is a browser's first job, guided by the UI (D-149):
  * the client's targets are scaled by the job board's `firstTargetPct`, so a newcomer can get
  * past the walls a first run meets at Roofing and Drywall. Everything else is a standard run.
@@ -1482,6 +1521,12 @@ export interface RunState {
   arrived: readonly ArrivalId[];
   /** D-163: the standing stock has come (without `refill`, it comes once). */
   stocked?: true;
+  /**
+   * D-206: the neighbor's ask, once one has been made: once a run at most, never in a first
+   * job, and not when neither side of the lot was open for it. A run lost at its milestone ends
+   * with it still running.
+   */
+  neighbor?: NeighborAsk;
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
   /** Set once any debug action has changed the run. */
@@ -2023,6 +2068,21 @@ export type GameEvent =
       kind: ChangeOrderKind;
       result: ChangeOrderResult;
       reward?: Reward;
+    }
+  /**
+   * D-206: as `phase`'s first week starts, a neighbor asks for `tiles` tiles of Fence in the
+   * strip along their side of the lot by its milestone. `have`: the tiles of it there already.
+   */
+  | { t: 'neighborAsked'; side: NeighborSide; phase: number; tiles: number; have: number }
+  /** D-206: at its phase's milestone (when it's met), the ask met, `reward` paid, or missed. */
+  | {
+      t: 'neighborResolved';
+      side: NeighborSide;
+      phase: number;
+      tiles: number;
+      have: number;
+      result: 'met' | 'missed';
+      reward?: Reward;
     };
 
 export interface PreviewLine {
@@ -2343,6 +2403,25 @@ export interface ChangeOrderView {
   brokenBy?: number;
 }
 
+/** D-206: the neighbor's ask as the UI shows it (rules.neighbor). */
+export interface NeighborView {
+  side: NeighborSide;
+  /** The phase it runs through (0-based): its milestone resolves it. */
+  phase: number;
+  /** The piece asked for (balance.neighborAsk.piece). */
+  piece: PieceId;
+  tiles: number;
+  /** Tiles of the piece in the strip as the house stands, or as the play looked at leaves it. */
+  have: number;
+  /** have ≥ tiles: it would count as met if its milestone resolved now. */
+  met: boolean;
+  /** Once its milestone resolved it. */
+  result?: 'met' | 'missed';
+  reward: Reward;
+  /** The strip along the side, as lot indexes (y × width + x) in reading order. */
+  strip: readonly number[];
+}
+
 /** The 'changeOrder' screen's offer as the UI shows it (D-144): pick one of its orders. */
 export interface ChangeOrderOfferView {
   /** In the order shown; `answerChangeOrder`'s `i` is an index here. */
@@ -2485,6 +2564,7 @@ export {
   featureWantedText,
   modifierText,
   multNumber,
+  neighborAskText,
   ordinal,
   plural,
   regionText,
