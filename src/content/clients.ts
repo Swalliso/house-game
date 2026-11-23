@@ -87,7 +87,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'earn', target: { piece: 'herbGarden' }, pct: -100 }, // garlic
     ],
     pool: [{ kind: 'drawWeight', target: { piece: 'library' }, add: 20 }],
-    targetPct: 70, // set against played runs (D-169), then from his own gap on D-220's targets
+    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   barkers: {
     id: 'barkers',
@@ -203,8 +203,8 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
   // D-219: a spike. A family of eleven (content-brainstorm.md §10), cut down: someone new rings
   // the doorbell at each milestone from Foundation to Finishes with a plain Bedroom card
   // (households.ts), and the one wish is a Playroom. Uncommon, so they share the rarity's weight
-  // with Juniper on the job board. Their target factor is a placeholder until the user has played
-  // them and the batch's fit sets it.
+  // with Juniper on the job board. Their target factor was a placeholder (100) until the batch's
+  // fit set it (D-220).
   bigsbys: {
     id: 'bigsbys',
     name: 'The Bigsbys',
@@ -231,6 +231,6 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'drawWeight', target: { piece: 'playroom' }, add: 20 },
       { kind: 'drawWeight', target: { piece: ['bedroom', 'bathroom'] }, pct: 100 },
     ],
-    targetPct: 100, // a placeholder (D-219): the batch's fit sets it once the user has played them
+    targetPct: 125, // fitted with the curve (D-220): their own gap, the others' factors held
   },
 };
