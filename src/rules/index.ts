@@ -508,6 +508,23 @@ export interface FeatureDef {
   size?: readonly [number, number];
   /** Finds: paid once, when cleared (the Old Shed) or first built over (a Time Capsule). */
   reward?: Reward;
+  /**
+   * D-205: a wish it can carry: the lot's one wish is the first feature of `balance.lotWish` the
+   * lot has (the Pond, else the Old Shed). Only a feature that counts once (`body`) has one.
+   */
+  wish?: FeatureWish;
+}
+
+/**
+ * D-205: a lot feature asks for company. Once `need` pieces matching `count` touch it, it pays
+ * `reward` (a piece into the reserve's extra slots), once a run. A feature that's cleared before
+ * that (the Old Shed demolished) takes its wish with it.
+ */
+export interface FeatureWish {
+  /** The pieces it counts, besides touching it: Green pieces, or the ones that would use a shed. */
+  count: Selector;
+  need: number;
+  reward: Reward;
 }
 
 /** What a find, a tool, or (M4) a change order pays. */
@@ -521,6 +538,11 @@ export interface Reward {
   overtime?: number;
   /** A tool into the supplies (or sold at once for half if they're full); 'random' from the offered tools. */
   tool?: ToolId | 'random';
+  /**
+   * D-205: a piece, free, into the reserve's extra slots, marked `wish`. Only a lot's wish pays
+   * one (validateContent).
+   */
+  piece?: PieceId;
 }
 
 /** The run-level numbers that modifiers can change (§5). */
@@ -1075,6 +1097,11 @@ export interface Balance {
    */
   strikesPerMilestone: number;
   /**
+   * D-205: the features a lot's one wish can be on, in order: the first the lot has asks for
+   * company (FeatureDef.wish). A first job carries none. Empty: off.
+   */
+  lotWish: readonly TerrainId[];
+  /**
    * D-160: the standing stock. The first week of `fromPhase` fills the reserve's extra slots up
    * to one of each of `pieces`, adding only what's missing. A first job (D-149) brings it in
    * week `firstJobSlot` of `firstJobPhase` instead (D-162), so it doesn't arrive with the guided
@@ -1290,6 +1317,8 @@ export interface ReservePiece {
   stock?: true;
   /** D-188: the wrong delivery's piece (balance.surpriseDelivery), in an extra slot. */
   surprise?: true;
+  /** D-205: the lot's wish paid it (Reward.piece), in an extra slot. */
+  wish?: true;
   /** D-209: the company upgrade that brought it (UpgradeDef.delivers), in an extra slot. */
   upgrade?: UpgradeId;
 }
@@ -1567,6 +1596,8 @@ export interface RunState {
   arrived: readonly ArrivalId[];
   /** D-163: the standing stock has come (without `refill`, it comes once). */
   stocked?: true;
+  /** D-205: the feature whose wish has paid: a lot's one wish pays once. */
+  wishFilled?: TerrainId;
   /**
    * D-206: the neighbor's ask, once one has been made: once a run at most, never in a first
    * job, and not when neither side of the lot was open for it. A run lost at its milestone ends
@@ -1937,6 +1968,20 @@ export type GameEvent =
       reward: Reward & { tool?: ToolId };
       soldTool?: number;
     }
+  /**
+   * D-205: the lot's wish filled, once: the house has the pieces it asked for beside its feature
+   * (x, y: its first tile). It paid as a find does; its piece is the reserve's last `wish` card.
+   */
+  | {
+      t: 'wishFilled';
+      feature: TerrainId;
+      x: number;
+      y: number;
+      reward: Reward & { tool?: ToolId };
+      soldTool?: number;
+      /** The pieces that filled it, by uid. */
+      pieces: readonly number[];
+    }
   | { t: 'crateOpened'; source: CratePick['source']; options: readonly PickOption[] }
   | { t: 'picked'; source: CratePick['source']; option: PickOption | null }
   | {
@@ -2245,6 +2290,28 @@ export interface DemolishPreview {
    */
   setsGained: readonly SetScore[];
   setsLost: readonly SetScore[];
+  /** D-205: clearing it ends the lot's wish before it has paid (the Old Shed's). */
+  endsWish?: true;
+}
+
+/**
+ * D-205: the lot's one wish as the screen shows it (Rules.lotWish): where it is, what it counts,
+ * the pieces that count, and what it pays. The UI reads these, never the wish's rule.
+ */
+export interface LotWishView {
+  feature: TerrainId;
+  /** The feature's tiles, in reading order (none once a filled wish's feature is gone). */
+  cells: readonly Cell[];
+  /** What it counts besides touching it, and how many. */
+  count: Selector;
+  need: number;
+  /** The pieces that count, by uid in placement order: as the house stands, or with the play. */
+  counted: readonly number[];
+  /** The cards it counts, by their definitions: a picked one shows the count on the board. */
+  wants: readonly PieceId[];
+  reward: Reward;
+  /** It has paid. */
+  filled: boolean;
 }
 
 /**
@@ -2626,6 +2693,7 @@ export {
   houseRulesText,
   lastShopText,
   lotTraitText,
+  lotWishText,
   featureWantedText,
   modifierText,
   multNumber,

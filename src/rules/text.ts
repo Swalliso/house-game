@@ -1917,8 +1917,40 @@ export function rewardText(content: Content, r: Reward): string {
   if (r.tool) {
     parts.push(r.tool === 'random' ? 'a random tool' : article(content.tools[r.tool].name));
   }
+  // D-205: a piece, into Your goods.
+  if (r.piece) parts.push(article(content.pieces[r.piece].name));
   const text = joinWords(parts, 'and');
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * D-205: a lot's wish in words, for Inspect on its feature: what it counts, as many as it needs,
+ * what it gives and how many so far ("Wants company: 3 Green pieces touching it, for a Hot Tub in
+ * Your goods (1 so far)."), or, once it has paid, what it gave.
+ */
+export function lotWishText(
+  content: Content,
+  wish: {
+    count: Selector;
+    need: number;
+    reward: Reward;
+    counted: readonly unknown[];
+    filled: boolean;
+  },
+): string {
+  const prize = rewardText(content, wish.reward);
+  const gives = prize.charAt(0).toLowerCase() + prize.slice(1);
+  if (wish.filled) return `Kept company: it gave you ${gives}.`;
+  const n = wish.need;
+  const sel = wish.count;
+  // A tag reads as the pieces carrying it ("Green pieces"), not as neighbors.
+  const noun =
+    sel !== 'all' && 'tag' in sel
+      ? `${sel.tag} ${n === 1 ? 'piece' : 'pieces'}`
+      : selectorText(content, sel, n === 1 ? 'one' : 'some');
+  const have = Math.min(wish.counted.length, n);
+  const sofar = have === 0 ? 'none yet' : `${have} so far`;
+  return `Wants company: ${n} ${noun} touching it, for ${gives} in Your goods (${sofar}).`;
 }
 
 export function upgradeText(content: Content, def: UpgradeDef): string[] {

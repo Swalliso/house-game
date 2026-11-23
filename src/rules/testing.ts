@@ -1143,6 +1143,8 @@ export const TEST_BALANCE: Balance = {
   standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1, refill: false },
   // D-188: no wrong delivery either; surprise.test.ts turns it on.
   surpriseDelivery: { phase: 1, pieces: [] },
+  // D-205: no lot's wish (the features have none); lot-wish.test.ts turns it on.
+  lotWish: [],
   // D-206: no neighbor's ask (no tiles); neighbor.test.ts turns it on. The strips are the lot's
   // two edge columns either way.
   neighborAsk: { phase: 1, piece: 'fence', depth: 2, tiles: 0, reward: { overtime: 1 } },

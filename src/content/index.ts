@@ -21,7 +21,7 @@ import {
   upgradeText,
 } from '../rules/text.ts';
 import { DRAW_ROWS, drawableTypes, drawWeights, rowOf } from '../rules/draw.ts';
-import { isType } from '../rules/selectors.ts';
+import { isType, matchesDef } from '../rules/selectors.ts';
 import { isRunMode } from '../rules/milestones.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
@@ -379,6 +379,49 @@ export function validateContent(content: Content): string[] {
     if (tool && tool !== 'random' && !content.tools[tool]) {
       problems.push(`feature ${key}: unknown reward tool "${tool}"`);
     }
+    if (def.reward?.piece) problems.push(`feature ${key}: only a wish pays a piece (D-205)`);
+    // D-205: a wish is on a feature that counts once and that pieces touch, counts some pieces,
+    // and pays one special piece (the shop's), never a member's room or the Addition.
+    const wish = def.wish;
+    if (!wish) continue;
+    const at = `feature ${key} wish`;
+    if (!def.body || def.inert)
+      problems.push(`${at}: its feature must count once (body, not inert)`);
+    if (!Number.isInteger(wish.need) || wish.need < 1) problems.push(`${at}: need must be ≥ 1`);
+    const wanted: PieceId[] = [];
+    selectorPieceIds(wish.count, wanted);
+    wanted.forEach((id) => known(id, at));
+    if (!Object.values(content.pieces).some((p) => matchesDef(wish.count, p))) {
+      problems.push(`${at}: no card matches what it counts`);
+    }
+    const piece = wish.reward.piece;
+    if (!piece) problems.push(`${at}: its reward pays no piece`);
+    else {
+      known(piece, at);
+      const p = content.pieces[piece];
+      if (p && !p.special) problems.push(`${at}: ${piece} isn't a special piece`);
+      if (p && (p.member || p.addition))
+        problems.push(`${at}: ${piece} is a member's room or an Addition`);
+    }
+    const wishTool = wish.reward.tool;
+    if (wishTool && wishTool !== 'random' && !content.tools[wishTool]) {
+      problems.push(`${at}: unknown reward tool "${wishTool}"`);
+    }
+  }
+  // D-205: the lot's wish: lot features with a wish, each once, and every wish listed.
+  const lotWish = content.balance.lotWish;
+  for (const id of lotWish) {
+    if (!Object.hasOwn(content.features, id) || (id as string) === 'street') {
+      problems.push(`balance lotWish: "${id}" isn't a lot feature`);
+    } else if (!content.features[id].wish) problems.push(`balance lotWish: ${id} has no wish`);
+  }
+  for (const id of new Set(lotWish.filter((id, i) => lotWish.indexOf(id) !== i))) {
+    problems.push(`balance lotWish: ${id} twice`);
+  }
+  for (const def of Object.values(content.features)) {
+    if (def.wish && def.id !== 'street' && !lotWish.includes(def.id)) {
+      problems.push(`balance lotWish: ${def.id}'s wish isn't listed`);
+    }
   }
 
   for (const [key, set] of Object.entries(content.sets)) {
@@ -660,6 +703,7 @@ export function validateContent(content: Content): string[] {
       if (r.tool && r.tool !== 'random' && !content.tools[r.tool]) {
         problems.push(`${where}: unknown reward tool "${r.tool}"`);
       }
+      if (r.piece) problems.push(`${where}: only a wish pays a piece (D-205)`);
     }
     const text = changeOrderText(content, def);
     if (text.length === 0 || text.some((t) => !t || t.includes('undefined'))) {
@@ -743,6 +787,9 @@ export function validateContent(content: Content): string[] {
     }
     if (def.use.kind === 'advanceTimers' && def.use.weeks < 1) {
       problems.push(`${where}: advanceTimers needs weeks ≥ 1`);
+    }
+    if (def.use.kind === 'reward' && def.use.reward.piece) {
+      problems.push(`${where}: only a wish pays a piece (D-205)`);
     }
     const text = toolText(content, def);
     if (text.length === 0 || text.some((t) => !t || t.includes('undefined'))) {

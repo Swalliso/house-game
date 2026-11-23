@@ -18,6 +18,7 @@ import {
   definite,
   growGain,
   featureWantedText,
+  lotWishText,
   fixtureText,
   glossary,
   protectedTerrain,
@@ -44,6 +45,7 @@ import {
   type SetScore,
   type SunSide,
   type TagSource,
+  type TerrainId,
   type Term,
   type ToolId,
 } from '../../rules/index.ts';
@@ -487,11 +489,12 @@ export function SetProgressLines({ id }: { id: PieceId }) {
 
 /**
  * A card in the reserve's extra slots (M4b, D-160): where it came from (the crew, a household
- * member, the client, the standing stock, or the wrong delivery, D-188), and that it doesn't
- * take a slot of the reserve's.
+ * member, the client, the standing stock, the wrong delivery, D-188, or the lot's wish, D-205),
+ * and that it doesn't take a slot of the reserve's.
  */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
-  const words = extraSlotWords(run.value.setup.clientId, r, run.value.setup.crewId);
+  const s = run.value;
+  const words = extraSlotWords(s.setup.clientId, r, s.setup.crewId, s.wishFilled);
   if (!words) return null;
   return (
     <p class="muted">
@@ -955,6 +958,7 @@ function DemolishInfo() {
       <p class="muted">No refund. Points already earned stay. {left}</p>
       <SetChanges gained={d.setsGained} lost={d.setsLost} />
       <SpecChanges gained={d.specsGained} lost={d.specsLost} />
+      {d.endsWish && <WishEndsNote />}
       {demolishArmed.value && <p class="demolish-confirm">Click it again to demolish it.</p>}
     </>
   );
@@ -1015,6 +1019,42 @@ function StrikeInfo() {
           : 'Click it twice to strike it.'}
       </p>
     </>
+  );
+}
+
+/**
+ * D-205: the lot's wish, on Inspect of its feature (the Pond, or the Old Shed): what it counts and
+ * gives, with how many so far, or what it gave; and on a feature a demolition clears, before it
+ * has paid, that demolishing it ends the wish.
+ */
+function WishNote({ feature }: { feature: TerrainId }) {
+  const view = rules.lotWish(run.value);
+  if (!view || view.feature !== feature) return null;
+  const ends = !view.filled && CONTENT.features[feature].clear === 'demolish';
+  return (
+    <>
+      <p>{lotWishText(CONTENT, view)}</p>
+      {ends && (
+        <p class="warn" role="note">
+          <Icon name="cross" />
+          <span>Demolishing it ends its wish</span>
+        </p>
+      )}
+    </>
+  );
+}
+
+/** D-205: in demolish mode, what demolishing the lot's wish's feature gives up. */
+function WishEndsNote() {
+  const view = rules.lotWish(run.value);
+  if (!view) return null;
+  // "A Henhouse" → "no Henhouse".
+  const prize = rewardText(CONTENT, view.reward).replace(/^an? /i, '');
+  return (
+    <p class="warn" role="note">
+      <Icon name="cross" />
+      <span>Ends its wish: no {prize}</span>
+    </p>
   );
 }
 
@@ -1241,6 +1281,8 @@ export function Inspect() {
     body = t ? (
       <>
         <h2>{CONTENT.features[t].name}</h2>
+        {/* D-205: the wish first, so a short Inspect panel still shows it. */}
+        <WishNote feature={t} />
         <p>
           {(t === 'boulder' || t === 'oldShed') && <>{featureWantedText(CONTENT, t)} </>}
           {FEATURE_TEXT[protectedTerrain(CONTENT, s.house.lot).has(t) ? 'keptTree' : t]}

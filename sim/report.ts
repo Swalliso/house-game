@@ -935,14 +935,41 @@ function fenceReport(records: readonly RunRecord[]): string {
     `  by milestone 4, with the stock’s, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
   );
   out.push(reserveReport(records));
+  out.push(wishReport(records));
   return out.join('\n');
+}
+
+/**
+ * D-205: the lot's wish: whose it is, how often it paid and by when, and how often its piece
+ * was built. Greedy places for the week's Wow and doesn't seek the wish, so it fills what the
+ * house happens to put beside the Pond or the Old Shed.
+ */
+function wishReport(records: readonly RunRecord[]): string {
+  const line = (feature: string, name: string) => {
+    const rs = records.filter((r) => r.wish?.feature === feature);
+    const filled = rs.filter((r) => r.wish!.filled !== null);
+    const built = filled.filter((r) => r.wish!.built !== null);
+    const week =
+      filled.length > 0
+        ? percentile(
+            filled.map((r) => r.wish!.filled!),
+            50,
+          )
+        : NaN;
+    return (
+      `${name} ${pct(rs.length, records.length)} of lots, filled ${pct(filled.length, rs.length)}` +
+      ` (week ${fix(week, 0)}), its piece built ${pct(built.length, filled.length)}`
+    );
+  };
+  return `The lot’s wish: ${line('pond', 'the Pond’s')} · ${line('oldShed', 'the Old Shed’s')}`;
 }
 
 /**
  * D-160: reserve cards played per run, by where they came from. The standing stock's and what
  * the client brought are the ones a bot could leave waiting all run; D-188's wrong delivery
- * comes once, at Framing, so its number is the share of runs that build it. D-209: the
- * upgrades' are the Storage Unit's special pieces, one each milestone from the shop that sold it.
+ * comes once, at Framing, so its number is the share of runs that build it, and so does D-205's
+ * lot's wish, once filled. D-209: the upgrades' are the Storage Unit's special pieces, one each
+ * milestone from the shop that sold it.
  */
 function reserveReport(records: readonly RunRecord[]): string {
   const n = Math.max(1, records.length);
@@ -952,6 +979,7 @@ function reserveReport(records: readonly RunRecord[]): string {
     `Reserve cards played per run: the stock ${per('stock')} · the client’s ${per('client')}` +
     ` · the crew’s ${per('crew')} · the wrong delivery’s ${per('surprise')}` +
     ` · the upgrades’ ${per('upgrade')}` +
+    ` · the lot’s wish’s ${per('wish')}` +
     ` · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
   );
 }
