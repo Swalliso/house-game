@@ -1473,25 +1473,32 @@ function inPlaceOf(wants: readonly Want[], sprite: ArtId, small: RegExp): Want[]
 }
 
 /**
- * The Barkers' first Living Room: the dogs' bed (our own drawing, as in Nana's Room) in a south
- * corner, else on the floor in front, by the south wall, a side wall or the north wall. Where the
- * room is full, it takes the place of a plant or a lamp beside the sofa, the bookcase or the
- * television, or some of the room's furniture makes way for it (placesFor): whichever keeps the
- * most furniture (THEIRS' `most`).
+ * The dogs' bed: our own drawing, in Nana's Room, the Barkers' Living Room (D-183) and a Dog
+ * Door's room, with the dog in it (D-210).
  */
-function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
-  const [anywhere, ...ways] = placesFor(wants, {
-    sprites: ['own-dog-bed'],
+const DOG_BED: ArtId = 'own-dog-bed';
+
+/**
+ * The dogs' bed as a want, the Barkers' and a Dog Door's: in a south corner, else on the floor in
+ * front, by the south wall, a side wall or the north wall.
+ */
+function dogBedWant(c: Ctx): Want {
+  return {
+    sprites: [DOG_BED],
     slots: [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N', 'NW', 'NE'],
-  });
-  return [anywhere!, ...inPlaceOf(wants, 'own-dog-bed', /^(plant-|side-|lamp-)/), ...ways];
+  };
 }
 
 /**
- * D-210: a Dog Door's room has a dog in it, in the dogs' bed: our own drawing, as in Nana's Room
- * and the Barkers' Living Room.
+ * The Barkers' first Living Room: the dogs' bed (dogBedWant). Where the room is full, it takes the
+ * place of a plant or a lamp beside the sofa, the bookcase or the television, or some of the
+ * room's furniture makes way for it (placesFor): whichever keeps the most furniture (THEIRS'
+ * `most`).
  */
-const DOG_BED: ArtId = 'own-dog-bed';
+function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
+  const [anywhere, ...ways] = placesFor(wants, dogBedWant(c));
+  return [anywhere!, ...inPlaceOf(wants, DOG_BED, /^(plant-|side-|lamp-)/), ...ways];
+}
 
 /**
  * D-210: how many of a room's wants never make way for a Dog Door's dog: the key piece and what
@@ -1500,12 +1507,6 @@ const DOG_BED: ArtId = 'own-dog-bed';
 function keptBefore(wants: readonly Want[]): number {
   const table = wants.findIndex((w) => w.aisle !== undefined);
   return Math.max(groupEnd(wants, 0), table < 0 ? 0 : groupEnd(wants, table));
-}
-
-/** The dogs' bed as a want: a south corner first, as the Barkers' (dogsBed). */
-function dogBedWant(c: Ctx): Want {
-  const slots: Slot[] = [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N'];
-  return want(DOG_BED, ...slots, 'NW', 'NE');
 }
 
 /**
