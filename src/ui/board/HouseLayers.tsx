@@ -66,7 +66,14 @@ import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
 import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
-import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
+import {
+  inset,
+  lookKey,
+  pieceModel,
+  type HouseModel,
+  type PieceLook,
+  type Rect,
+} from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
 import { isPerson, withPeople } from './people.ts';
 import { Standing } from './PeopleLayer.tsx';
@@ -1109,23 +1116,12 @@ export function GhostPiece({
   const px = CELL * scale;
   const minX = Math.min(...cells.map((c) => c.x));
   const minY = Math.min(...cells.map((c) => c.y));
-  // A pack's tiles change with every click while its card stays the same: they're in the key.
+  // A pack's tiles change with every click while its card stays the same: they're in the key. So
+  // is every field of the look, through the same key as the art's cache (D-216).
   const shapeKey = shape?.join('/');
   const art = useMemo(
     () => pieceArtPlan(defId, rot, look, shape),
-    [
-      defId,
-      rot,
-      shapeKey,
-      look?.color,
-      look?.flip,
-      look?.fixture,
-      look?.style,
-      look?.unmet,
-      look?.lit,
-      look?.client,
-      look?.dress,
-    ],
+    [defId, rot, shapeKey, lookKey(look)],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
