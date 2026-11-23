@@ -74,15 +74,25 @@
 // Count. It lies down after everything else, the lamp included, where the furniture leaves floor
 // free, so nothing else moves and a full room goes without. Only the board's house has one: a
 // piece alone (a card's picture, the ghost) never does.
+//
+// A Closet dresses by the older rooms it shares a wall with (D-216, closetDress): beside a Bedroom
+// it holds clothes, in its arrangement; else beside a Kitchen it's the pantry (a shelf of jars, a
+// tin and a box of cereal, our own drawing, and a sack of flour), else beside a Bathroom the
+// laundry (a washer and a basket). Only rooms built before it count, so building a room never
+// changes an older one (D-173); demolishing the Kitchen or Bathroom it was built beside does. Its
+// ghost reads the rooms it will touch (closetLook), so it still shows what will be built. A card's
+// picture holds clothes.
 
 import {
   CONTENT,
   isFinished,
+  type Cell,
   type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
 } from '../../rules/index.ts';
+import { isIndoor, occupancy, uidAt } from '../board/geometry.ts';
 import {
   EDGE,
   WALL,
@@ -92,6 +102,7 @@ import {
   inset,
   overlaps,
   uidHash,
+  type ClosetDress,
   type HouseModel,
   type PieceLook,
   type Rect,
@@ -230,6 +241,8 @@ const BACK: Readonly<Record<string, number>> = {
   'hall-bench': 10,
   // D-183: the client's own things. The candle hangs on the north wall's band and face.
   'wall-candle': 14,
+  // D-216: a pantry's shelf, as high over the floor as a Closet's rail, so it stands where that does.
+  'own-pantry': 15,
 };
 
 function family(sprite: ArtId): string {
@@ -1268,6 +1281,26 @@ function closet(c: Ctx, rail: SpriteId, below: SpriteId): Want[] {
     want(below, 'S', 'C'),
   ];
 }
+
+/**
+ * D-216: a Closet's pantry and laundry, in place of its arrangement: the pantry's shelf of jars and
+ * tins and a sack of flour where there's floor for it, or a washer and a laundry basket. A big one
+ * (D-168) takes a second shelf, or a second machine for the drying, beside the first.
+ */
+const DRESSES: Readonly<Record<ClosetDress, (c: Ctx) => Want[]>> = {
+  pantry: (c) => [
+    { sprites: ['own-pantry'], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    ...(c.big ? [want('own-pantry', ...corners(c, 'NL', 'NR'))] : []),
+    want('own-sack', 'S', 'C'),
+  ],
+  laundry: (c) => [
+    { sprites: ['washer'], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    ...(c.big ? [want('washer', ...corners(c, 'NL', 'NR'))] : []),
+    want(pick(HAMPERS, c.rank), 'S', 'C'),
+  ],
+};
 
 /**
  * A Home Office's old computer between two narrow bookcases where the room is deep enough for
@@ -2356,12 +2389,85 @@ function sameType(m: HouseModel, room: Room): number[] {
 /** Which way a room's small choices go: a bit of its uid's hash. */
 const flipOf = (uid: number) => ((uidHash(uid, 7) >>> 3) & 1) === 1;
 
+/** The type a room counts as: a member's room is a Bedroom (D-103), an L-Kitchen a Kitchen. */
+const typeOf = (id: PieceId): PieceId => CONTENT.pieces[id].countsAs ?? id;
+
+/**
+ * D-216: what a Closet holds, by the types of the older rooms it shares a wall with: clothes beside
+ * a Bedroom (a member's room is one), or else the pantry beside a Kitchen (an L-Kitchen is one), or
+ * else the laundry beside a Bathroom, and clothes beside anything else (undefined).
+ */
+export function closetDress(beside: Iterable<PieceId>): ClosetDress | undefined {
+  const types = new Set([...beside].map(typeOf));
+  if (types.has('bedroom')) return undefined;
+  if (types.has('kitchen')) return 'pantry';
+  if (types.has('bathroom')) return 'laundry';
+  return undefined;
+}
+
+const STEPS: readonly (readonly [number, number])[] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+];
+
+/**
+ * The types of the rooms older than room `uid` (built before it: a lower uid) that share a wall
+ * with its `cells` in model `m` (D-216).
+ */
+function olderBeside(m: HouseModel, cells: readonly Cell[], uid: number): PieceId[] {
+  const out: PieceId[] = [];
+  for (const c of cells) {
+    for (const [dx, dy] of STEPS) {
+      const x = c.x + dx;
+      const y = c.y + dy;
+      if (x < 0 || y < 0 || x >= m.width || y >= m.height) continue;
+      const u = m.room[y * m.width + x]!;
+      const other = u !== 0 && u < uid ? m.rooms.get(u) : undefined;
+      if (other) out.push(other.defId);
+    }
+  }
+  return out;
+}
+
+/**
+ * D-216: the look a Closet standing on `cells` will have, by the house's rooms older than it that
+ * it shares a wall with there: placed room `uid` (the Moving Truck carries it, or a card extends
+ * it), or a new one, which every room is older than.
+ */
+function closetLook(
+  house: HouseState,
+  defId: PieceId,
+  cells: readonly Cell[] | undefined,
+  uid = Infinity,
+): Pick<PieceLook, 'dress'> {
+  if (!cells || typeOf(defId) !== 'closet') return {};
+  const occ = occupancy(house);
+  const beside: PieceId[] = [];
+  for (const c of cells) {
+    for (const [dx, dy] of STEPS) {
+      const u = uidAt(occ, c.x + dx, c.y + dy);
+      const other = u !== 0 && u < uid ? occ.byUid.get(u) : undefined;
+      if (other && isIndoor(other.defId)) beside.push(other.defId);
+    }
+  }
+  const dress = closetDress(beside);
+  return dress ? { dress } : {};
+}
+
 /**
  * How placed room `uid` looks (its color, its arrangement, its choices, its fixture, and whether
  * it has the run's `client`'s own things, D-183): its ghost's while the Moving Truck carries it,
- * or while a card extends it (D-168).
+ * or while a card extends it (D-168). `cells` are the ones it will stand on, for a Closet's pantry
+ * or laundry (D-216).
  */
-export function roomLook(house: HouseState, uid: number, client?: ClientId): PieceLook {
+export function roomLook(
+  house: HouseState,
+  uid: number,
+  client?: ClientId,
+  cells?: readonly Cell[],
+): PieceLook {
   const piece = house.pieces.find((p) => p.uid === uid);
   if (!piece) return { color: 0 };
   const same = house.pieces.filter((p) => p.defId === piece.defId).map((p) => p.uid);
@@ -2372,14 +2478,21 @@ export function roomLook(house: HouseState, uid: number, client?: ClientId): Pie
     ...(piece.fixture ? { fixture: piece.fixture.id } : {}),
     ...(isFinished(piece) ? { lit: true } : {}),
     ...(client && theirsIn(house.pieces, client) === uid ? { client } : {}),
+    ...closetLook(house, piece.defId, cells, uid),
   };
 }
 
 /**
  * How a new room of type `defId` will look once it's placed (its uid is the house's next): its
- * ghost's, with the run's `client`'s own things if it will be the first room of their type (D-183).
+ * ghost's, with the run's `client`'s own things if it will be the first room of their type (D-183),
+ * and a Closet's pantry or laundry by the rooms beside `cells`, where it would stand (D-216).
  */
-export function newRoomLook(house: HouseState, defId: PieceId, client?: ClientId): PieceLook {
+export function newRoomLook(
+  house: HouseState,
+  defId: PieceId,
+  client?: ClientId,
+  cells?: readonly Cell[],
+): PieceLook {
   const uid = house.nextUid;
   const same = [...house.pieces.filter((p) => p.defId === defId).map((p) => p.uid), uid];
   return {
@@ -2387,6 +2500,7 @@ export function newRoomLook(house: HouseState, defId: PieceId, client?: ClientId
     flip: flipOf(uid),
     style: arrangementOf(defId, same, uid),
     ...(client && theirsIn([...house.pieces, { uid, defId }], client) === uid ? { client } : {}),
+    ...closetLook(house, defId, cells),
   };
 }
 
@@ -2429,7 +2543,17 @@ function layOut(
   };
   // Its arrangement (D-173): the first is its type's SPECS entry, the others ARRANGEMENTS'.
   const style = look ? (look.style ?? 0) : arrangementOf(room.defId, same, uid);
-  const wants = given ?? ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
+  // D-216: a Closet built beside a Kitchen or a Bathroom is its pantry or its laundry, in any
+  // arrangement; a ghost as its look says it will be.
+  const dress =
+    typeOf(room.defId) !== 'closet'
+      ? undefined
+      : look
+        ? look.dress
+        : closetDress(olderBeside(m, room.cells, uid));
+  const wants =
+    given ??
+    (dress ? DRESSES[dress] : (style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
   // D-183: the client's own things go in over whichever arrangement it has, the first of their
   // ways that shows them (or the one of those that keeps the most furniture), or else the last.
   // Each is weighed as the room stood before it was finished: the lamp a finished room adds

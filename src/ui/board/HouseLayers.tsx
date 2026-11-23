@@ -1124,6 +1124,7 @@ export function GhostPiece({
       look?.unmet,
       look?.lit,
       look?.client,
+      look?.dress,
     ],
   );
   const { frame } = art;

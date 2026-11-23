@@ -44,6 +44,7 @@ import {
   arrangements,
   byType,
   catIn,
+  closetDress,
   isCat,
   itemRows,
   newRoomLook,
@@ -119,6 +120,8 @@ const FLAT = /^(rug-|runner-|mat-|bath-mat)/;
 const TIGHT = /^(toilet-|clothes-rail|car-)/;
 /** And a dining table, which keeps its chairs before a walkway (its chairs keep out of it). */
 const WALKWAY = /^(toilet-|clothes-rail|car-|dining-table)/;
+/** A Closet's key piece in its pantry or its laundry (D-216), as tight as its rail. */
+const CLOSET_KEY = /^(own-pantry|washer)$/;
 /** The tables dining chairs tuck under: plain, under a cloth, or round (D-173). */
 const TABLE = /^(dining-table|table-round)/;
 
@@ -138,9 +141,14 @@ function problems(m: HouseModel, uid: number): string[] {
   const room = m.rooms.get(uid)!;
   const items = roomItems(m, uid);
   const name = (it: Item) => `${room.defId} ${uid}: ${it.sprite} at ${it.x},${it.y}`;
+  // A Closet's pantry shelf or washer is its rail (D-216).
+  const tight = (it: Item) =>
+    TIGHT.test(it.sprite) || (room.defId === 'closet' && CLOSET_KEY.test(it.sprite));
   // A Dining Room's round table is its dining table (D-173).
   const walks = (it: Item) =>
-    WALKWAY.test(it.sprite) || (room.defId === 'diningRoom' && TABLE.test(it.sprite));
+    WALKWAY.test(it.sprite) ||
+    (room.defId === 'diningRoom' && TABLE.test(it.sprite)) ||
+    (room.defId === 'closet' && CLOSET_KEY.test(it.sprite));
   const own = (cx: number, cy: number) =>
     cx >= 0 && cy >= 0 && cx < m.width && cy < m.height && m.room[cy * m.width + cx] === uid;
   for (const it of items) {
@@ -180,7 +188,7 @@ function problems(m: HouseModel, uid: number): string[] {
         if (own(cx, cy)) continue;
         const other = cx >= 0 && cy >= 0 && cx < m.width ? (m.room[cy * m.width + cx] ?? 0) : 0;
         if (other) out.push(`${name(it)} rises into room ${other} at cell ${cx},${cy}`);
-        else if (!TIGHT.test(it.sprite) || it.y < (cy + 1) * CELL - 8) {
+        else if (!tight(it) || it.y < (cy + 1) * CELL - 8) {
           out.push(`${name(it)} rises out of the house at cell ${cx},${cy}`);
         }
       }
@@ -2257,6 +2265,157 @@ describe('a held set’s openings (D-176, D-202, D-208)', () => {
         `${style}`,
       ).toHaveLength(2);
       expect(problems(m, uid)).toEqual([]);
+    }
+  });
+});
+
+describe('a Closet by its neighbors (D-216)', () => {
+  const sprites = (m: HouseModel, uid: number) => roomItems(m, uid).map((i) => i.sprite);
+  /** What a laid-out Closet holds, by its key piece. */
+  const holds = (m: HouseModel, uid: number) => {
+    const all = sprites(m, uid);
+    if (all.includes('own-pantry')) return 'pantry';
+    if (all.includes('washer')) return 'laundry';
+    return all.some((sp) => sp.startsWith('clothes-rail')) ? 'clothes' : 'bare';
+  };
+  /**
+   * A Closet at (5, 5), built last, with a room of `id` touching it on `side` (its corner on the
+   * Closet's row or column), and `more`.
+   */
+  function beside(id: PieceId, side: 'N' | 'E' | 'S' | 'W', more: Spec[] = []): HouseState {
+    const shape = CONTENT.pieces[id].shape;
+    const w = shape[0]!.length;
+    const h = shape.length;
+    const at = { N: [6 - w, 5 - h], S: [5, 6], W: [5 - w, 6 - h], E: [6, 5] }[side];
+    return house([[id, at[0]!, at[1]!], ...more, ['closet', 5, 5]]);
+  }
+
+  it('dresses by type: clothes beside a Bedroom, else a pantry by a Kitchen, else a laundry by a Bathroom', () => {
+    expect(closetDress(['kitchen'])).toBe('pantry');
+    expect(closetDress(['lKitchen', 'hallway'])).toBe('pantry');
+    expect(closetDress(['bathroom'])).toBe('laundry');
+    expect(closetDress(['bathroom', 'kitchen'])).toBe('pantry');
+    // A Bedroom keeps its Closet for clothes, a member's room too (D-103).
+    expect(closetDress(['bedroom', 'kitchen'])).toBeUndefined();
+    expect(closetDress(['nursery', 'bathroom'])).toBeUndefined();
+    expect(closetDress(['hallway', 'livingRoom', 'mudroom'])).toBeUndefined();
+    expect(closetDress([])).toBeUndefined();
+  });
+
+  it('is the pantry beside a Kitchen and the laundry beside a Bathroom, on any side', () => {
+    for (const side of ['N', 'E', 'S', 'W'] as const) {
+      for (const [id, want] of [
+        ['kitchen', 'pantry'],
+        ['lKitchen', 'pantry'],
+        ['bathroom', 'laundry'],
+        ['bedroom', 'clothes'],
+        ['livingRoom', 'clothes'],
+        ['hallway', 'clothes'],
+      ] as const) {
+        const m = modelOf(beside(id, side));
+        expect(holds(m, 2), `${id} ${side}`).toBe(want);
+        expect(problems(m, 2), `${id} ${side}`).toEqual([]);
+      }
+    }
+  });
+
+  it('keeps its clothes beside a Bedroom, whatever else it touches', () => {
+    const m = modelOf(beside('kitchen', 'W', [['bedroom', 6, 4]]));
+    expect(holds(m, 3)).toBe('clothes');
+    expect(holds(modelOf(beside('bathroom', 'N', [['nursery', 6, 5]])), 3)).toBe('clothes');
+  });
+
+  it('dresses by the rooms built before it, so a room built later never changes it (D-173)', () => {
+    const closetFirst = house([
+      ['hallway', 5, 4],
+      ['closet', 5, 5],
+      ['kitchen', 6, 5],
+    ]);
+    const kitchenFirst = house([
+      ['hallway', 5, 4],
+      ['kitchen', 6, 5],
+      ['closet', 5, 5],
+    ]);
+    expect(holds(modelOf(closetFirst), 2)).toBe('clothes');
+    expect(holds(modelOf(kitchenFirst), 3)).toBe('pantry');
+    // A Bedroom built after it keeps a pantry a pantry; demolishing its Kitchen makes it a closet.
+    const withBed: HouseState = {
+      ...kitchenFirst,
+      pieces: [
+        ...kitchenFirst.pieces,
+        { uid: 4, defId: 'bedroom', x: 3, y: 5, rot: 0, placedWeek: 4 },
+      ],
+      nextUid: 5,
+    };
+    expect(holds(modelOf(withBed), 3)).toBe('pantry');
+    const gone: HouseState = {
+      ...kitchenFirst,
+      pieces: kitchenFirst.pieces.filter((p) => p.defId !== 'kitchen'),
+    };
+    expect(holds(modelOf(gone), 3)).toBe('clothes');
+    // Nothing else in the house changes with it.
+    expect(roomItems(modelOf(withBed), 2)).toEqual(roomItems(modelOf(kitchenFirst), 2));
+  });
+
+  it('shows its pantry or laundry in its ghost and its moved ghost, as it will be built', () => {
+    let checked = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const h = randomHouse(seed * 104729);
+      const m = modelOf(h);
+      for (const p of h.pieces) {
+        if (p.defId !== 'closet') continue;
+        const cells = placedCells(CONTENT.pieces.closet.shape, p.x, p.y, p.rot);
+        const built = holds(m, p.uid);
+        // The moved ghost (the Moving Truck) where it stands, and a new one's on the same cells in
+        // the house as it stood before the Closet was built.
+        const moved = roomLook(h, p.uid, undefined, cells);
+        const before: HouseState = { ...h, pieces: h.pieces.filter((q) => q.uid < p.uid) };
+        const fresh = newRoomLook(before, 'closet', undefined, cells);
+        for (const look of [moved, fresh]) {
+          expect(look.dress ?? 'clothes', `seed ${seed} uid ${p.uid}`).toBe(
+            built === 'bare' ? 'clothes' : built,
+          );
+          const ghost = holds(pieceModel('closet', p.rot, look), 1);
+          if (built !== 'bare') expect(ghost, `seed ${seed} uid ${p.uid}`).toBe(built);
+        }
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+    // A card's picture holds clothes, as it always has.
+    expect(holds(pieceModel('closet', 0), 1)).toBe('clothes');
+  });
+
+  it('stands its shelf or washer in every Closet it dresses, off the doorways', () => {
+    const counts = { pantry: 0, laundry: 0, bare: 0 };
+    for (let seed = 1; seed <= 400; seed++) {
+      const m = modelOf(randomHouse(seed * 7907, ['closet', 'kitchen', 'lKitchen', 'bathroom']));
+      for (const r of m.rooms.values()) {
+        if (r.defId !== 'closet') continue;
+        const has = holds(m, r.uid);
+        if (has === 'pantry' || has === 'laundry') counts[has]++;
+        else if (has === 'bare') counts.bare++;
+        expect(problems(m, r.uid), `seed ${seed}`).toEqual([]);
+      }
+    }
+    expect(counts.pantry).toBeGreaterThan(50);
+    expect(counts.laundry).toBeGreaterThan(20);
+    expect(counts.bare).toBe(0);
+  });
+
+  it('takes a second shelf or machine when it has grown, where it fits', () => {
+    for (const [id, key] of [
+      ['kitchen', 'own-pantry'],
+      ['bathroom', 'washer'],
+    ] as const) {
+      const pieces: PlacedPiece[] = [
+        { uid: 1, defId: id, x: 4, y: 6, rot: 0, placedWeek: 0 },
+        { uid: 2, defId: 'closet', x: 4, y: 5, rot: 0, placedWeek: 1, shape: ['##'], extended: 1 },
+      ];
+      const rows = Array.from({ length: 12 }, () => '.'.repeat(12));
+      const m = modelOf({ lot: lotFromRows(rows), pieces, nextUid: 3 });
+      expect(sprites(m, 2).filter((sp) => sp === key).length, id).toBe(2);
+      expect(problems(m, 2), id).toEqual([]);
     }
   });
 });

@@ -229,6 +229,19 @@ describe("the listing's lot", () => {
     );
   });
 
+  it('keeps the Old Woods a place with the land’s and the water’s words, in every headline', () => {
+    expect(lotWords(lot(['oldWoods', 'creekside', 'rocky']))).toBe(
+      'rocky creekside lot in the Old Woods',
+    );
+    const woods = { traits: ['oldWoods'] } as const;
+    expect(lineOf(finished('dale', [], woods), 'headline')?.text).toBe(
+      'Vacant lot in the Old Woods.',
+    );
+    expect(lineOf(finished('dale', [['patio', 0, 0]], woods), 'headline')?.text).toBe(
+      'Fixer-Upper on a lot in the Old Woods, with no rooms.',
+    );
+  });
+
   it('names a lot with no trait by its look, as the board draws it', () => {
     for (const biome of ['meadow', 'lakeside', 'autumn', 'dry'] as BiomeId[]) {
       const b = biome === 'meadow' ? undefined : biome;
@@ -502,6 +515,126 @@ describe("the listing's flaw", () => {
       const s = finished('juniper', house, { rows, arrived: ['rowan'] });
       expect(flaw(s), text ?? 'no flaw').toBe(text);
       expect(listing(s)).toHaveLength(text ? 3 : 2);
+    }
+  });
+});
+
+describe('the listing, on the household and the yard', () => {
+  const kitchen: Placement = ['kitchen', 0, 0];
+
+  it('counts each member’s room as one bed, and names each member who has none', () => {
+    // Every room of every member's (the twins' Nursery and the Kids' Room it grows into), beside
+    // a Kitchen, with the member moved in: one bed, and no word about their room.
+    const missing: Record<string, string | null> = {};
+    for (const c of CLIENTS) {
+      for (const a of CONTENT.clients[c].household.arrivals) {
+        for (const room of a.room) {
+          const s = finished(c, [kitchen, [room, 3, 0]], { arrived: [a.id] });
+          expect(lineOf(s, 'headline')?.text, room).toBe(`1 bed, 0 bath ${LOWEST} on a rocky lot.`);
+          expect(flaw(s), room).not.toMatch(/^No room for/);
+        }
+        missing[a.id] = flaw(finished(c, [kitchen], { arrived: [a.id] }));
+      }
+    }
+    expect(missing).toEqual({
+      twins: 'No room for the twins.',
+      grandma: 'No room for Grandma.',
+      renfield: 'No room for Renfield.',
+      nana: 'No room for Nana.',
+      rowan: 'No room for Rowan.',
+      ivy: 'No room for Ivy.',
+    });
+    // The listing keeps each member's rooms by the member's id, so no two clients share one.
+    const ids = CLIENTS.flatMap((c) => CONTENT.clients[c].household.arrivals.map((a) => a.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('names the first member to arrive with no room, then the next', () => {
+    const both = { arrived: ['twins', 'grandma'] } as const;
+    const nursery: Placement = ['nursery', 3, 0];
+    expect(flaw(finished('hendersons', [kitchen], both))).toBe('No room for the twins.');
+    expect(flaw(finished('hendersons', [kitchen, nursery], both))).toBe('No room for Grandma.');
+    const housed = finished('hendersons', [kitchen, nursery, ['grandmasRoom', 5, 0]], both);
+    expect(lineOf(housed, 'headline')?.text).toBe(`2 bed, 0 bath ${LOWEST} on a rocky lot.`);
+    expect(flaw(housed)).toBe('No Dining Room.');
+  });
+
+  it('counts a Bedroom with a Dog Door (D-210) as one bed, and no Doghouse', () => {
+    // The Dog Door makes its room a Pet room; the Barkers still have no Doghouse.
+    const s = finished('barkers', [...YARD_18_LINE, ['mudroom', 4, 3], ['bedroom', 6, 3]], YARD_18);
+    const bedroom = s.house.pieces.find((p) => p.defId === 'bedroom')!.uid;
+    const door = { ...s, house: withFixture(s.house, bedroom, 'dogDoor', 1) };
+    expect(rules.describePiece(door, bedroom)?.tags).toContain('Pet');
+    expect(rules.describePiece(s, bedroom)?.tags).not.toContain('Pet');
+    for (const house of [s, door]) {
+      expect(lineOf(house, 'headline')?.text).toBe(`1 bed, 1 bath ${LOWEST} on a rocky lot.`);
+      expect(flaw(house)).toBe('No Doghouses.');
+    }
+  });
+
+  it('names the largest fenced yard, with the article its number takes read aloud', () => {
+    // Two yards behind a line of Fences, either side of a column of Bathrooms (t): 12 tiles on
+    // the left, and 16 on the right, where the Doghouses (D) are.
+    //   y0  ...tDD..
+    //   y1  ...t....
+    //   y2  ...t....
+    //   y3  ...t....
+    //   y4  FFFFFFFF
+    //   y5  KK......   K: the Kitchen
+    //   y6  KK..MM..   M: the Mudroom
+    const column: Placement[] = [0, 1, 2, 3].map((y) => ['bathroom', 3, y]);
+    const two = finished(
+      'barkers',
+      [
+        ...column,
+        ['fence', 0, 4],
+        ['fence', 4, 4],
+        ['kitchen', 0, 5],
+        ['doghouse', 4, 0],
+        ['doghouse', 5, 0],
+        ['mudroom', 4, 6],
+      ],
+      { rows: emptyRows(8, 10) },
+    );
+    expect(rules.fencedYards(two)).toEqual([12, 16]);
+    expect(lineOf(two, 'client')?.text).toBe(
+      'Built for the Barkers: a 16-tile fenced yard, 2 Doghouses and a Mudroom.',
+    );
+    // Short of the Barkers' 12 tiles, it's the largest that's said: 10 and 11 tiles in the back
+    // row, either side of a Bathroom, behind Fences and two more Bathrooms.
+    const short = finished(
+      'barkers',
+      [
+        ['bathroom', 10, 0],
+        ...[0, 4, 8, 12, 16].map((x): Placement => ['fence', x, 1]),
+        ['bathroom', 20, 1],
+        ['bathroom', 21, 1],
+        ['kitchen', 0, 2],
+        ['doghouse', 4, 3],
+        ['doghouse', 5, 3],
+        ['mudroom', 8, 2],
+      ],
+      { rows: emptyRows(22, 8) },
+    );
+    expect(rules.fencedYards(short)).toEqual([10, 11]);
+    expect(flaw(short)).toBe('The fenced yard is 11 tiles, of the 12 asked for.');
+    // The yard behind a line of Fences across a lot 9 wide, at row 3 or row 9: "a 27-tile", and
+    // "an 81-tile", as "an 18-tile" (above).
+    for (const [row, size] of [
+      [3, 'a 27-tile'],
+      [9, 'an 81-tile'],
+    ] as const) {
+      const s = finished(
+        'hendersons',
+        [
+          ['fence', 0, row],
+          ['bathroom', 4, row],
+          ['fence', 5, row],
+          ['kitchen', 0, row + 1],
+        ],
+        { rows: emptyRows(9, row + 5) },
+      );
+      expect(lineOf(s, 'client')?.text).toBe(`Built for the Hendersons: ${size} fenced yard.`);
     }
   });
 });

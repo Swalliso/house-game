@@ -181,7 +181,15 @@ export interface PieceLook {
    * or will be once placed, the first room of the type their things go in (rooms.ts THEIRS).
    */
   client?: ClientId;
+  /**
+   * D-216: a Closet's pantry or laundry, by the older rooms it will share a wall with once placed
+   * (rooms.ts closetDress). A Closet without one holds clothes, as a card's picture does.
+   */
+  dress?: ClosetDress;
 }
+
+/** D-216: what a Closet holds besides clothes: a pantry beside a Kitchen, a laundry beside a Bathroom. */
+export type ClosetDress = 'pantry' | 'laundry';
 
 export interface HouseModel {
   /** The lot, in cells. */
@@ -467,7 +475,7 @@ export function pieceModel(
   // Every field of the look, so the model's own `look` is always the one asked for.
   const looks = look
     ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:` +
-      `${look.unmet ? 'unmet' : ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}`
+      `${look.unmet ? 'unmet' : ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}:${look.dress ?? ''}`
     : '';
   const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);

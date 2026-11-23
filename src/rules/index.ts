@@ -923,8 +923,9 @@ export interface UpgradeDef {
  * opens as it's bought.
  * - `specialPiece`: a special piece in Your goods' extra slots, marked with the upgrade: the first
  *   in an order drawn once a run from `upgrade/<id>` that the house doesn't have yet (built or
- *   waiting in Your goods) and whose type isn't at a limit; with every one there, the first
- *   whose type isn't at a limit; with none, nothing.
+ *   waiting in Your goods) and whose type isn't at a limit; with every one there, the first a
+ *   house can hold two of, then the first, each of a type that isn't at a limit; with none,
+ *   nothing.
  * - `tool`: an offered tool of `rarity` in the supplies, or sold at once when they're full: the
  *   milestone's in an order drawn once a run from `upgrade/<id>`, as the crew's own card is
  *   (D-171), passing over one already in the supplies and one that can't pay in the house as it
