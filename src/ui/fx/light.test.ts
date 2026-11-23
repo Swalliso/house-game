@@ -1,10 +1,12 @@
 // D-181: a finished room's lamp coming on. The flicker keeps the Flashing setting's promise
 // (never more than three flashes a second, none with it off), and the director holds a light
 // off from the action that finishes its room until that action's beat switches it on; with
-// Reduce motion, and in a run loaded or started afresh, it's simply on.
+// Reduce motion, and in a run loaded or started afresh, it's simply on. D-211: then the room
+// pays, and the top bar counts its budget in on that beat.
 //
 // The store and the director play real runs here, on a house made for the test.
 
+import { effect } from '@preact/signals';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTENT, isFinished, type ClientId, type RunSetup } from '../../rules/index.ts';
 import { emptyRows, houseFrom } from '../../rules/testing.ts';
@@ -14,7 +16,15 @@ import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
 import { settings } from '../settings.ts';
 import { CELL } from '../sprites.ts';
 import { installSupply, run, startRun } from '../store.ts';
-import { busy, fxHooks, instantTally, lightsHeld, lightSwitched } from './director.ts';
+import {
+  busy,
+  fxHooks,
+  instantTally,
+  lightsHeld,
+  lightSwitched,
+  popups,
+  shownRun,
+} from './director.ts';
 import { FEEL } from './feel.ts';
 import { lightOnFrames } from './light.ts';
 
@@ -144,6 +154,30 @@ describe('the light coming on', () => {
     // Their dogs' bed moves the lamp: a house without them would light it elsewhere.
     expect(theirs).not.toEqual(lamp());
     expect(bursts).toContainEqual({ x: theirs.x / CELL, y: theirs.y / CELL });
+  });
+
+  it('then pays (D-211): a note over the lamp, and the top bar counts the budget in on its beat', async () => {
+    ready();
+    const budget = run.value.budget;
+    const shown: (number | null)[] = [];
+    const notes: string[] = [];
+    const stop = effect(() => {
+      const b = shownRun.value?.budget ?? null;
+      if (shown.at(-1) !== b) shown.push(b);
+      for (const p of popups.value) if (!notes.includes(p.text)) notes.push(p.text);
+    });
+    try {
+      expect(installSupply(0, 1)).toBe(true);
+      expect(run.value.budget).toBe(budget + CONTENT.balance.finishReward.budget!);
+      // The top bar keeps the budget from before the action until its beat.
+      expect(shownRun.value?.budget).toBe(budget);
+      await vi.waitFor(() => expect(busy.value).toBe(false));
+    } finally {
+      stop();
+    }
+    expect(notes).toContain('Finished! +2 budget');
+    // Before, then with the payout, then the run itself (which has it).
+    expect(shown.slice(-3)).toEqual([budget, budget + 2, null]);
   });
 
   it('a new run lets go of a light still waiting for its beat', async () => {
