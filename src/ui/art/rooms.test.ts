@@ -1710,12 +1710,18 @@ describe('the client’s own things (D-183)', () => {
       }
     }
     // Only the two clients with things of their own change a room, and they do in most houses;
-    // a cat lies down in houses of the four clients with one (in those with a Living Room it
-    // fits in), never the Barkers' (D-185).
+    // a cat lies down in houses of the five clients with one (in those with a Living Room it
+    // fits in), never the Barkers' (D-185; the Bigsbys' grey cat is D-219's).
     expect([...changed.keys()].sort()).toEqual(['barkers', 'vladislav']);
     expect(changed.get('vladislav')).toBeGreaterThan(10);
     expect(changed.get('barkers')).toBeGreaterThan(10);
-    expect([...cats.keys()].sort()).toEqual(['dale', 'hendersons', 'juniper', 'vladislav']);
+    expect([...cats.keys()].sort()).toEqual([
+      'bigsbys',
+      'dale',
+      'hendersons',
+      'juniper',
+      'vladislav',
+    ]);
     for (const n of cats.values()) expect(n).toBeGreaterThan(3);
   }, 20_000); // 1.1 s here and 2.5 s on CI: as close to the 5 s default as the dog-bed test
 

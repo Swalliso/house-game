@@ -37,7 +37,6 @@ import { useEffect, useRef } from 'preact/hooks';
 import {
   changeOrderText,
   CONTENT,
-  eachMilestone,
   lotTraits,
   lotTraitText,
   modifierText,
@@ -70,7 +69,7 @@ import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
 import { activePlay, currentTally, preview, run, selected, tool } from '../store.ts';
 import { seenHints } from './FirstHints.tsx';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
-import { arrivalWeek, overtimeUsed, upcomingArrivals } from './household.ts';
+import { arrivalWeek, checklistArrivals, overtimeUsed } from './household.ts';
 import { Tip } from './Tip.tsx';
 import { SunChip } from './sun.tsx';
 import './checklist.css';
@@ -827,8 +826,7 @@ const tastesShown = (box: HTMLElement) =>
  * shows only who's next, one line.
  */
 function ArrivalLines({ s }: { s: RunState }) {
-  const all = upcomingArrivals(s);
-  const coming = eachMilestone(CONTENT.clients[s.setup.clientId].household) ? all.slice(0, 1) : all;
+  const coming = checklistArrivals(s);
   if (coming.length === 0) return null;
   const overtime = overtimeUsed(s);
   return (

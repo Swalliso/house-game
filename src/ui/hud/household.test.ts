@@ -3,7 +3,8 @@
 // wrong delivery. A card in the reserve's own slots (bought, picked or copied) says nothing.
 
 import { describe, expect, it } from 'vitest';
-import { extraSlotWords } from './household.ts';
+import { rules, type ClientId } from '../../rules/index.ts';
+import { checklistArrivals, extraSlotWords } from './household.ts';
 
 describe('an extra slot’s words', () => {
   it('tag each card by where it came from', () => {
@@ -66,5 +67,36 @@ describe('an extra slot’s words', () => {
 
   it('say nothing for a bought card', () => {
     expect(extraSlotWords('dale', { id: 'library' })).toBeNull();
+  });
+
+  it('tag a Bigsby’s Bedroom with who brought it (D-219)', () => {
+    expect(extraSlotWords('bigsbys', { id: 'bedroom', arrival: 'auntBea' })).toEqual({
+      tag: 'Aunt Bea',
+      whose: ' (with Aunt Bea)',
+      from: 'Came with Aunt Bea',
+    });
+    expect(extraSlotWords('bigsbys', { id: 'bedroom', arrival: 'newlyweds' })!.tag).toBe(
+      'Newlyweds',
+    );
+  });
+});
+
+describe('who the checklist says is still to move in', () => {
+  const start = (clientId: ClientId) =>
+    rules.newRun({ seed: 'coming', clientId, crewId: 'generalContractor', mode: 'standard' });
+  const names = (clientId: ClientId, arrived: readonly string[] = []) =>
+    checklistArrivals({ ...start(clientId), arrived } as ReturnType<typeof start>).map((a) => a.id);
+
+  it('is everyone still to come for a household of one or two', () => {
+    expect(names('hendersons')).toEqual(['twins', 'grandma']);
+    expect(names('hendersons', ['twins'])).toEqual(['grandma']);
+    expect(names('dale')).toEqual(['ivy']);
+    expect(names('dale', ['ivy'])).toEqual([]);
+  });
+
+  it('is only who’s next for a household that grows each milestone (D-219)', () => {
+    expect(names('bigsbys')).toEqual(['auntBea']);
+    expect(names('bigsbys', ['auntBea', 'cousins'])).toEqual(['grandpa']);
+    expect(names('bigsbys', ['auntBea', 'cousins', 'grandpa', 'newlyweds', 'baby'])).toEqual([]);
   });
 });

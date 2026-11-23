@@ -271,6 +271,7 @@ describe("the listing's client line", () => {
         kind: 'asked',
         text: 'Dale asked for two Home Offices and nothing Loud next to an office.',
       },
+      bigsbys: { part: 'client', kind: 'asked', text: 'The Bigsbys asked for a Playroom.' },
     });
   });
 

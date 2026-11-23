@@ -112,6 +112,8 @@ const SEEDS: readonly Seed[] = [
   // random play misses about one run in three: chaos-2 and chaos-6 both missed it on D-174's
   // lots, and the coverage test then played ten more seeds. This Architect run reaches it.
   { seed: 'chaos-addition', cheat: true, crewId: 'architect' },
+  // D-219: the Bigsbys, whose five members each bring a plain Bedroom and no room of their own.
+  { seed: 'chaos-bigsbys', cheat: true, clientId: 'bigsbys' },
 ];
 
 /** Problems kept per run: past this the run is broken enough. */
