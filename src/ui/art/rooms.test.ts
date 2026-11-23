@@ -1867,7 +1867,7 @@ describe('the client’s own things (D-183)', () => {
   });
 });
 
-describe('a held set’s openings (D-176, D-202)', () => {
+describe('a held set’s openings (D-176, D-202, D-208)', () => {
   const ENTERTAINER: readonly PieceId[] = ['kitchen', 'diningRoom', 'livingRoom'];
   /** The Entertainer's rooms, each with the fixtures drawn as its furniture. */
   const MEMBERS: readonly (readonly [PieceId, readonly (FixtureId | undefined)[]])[] = [
@@ -1905,6 +1905,8 @@ describe('a held set’s openings (D-176, D-202)', () => {
     );
 
   it('lay out the Entertainer’s rooms in every arrangement, turn and fixture, opening on each side, without clashes', () => {
+    /** D-208: each kitchen type's layouts with a counter, and all its layouts. */
+    const counters = new Map<PieceId, [number, number]>();
     for (const [id, fixtures] of MEMBERS) {
       const type = CONTENT.pieces[id].countsAs ?? id;
       const [a, b] = ENTERTAINER.filter((t) => t !== type);
@@ -1939,6 +1941,11 @@ describe('a held set’s openings (D-176, D-202)', () => {
               expect(sets, at).toEqual(['entertainer']);
               if (isOpening(m, uid)) opened.add(side);
               for (const p of h.pieces) expect(problems(m, p.uid), at).toEqual([]);
+              if (type === 'kitchen') {
+                const [n, of] = counters.get(id) ?? [0, 0];
+                const has = roomItems(m, uid).some((it) => /^counter/.test(it.sprite));
+                counters.set(id, [n + Number(has), of + 1]);
+              }
             }
           }
         }
@@ -1946,15 +1953,22 @@ describe('a held set’s openings (D-176, D-202)', () => {
       // Each of its walls has had an opening in it.
       expect([...opened].sort(), id).toEqual(['E', 'N', 'S', 'W']);
     }
+    // D-208: every Kitchen keeps a counter, and most L-Kitchens do (98 of 144; 42 when one stood
+    // only beside the range).
+    expect(counters.get('kitchen')).toEqual([36, 36]);
+    expect(counters.get('lKitchen')![0]).toBeGreaterThanOrEqual(90);
+    expect(counters.get('lKitchen')![1]).toBe(144);
   });
 
-  it('stand a Kitchen’s range and its counter against the south wall where its Living Room’s opening takes the north wall', () => {
+  it('stand a Kitchen’s range and its counter against the south wall where its Living Room’s opening takes the north wall, unless a counter on its own keeps its table', () => {
     // D-176's house 4: a Kitchen below its Living Room, its Dining Room beside it.
     const specs: Spec[] = [
       ['kitchen', 3, 5],
       ['livingRoom', 3, 2],
       ['diningRoom', 5, 5],
     ];
+    /** The arrangement with the round table, which leaves room for a counter beside it (D-208). */
+    const WOOD = 1;
     for (let style = 0; style < arrangements('kitchen'); style++) {
       const h = restyle(house(specs), style);
       const uid = h.pieces[0]!.uid;
@@ -1966,17 +1980,127 @@ describe('a held set’s openings (D-176, D-202)', () => {
       const south = box.y + box.h - WALL.out;
       const items = roomItems(m, uid);
       const range = items.find((it) => it.sprite === 'range')!;
-      const counter = items.find((it) => /^counter-sink/.test(it.sprite))!;
-      // Side by side, their feet on the south wall's band.
-      expect(range.y + artSize(range.sprite).h, `${style}`).toBe(south);
-      expect(counter.y + artSize(counter.sprite).h, `${style}`).toBe(south);
-      expect(counter.x + artSize(counter.sprite).w === range.x || range.x + 16 === counter.x).toBe(
-        true,
-      );
+      if (style === WOOD) {
+        // D-208: the range keeps to the north wall and the round table to the floor, and a
+        // counter stands on its own against the south wall.
+        expect(range.y + artSize('range').h).toBeLessThan(box.y + CELL);
+        expect(items.some((it) => /^table-round/.test(it.sprite))).toBe(true);
+        const counter = items.find((it) => /^counter/.test(it.sprite))!;
+        expect(counter.y + artSize(counter.sprite).h).toBe(south);
+      } else {
+        // Side by side, their feet on the south wall's band: the breakfast table has no room
+        // beside a counter on its own either, so the counters keep it (D-202).
+        const counter = items.find((it) => /^counter-sink/.test(it.sprite))!;
+        expect(range.y + artSize(range.sprite).h, `${style}`).toBe(south);
+        expect(counter.y + artSize(counter.sprite).h, `${style}`).toBe(south);
+        expect(
+          counter.x + artSize(counter.sprite).w === range.x || range.x + 16 === counter.x,
+        ).toBe(true);
+      }
       expect(problems(m, uid)).toEqual([]);
       // Without the set, the north wall keeps them, as before.
       const plain = roomItems(modelOf(h), uid).find((it) => it.sprite === 'range')!;
       expect(plain.y + artSize('range').h, `${style}`).toBeLessThan(box.y + CELL);
+    }
+  });
+
+  it('stand an L-Kitchen’s counter on its own where an opening takes the wall beside its range (D-208)', () => {
+    // Its top row below its Dining Room, whose opening takes most of the row's north wall, and its
+    // Living Room against its arm: the counter stands against the arm's south wall.
+    const arm: Spec[] = [
+      ['lKitchen', 4, 4, 2],
+      ['diningRoom', 4, 2],
+      ['livingRoom', 6, 3],
+    ];
+    // Turned the other way, a set door takes the north wall of its column beside the range: the
+    // counter stands against the column's south wall.
+    const column: Spec[] = [
+      ['lKitchen', 4, 4, 0],
+      ['diningRoom', 4, 2],
+      ['livingRoom', 6, 3],
+    ];
+    for (const specs of [arm, column]) {
+      for (let style = 0; style < arrangements('lKitchen'); style++) {
+        const h = restyle(house(specs), style);
+        const uid = h.pieces[0]!.uid;
+        const at = `r${specs[0]![3]} ${style}`;
+        const { m, sets } = setModelOf(h);
+        expect(sets, at).toEqual(['entertainer']);
+        const box = m.rooms.get(uid)!.box;
+        const items = roomItems(m, uid);
+        expect(
+          items.some((it) => it.sprite === 'range'),
+          at,
+        ).toBe(true);
+        const counter = items.find((it) => /^counter/.test(it.sprite));
+        expect(counter, at).toBeDefined();
+        expect(counter!.y + artSize(counter!.sprite).h, at).toBe(box.y + box.h - WALL.out);
+        expect(problems(m, uid), at).toEqual([]);
+        // Without the set, it stands beside the range on the north wall, as before.
+        const plain = roomItems(modelOf(h), uid);
+        const r = plain.find((it) => it.sprite === 'range')!;
+        const c = plain.find((it) => /^counter/.test(it.sprite))!;
+        expect(c.x + artSize(c.sprite).w === r.x || r.x + artSize('range').w === c.x, at).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it('keep an L-Kitchen’s fridge where its counter never had room beside its range (D-208)', () => {
+    // Its Dining Room and Living Room either side of its column, a set door into each: the range's
+    // wall is a cell long, with no room for a counter beside it with set doors or without, and the
+    // fridge stands on the column's north wall. A counter on its own would take that wall.
+    const specs: Spec[] = [
+      ['lKitchen', 4, 4, 0],
+      ['diningRoom', 2, 3],
+      ['livingRoom', 5, 2],
+    ];
+    for (let style = 0; style < arrangements('lKitchen'); style++) {
+      const h = restyle(house(specs), style);
+      const uid = h.pieces[0]!.uid;
+      const { m, sets } = setModelOf(h);
+      expect(sets).toEqual(['entertainer']);
+      expect(m.doors.some((d) => (d.a === uid || d.b === uid) && d.why === 'set')).toBe(true);
+      const items = roomItems(m, uid);
+      expect(
+        items.some((it) => /^fridge/.test(it.sprite)),
+        `${style}`,
+      ).toBe(true);
+      // The set doors cost it nothing, so it stands as it does without them.
+      expect(items, `${style}`).toEqual(roomItems(modelOf(h), uid));
+      expect(problems(m, uid)).toEqual([]);
+    }
+  });
+
+  it('keep a Kitchen Island where set doors leave its range a wall to itself (D-208)', () => {
+    // Below its Dining Room and its Living Room, a set door into each in its north wall: the wall
+    // between them holds the range alone. Its counters on the south wall would leave the island
+    // no floor, so the counter with the sink stands there on its own.
+    const specs: Spec[] = [
+      ['kitchen', 4, 4, 0, 'kitchenIsland'],
+      ['diningRoom', 3, 2],
+      ['livingRoom', 5, 1],
+    ];
+    for (let style = 0; style < arrangements('kitchen'); style++) {
+      const h = restyle(house(specs), style);
+      const uid = h.pieces[0]!.uid;
+      const { m, sets } = setModelOf(h);
+      expect(sets).toEqual(['entertainer']);
+      expect(m.doors.filter((d) => d.b === uid && d.why === 'set')).toHaveLength(2);
+      const layout = roomLayout(m, uid);
+      const sprites = layout.items.map((it) => it.sprite);
+      expect(layout.fixtureShown, `${style}`).toBe(true);
+      expect(
+        sprites.some((sp) => /^kitchen-island/.test(sp)),
+        `${style}`,
+      ).toBe(true);
+      expect(sprites, `${style}`).toContain('range');
+      expect(
+        sprites.some((sp) => /^counter-sink/.test(sp)),
+        `${style}`,
+      ).toBe(true);
+      expect(problems(m, uid), `${style}`).toEqual([]);
     }
   });
 

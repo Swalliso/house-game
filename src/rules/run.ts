@@ -122,6 +122,8 @@ import type {
   ToolId,
   ToolValue,
   TypeLimit,
+  UpgradeDelivery,
+  UpgradeId,
   UseToolAction,
   WeekScore,
 } from './index.ts';
@@ -1396,7 +1398,8 @@ export function createRules(content: Content): Rules {
   /**
    * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
    * what the client brings for that phase, the standing stock's top-up (D-160), the crew's own
-   * card and the wrong delivery's piece (D-171, D-188), and the crew's tool.
+   * card and the wrong delivery's piece (D-171, D-188), a company upgrade's special piece
+   * (D-209), the crew's tool, and a company upgrade's tool.
    */
   function arrive(state: RunState, events: GameEvent[]): RunState {
     if (state.overtimeWeek !== 0) return state;
@@ -1407,18 +1410,29 @@ export function createRules(content: Content): Rules {
       }
       s = deliver(s, events);
     }
-    return crewTool(surprise(crewStock(restock(s, events), events), events), events);
+    s = surprise(crewStock(restock(s, events), events), events);
+    return upgradeTools(crewTool(upgradePieces(s, events), events), events);
   }
 
-  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171, D-188). */
+  /**
+   * Cards into the reserve's extra slots, marked by where they came from (D-160, D-171, D-188),
+   * and (D-209) a company upgrade's by the upgrade.
+   */
   function addExtra(
     s: RunState,
-    from: 'client' | 'stock' | 'crew' | 'surprise',
+    from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade',
     cards: readonly PieceId[],
     events: GameEvent[],
+    upgrade?: UpgradeId,
   ): RunState {
     if (cards.length === 0) return s;
-    events.push({ t: 'delivered', from, phase: s.phase, cards: [...cards] });
+    events.push({
+      t: 'delivered',
+      from,
+      phase: s.phase,
+      cards: [...cards],
+      ...(upgrade ? { upgrade } : {}),
+    });
     const mark: Omit<ReservePiece, 'id'> =
       from === 'client'
         ? { client: true }
@@ -1426,7 +1440,9 @@ export function createRules(content: Content): Rules {
           ? { crew: true }
           : from === 'surprise'
             ? { surprise: true }
-            : { stock: true };
+            : from === 'upgrade'
+              ? { upgrade: upgrade! }
+              : { stock: true };
     return { ...s, reserve: [...s.reserve, ...cards.map((id): ReservePiece => ({ id, ...mark }))] };
   }
 
@@ -1470,13 +1486,13 @@ export function createRules(content: Content): Rules {
    */
   /**
    * `pool` in an order drawn once a run from the stream `key`: D-171's crew stock
-   * (`crew/stock`), every card before any comes again, and D-188's wrong delivery
-   * (`delivery/surprise`).
+   * (`crew/stock`), every card before any comes again, D-188's wrong delivery
+   * (`delivery/surprise`), and D-209's company upgrades' deliveries (`upgrade/<id>`).
    */
-  function runOrder(seed: string, key: string, pool: readonly PieceId[]): PieceId[] {
+  function runOrder<T>(seed: string, key: string, pool: readonly T[]): T[] {
     const rng = stream(seed, key);
     const left = [...pool];
-    const order: PieceId[] = [];
+    const order: T[] = [];
     while (left.length > 0) order.push(...left.splice(rng.int(left.length), 1));
     return order;
   }
@@ -1543,6 +1559,120 @@ export function createRules(content: Content): Rules {
     const sold = sellPrice(content, s, content.tools[tool].price);
     events.push({ t: 'crewTool', tool, phase: s.phase, sold });
     return { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+  }
+
+  // -------------------------------------------------------------------------------------
+  // What the company upgrades bring (D-209, S26).
+
+  /**
+   * The upgrades the run owns that deliver `kind` each milestone, in the order they were
+   * bought: due in the first week of each milestone (`arrive` skips overtime weeks). Bought in a
+   * shop, one first delivers as the next milestone starts.
+   */
+  function upgradesDue(s: RunState, kind: 'specialPiece' | 'tool'): UpgradeId[] {
+    if (s.overtimeWeek !== 0 || s.slot !== 1) return [];
+    return s.upgrades.filter((id) => content.upgrades[id].delivers?.kind === kind);
+  }
+
+  /** The special pieces, in the content's order: the pool a `specialPiece` delivery draws on. */
+  const specialPieces = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
+    const def = content.pieces[id];
+    return !!def.special && !def.member && !def.addition;
+  });
+
+  /**
+   * The special piece an upgrade brings this milestone: the first in its run's order
+   * (`upgrade/<id>`) that the house doesn't have yet, built or waiting in Your goods, and whose
+   * type isn't at a limit for the client (the checklist's ceilings and the per-house caps, as
+   * the wrong delivery reads them). With every one there, the first a house can hold two of
+   * (a second Pool, never a second Library: D-165's one of each special room), and only failing
+   * that the first whose type isn't at a limit. So it brings a different one each milestone, and
+   * a second Pool only once all six are in.
+   */
+  function upgradePiece(s: RunState, id: UpgradeId): PieceId | null {
+    const full = typesAtLimit(limitsOf(s));
+    const root = (p: PieceId) => rootType(content.pieces[p]);
+    const open = runOrder(s.setup.seed, `upgrade/${id}`, specialPieces).filter(
+      (p) => !full.has(root(p)),
+    );
+    const have = new Set([
+      ...s.house.pieces.map((p) => root(p.defId)),
+      ...s.reserve.map((r) => root(r.id)),
+    ]);
+    const holdsTwo = (p: PieceId) => (perHouseOf(content, content.pieces[p]) ?? Infinity) > 1;
+    return open.find((p) => !have.has(root(p))) ?? open.find(holdsTwo) ?? open[0] ?? null;
+  }
+
+  /**
+   * D-209: each upgrade that delivers a special piece (the Storage Unit) adds the milestone's to
+   * the reserve's extra slots, marked with the upgrade, after the wrong delivery's piece.
+   */
+  function upgradePieces(state: RunState, events: GameEvent[]): RunState {
+    let s = state;
+    for (const id of upgradesDue(s, 'specialPiece')) {
+      const piece = upgradePiece(s, id);
+      if (piece) s = addExtra(s, 'upgrade', [piece], events, id);
+    }
+    return s;
+  }
+
+  /**
+   * The tool an upgrade brings this milestone: the milestone's in its run's order
+   * (`upgrade/<id>`, the offered tools of its rarity), as the crew's own card is (D-171), or the
+   * next after it that isn't in the supplies already and can pay in the house as it stands
+   * (D-192: Remodel Plans for a set the house is near). If none is, the milestone's own.
+   */
+  function upgradeTool(s: RunState, id: UpgradeId, d: Extract<UpgradeDelivery, { kind: 'tool' }>) {
+    const pool = (Object.keys(content.tools) as ToolId[]).filter(
+      (t) => content.tools[t].offered && content.tools[t].rarity === d.rarity,
+    );
+    if (pool.length === 0) return null;
+    const order = runOrder(s.setup.seed, `upgrade/${id}`, pool);
+    const shelf = shelfOf(s);
+    const held = new Set(s.supplies.flatMap((x) => (x.kind === 'tool' ? [x.id] : [])));
+    for (let k = 0; k < order.length; k++) {
+      const tool = order[(s.phase + k) % order.length]!;
+      if (!held.has(tool) && shelf.canPay({ kind: 'tool', id: tool })) return tool;
+    }
+    return order[s.phase % order.length]!;
+  }
+
+  /**
+   * D-209: each upgrade that delivers a tool (the Tool Belt) puts the milestone's in the
+   * supplies, after the crew's, or sells it at once when they're full (crewTool's rule).
+   */
+  function upgradeTools(state: RunState, events: GameEvent[]): RunState {
+    let s = state;
+    for (const id of upgradesDue(s, 'tool')) {
+      const d = content.upgrades[id].delivers;
+      const tool = d?.kind === 'tool' ? upgradeTool(s, id, d) : null;
+      if (!tool) continue;
+      if (s.supplies.length < slotsFor(content, s).supplies) {
+        events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase });
+        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
+        continue;
+      }
+      const sold = sellPrice(content, s, content.tools[tool].price);
+      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, sold });
+      s = { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+    }
+    return s;
+  }
+
+  /**
+   * D-209: an upgrade with a pick (the Drafting Table) opens it as it's bought, as shop 1's
+   * Housewarming gift does: its options on their own stream (`crate/<shop>/<refresh>/<id>`), for
+   * the slot it adds. With nothing left to offer, no pick opens.
+   */
+  function openUpgradePick(s: RunState, id: UpgradeId, events: GameEvent[]): RunState {
+    const d = content.upgrades[id].delivers;
+    const v = s.offers?.shop;
+    if (d?.kind !== 'blueprintPick' || !v) return s;
+    const key = `crate/${v.number}/${v.refreshes}/${id}`;
+    const options = crateOptions(content, s, id, key, d.options, shelfOf(s));
+    if (options.length === 0) return s;
+    events.push({ t: 'crateOpened', source: id, options });
+    return { ...s, offers: { ...s.offers, pick: { source: id, options } } };
   }
 
   function restock(s: RunState, events: GameEvent[]): RunState {
@@ -2517,6 +2647,8 @@ export function createRules(content: Content): Rules {
       events.push({ t: 'crateOpened', source: offer.id, options });
       s = { ...s, offers: { ...s.offers, pick: { source: offer.id, options } } };
     }
+    // D-209: the Drafting Table opens its pick as it's bought.
+    if (offer.kind === 'upgrade') s = openUpgradePick(s, offer.id, events);
     return s;
   }
 

@@ -28,8 +28,10 @@ import type {
   SpecDef,
   SunSide,
   Tag,
+  Rarity,
   ToolDef,
   UpgradeDef,
+  UpgradeDelivery,
 } from './index.ts';
 import { SCORE_LABELS } from '../content/labels.ts';
 import { reachOf } from './layout.ts';
@@ -1566,7 +1568,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     upgrades: {
       title: 'Company upgrades',
-      text: 'Permanent for the run: more slots, a bigger hand, more rerolls, lower prices, or interest on your savings. One a visit.',
+      text: 'Permanent for the run: more slots and goods to fill them, a bigger hand, more rerolls, lower prices, or interest on your savings. One a visit.',
     },
     renovate: {
       title: 'Renovate',
@@ -1890,7 +1892,36 @@ export function rewardText(content: Content, r: Reward): string {
 }
 
 export function upgradeText(content: Content, def: UpgradeDef): string[] {
-  return [...def.modifiers.map((m) => modifierText(content, m)), 'Permanent for the run'];
+  return [
+    ...def.modifiers.map((m) => modifierText(content, m)),
+    ...(def.delivers ? [deliveryText(def.delivers)] : []),
+    'Permanent for the run',
+  ];
+}
+
+/** A rarity as a card's label says it (goods.tsx RARITY_LABEL). */
+const RARITY_WORDS: Readonly<Record<Rarity, string>> = {
+  common: 'Common',
+  uncommon: 'Uncommon',
+  rare: 'Rare',
+};
+
+/**
+ * D-209: what a company upgrade brings besides its rule, as its card says it: "A special piece
+ * arrives each milestone", "A Common tool arrives each milestone", "Pick 1 of 3 Common
+ * blueprints as you buy it".
+ */
+export function deliveryText(d: UpgradeDelivery): string {
+  switch (d.kind) {
+    case 'specialPiece':
+      return 'A special piece arrives each milestone';
+    case 'tool': {
+      const what = article(RARITY_WORDS[d.rarity]);
+      return `${what.charAt(0).toUpperCase()}${what.slice(1)} tool arrives each milestone`;
+    }
+    case 'blueprintPick':
+      return `Pick 1 of ${d.options} ${RARITY_WORDS[d.rarity]} blueprints as you buy it`;
+  }
 }
 
 export function crateText(content: Content, def: CrateDef): string[] {

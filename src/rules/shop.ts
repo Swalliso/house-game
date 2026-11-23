@@ -21,7 +21,8 @@
 // - M3b: tools (rarity-weighted, into supplies), a crate (pick 1 of its options from the
 //   `crate/<shop>/<refresh>/<slot>` stream), and one company upgrade per visit from shop 2,
 //   from `shop/<shop>/upgrade` so a refresh keeps it. Shop 1 opens with the free Housewarming
-//   crate: 1 of 3 Common blueprints.
+//   crate: 1 of 3 Common blueprints. D-209: the Drafting Table opens the same kind of pick as
+//   it's bought, from `crate/<shop>/<refresh>/draftingTable`.
 // - D-192: the shelf leans toward goods that can pay in the house as it stands (shelf.ts): once
 //   a pick's rarity is rolled, each such good counts `relevantWeight` times in it. A blueprint
 //   whose `stockIf` fails is never stocked, on a shelf or in a crate, and the Showroom skips a
@@ -115,10 +116,17 @@ export function slotsFor(content: Content, state: RunState): Slots {
 /**
  * Whether a reserve piece sits in an extra slot, which doesn't count against the reserve's: a
  * crew's starting piece and an arrival's card (M4b), what the client brought and the standing
- * stock (D-160), or the wrong delivery's piece (D-188).
+ * stock (D-160), the wrong delivery's piece (D-188), or a company upgrade's (D-209).
  */
 export function inExtraSlot(r: ReservePiece): boolean {
-  return !!r.crew || r.arrival !== undefined || !!r.client || !!r.stock || !!r.surprise;
+  return (
+    !!r.crew ||
+    r.arrival !== undefined ||
+    !!r.client ||
+    !!r.stock ||
+    !!r.surprise ||
+    r.upgrade !== undefined
+  );
 }
 
 /** Reserve pieces that count against its slots: bought, picked, and copied ones. */
@@ -488,12 +496,32 @@ function stockUpgrade(content: Content, state: RunState, shop: number): ShopOffe
   return [{ kind: 'upgrade', id: stream(state.setup.seed, `shop/${shop}/upgrade`).pick(left) }];
 }
 
+/** Rarity weights that roll only one rarity: a gift's (crateOptions). */
+const ONLY: Readonly<Record<Rarity, readonly [number, number, number]>> = {
+  common: [100, 0, 0],
+  uncommon: [0, 100, 0],
+  rare: [0, 0, 100],
+};
+
+/**
+ * A pick that's a gift of blueprints of one rarity, not a bought crate: shop 1's Housewarming
+ * crate (Common), or (D-209) a company upgrade's pick, the Drafting Table's (its delivery's
+ * rarity). Null for a crate.
+ */
+export function giftRarity(content: Content, source: CratePick['source']): Rarity | null {
+  if (source === 'housewarming') return 'common';
+  if (!Object.hasOwn(content.upgrades, source)) return null;
+  const d = content.upgrades[source as UpgradeId].delivers;
+  return d?.kind === 'blueprintPick' ? d.rarity : 'common';
+}
+
 /**
  * The options in a crate: distinct, never an owned blueprint. Blueprints and fixtures roll
  * rarity with the shop's weights; pieces come from the crate's pool, filtered. D-192: a
  * blueprint whose `stockIf` fails is never an option, a fixture that can pay here counts
  * `relevantWeight` times in its pick, and the Showroom offers a special piece at its limit only
- * when the others can't fill it.
+ * when the others can't fill it. A gift (the Housewarming crate, D-209's Drafting Table) holds
+ * blueprints of its one rarity.
  */
 export function crateOptions(
   content: Content,
@@ -505,9 +533,9 @@ export function crateOptions(
 ): PickOption[] {
   const rng = stream(state.setup.seed, key);
   const shop = state.offers?.shop?.number ?? Math.max(1, state.phase);
-  const weights =
-    source === 'housewarming' ? ([100, 0, 0] as const) : stockFor(content, shop).rarity;
-  const contents = source === 'housewarming' ? 'blueprint' : content.crates[source].contents;
+  const gift = giftRarity(content, source);
+  const weights = gift ? ONLY[gift] : stockFor(content, shop).rarity;
+  const contents = gift ? 'blueprint' : content.crates[source as CrateId].contents;
   const inShop = new Set(
     (state.offers?.shop?.offers ?? []).flatMap((o) => (o.kind === 'blueprint' ? [o.id] : [])),
   );
@@ -517,14 +545,13 @@ export function crateOptions(
       (id) =>
         content.blueprints[id].offered &&
         !state.blueprints.some((b) => b.id === id) &&
-        (source !== 'housewarming' || content.blueprints[id].rarity === 'common') &&
+        (!gift || content.blueprints[id].rarity === gift) &&
         shelf.stocks(id),
     );
-    // The free gift prefers what the shop beside it isn't selling, and fills up from the rest.
-    const pools =
-      source === 'housewarming'
-        ? [all.filter((id) => !inShop.has(id)), all.filter((id) => inShop.has(id))]
-        : [all];
+    // A gift prefers what the shop beside it isn't selling, and fills up from the rest.
+    const pools = gift
+      ? [all.filter((id) => !inShop.has(id)), all.filter((id) => inShop.has(id))]
+      : [all];
     for (let left of pools) {
       while (out.length < n) {
         const id = pickByRarity(
