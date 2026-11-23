@@ -103,7 +103,10 @@ describe('the tables', () => {
     for (const id of CLIENTS) {
       expect(spritePos(CLIENT_FIGURES[id]), id).toMatchObject({ w: 16, h: 32 });
     }
-    expect(new Set(Object.values(CLIENT_FIGURES)).size).toBe(CLIENTS.length);
+    // D-219: the Bigsbys' spike has no art of its own, so they come as the Hendersons' family.
+    const own = CLIENTS.filter((id) => id !== 'bigsbys');
+    expect(new Set(own.map((id) => CLIENT_FIGURES[id])).size).toBe(own.length);
+    expect(CLIENT_FIGURES.bigsbys).toBe(CLIENT_FIGURES.hendersons);
   });
 
   it('know what a bubble draws: every frame of its pop-in and both icons, and no more', () => {

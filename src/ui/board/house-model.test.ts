@@ -24,12 +24,14 @@ import {
   hallLinks,
   heldSets,
   houseModel,
+  lookKey,
   overlaps,
   pieceModel,
   roomAt,
   type Doorway,
   type HeldSets,
   type HouseModel,
+  type PieceLook,
   type Rect,
 } from './house-model.ts';
 
@@ -575,6 +577,35 @@ describe('the ghost’s model', () => {
       false,
       true,
     ]);
+  });
+
+  // The ghost's memo and the cache share one key (D-216: a ghost kept a Closet's clothes when the
+  // memo missed the look's new field). `Required` makes a field added to PieceLook a type error
+  // here until it's set, and the key must then change without it.
+  it('keys on every field of a look, for the cache and the ghost’s memo alike', () => {
+    const full: Required<PieceLook> = {
+      color: 3,
+      flip: true,
+      fixture: 'fireplace',
+      style: 2,
+      unmet: true,
+      lit: true,
+      client: 'barkers',
+      dress: 'pantry',
+    };
+    const key = lookKey(full);
+    expect(lookKey({ ...full })).toBe(key);
+    expect(lookKey(undefined)).toBe('');
+    for (const field of Object.keys(full) as (keyof PieceLook)[]) {
+      const without: Partial<PieceLook> = { ...full };
+      delete without[field];
+      expect(lookKey({ color: 0, ...without }), field).not.toBe(key);
+      expect(pieceModel('closet', 0, { color: 0, ...without }), field).not.toBe(
+        pieceModel('closet', 0, full),
+      );
+    }
+    expect(lookKey({ ...full, dress: 'laundry' })).not.toBe(key);
+    expect(lookKey({ ...full, client: 'dale' })).not.toBe(key);
   });
 });
 

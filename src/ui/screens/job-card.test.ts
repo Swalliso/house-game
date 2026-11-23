@@ -28,6 +28,24 @@ describe("a card's household line", () => {
     expect(householdLine(alone)).toBe('1–2 Bedrooms to start');
   });
 
+  it('says someone moves in each milestone for a household that grows at every one (D-219)', () => {
+    const { bigsbys } = CONTENT.clients;
+    expect(householdLine(bigsbys)).toBe('Someone moves in each milestone');
+    // The tip still has the rule in short, then all five, a line each.
+    const lines = householdTip(bigsbys).split('\n');
+    expect(lines[0]).toBe(
+      'Bedrooms for the household: 2–3 to start, then one more each milestone from Foundation ' +
+        'to Finishes, up to 7–8.',
+    );
+    expect(lines.slice(1).map((l) => l.slice(0, l.indexOf(':')))).toEqual([
+      'Foundation (week 5)',
+      'Framing (week 9)',
+      'Roofing (week 13)',
+      'Drywall (week 17)',
+      'Finishes (week 21)',
+    ]);
+  });
+
   it('keeps the whole of it in its tip: the rule, then each arrival, when, and what they bring', () => {
     const lines = householdTip(hendersons).split('\n');
     const rule = hendersons.specs.find((s) => s.id === 'roomForEveryone')!;
@@ -75,7 +93,13 @@ describe("a card's tastes", () => {
 describe('the house rules a client has in numbers of their own', () => {
   it('are Juniper’s A compact house, for 4–8 rooms, and no one else’s', () => {
     expect(ownHouseRules(juniper).map((s) => s.id)).toEqual(['underOneRoof']);
-    for (const client of [hendersons, vladislav, dale, CONTENT.clients.barkers]) {
+    for (const client of [
+      hendersons,
+      vladislav,
+      dale,
+      CONTENT.clients.barkers,
+      CONTENT.clients.bigsbys,
+    ]) {
       expect(ownHouseRules(client)).toEqual([]);
     }
   });

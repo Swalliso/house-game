@@ -86,11 +86,11 @@ This is the cut-down client. It has no new rooms and no new art.
 
 ## Done when
 
-- [ ] An arrival can come without a member's room, with tests, and existing households are
+- [x] An arrival can come without a member's room, with tests, and existing households are
       unchanged.
-- [ ] The Bigsbys can be picked, their five arrivals land, and the checklist and job card
+- [x] The Bigsbys can be picked, their five arrivals land, and the checklist and job card
       use the short form.
-- [ ] The witness test passes.
+- [x] The witness test passes.
 - [ ] The user has played the spike and said whether to fit it.
 
 ## How to check

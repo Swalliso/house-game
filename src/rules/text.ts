@@ -582,7 +582,7 @@ export function memberText(content: Content, def: PieceDef): string {
   const bedroom = article(content.pieces[def.countsAs ?? 'bedroom'].name);
   for (const client of Object.values(content.clients)) {
     for (const a of client.household.arrivals) {
-      if (!a.room.includes(def.id)) continue;
+      if (!a.room?.includes(def.id)) continue;
       const phase = content.balance.phases[a.phase]?.name ?? `phase ${a.phase + 1}`;
       return `${possessive(a.name)} room: it counts as ${bedroom}, and from ${phase}, Room for everyone needs it.`;
     }

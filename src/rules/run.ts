@@ -1591,9 +1591,10 @@ export function createRules(content: Content): Rules {
    * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
    * what the client brings for that phase, the standing stock's top-up (D-160), the crew's own
    * card and the wrong delivery's piece (D-171, D-188), a company upgrade's special piece
-   * (D-209), the crew's tool, a company upgrade's tool, and the neighbor's ask (D-206).
+   * (D-209), the crew's tool, a company upgrade's tool, and the neighbor's ask (D-206). `keep`:
+   * the card a pin carries into the week (D-186, D-207), which the hand takes after this.
    */
-  function arrive(state: RunState, events: GameEvent[]): RunState {
+  function arrive(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     if (state.overtimeWeek !== 0) return state;
     let s = state;
     if (s.slot === 1) {
@@ -1603,7 +1604,7 @@ export function createRules(content: Content): Rules {
       s = deliver(s, events);
     }
     s = surprise(crewStock(restock(s, events), events), events);
-    s = upgradeTools(crewTool(upgradePieces(s, events), events), events);
+    s = upgradeTools(crewTool(upgradePieces(s, events, keep), events), events);
     // D-206: then the neighbor, with the standing stock's Fence already in Your goods.
     return askNeighbor(s, events);
   }
@@ -1772,14 +1773,15 @@ export function createRules(content: Content): Rules {
 
   /**
    * The special piece an upgrade brings this milestone: the first in its run's order
-   * (`upgrade/<id>`) that the house doesn't have yet, built or waiting in Your goods, and whose
-   * type isn't at a limit for the client (the checklist's ceilings and the per-house caps, as
-   * the wrong delivery reads them). With every one there, the first a house can hold two of
-   * (a second Pool, never a second Library: D-165's one of each special room), and only failing
-   * that the first whose type isn't at a limit. So it brings a different one each milestone, and
-   * a second Pool only once all six are in.
+   * (`upgrade/<id>`) that the house doesn't have yet, built, waiting in Your goods or kept in the
+   * hand by a pin past the milestone (`keep`, D-207), and whose type isn't at a limit for the
+   * client (the checklist's ceilings and the per-house caps, as the wrong delivery reads them).
+   * With every one there, the first a house can hold two of (a second Pool, never a second
+   * Library: D-165's one of each special room), and only failing that the first whose type isn't
+   * at a limit. So it brings a different one each milestone, and a second Pool only once all six
+   * are in.
    */
-  function upgradePiece(s: RunState, id: UpgradeId): PieceId | null {
+  function upgradePiece(s: RunState, id: UpgradeId, keep?: Keep): PieceId | null {
     const full = typesAtLimit(limitsOf(s));
     const root = (p: PieceId) => rootType(content.pieces[p]);
     const open = runOrder(s.setup.seed, `upgrade/${id}`, specialPieces).filter(
@@ -1788,6 +1790,7 @@ export function createRules(content: Content): Rules {
     const have = new Set([
       ...s.house.pieces.map((p) => root(p.defId)),
       ...s.reserve.map((r) => root(r.id)),
+      ...(keep?.card.kind === 'piece' ? [root(keep.card.id)] : []),
     ]);
     const holdsTwo = (p: PieceId) => (perHouseOf(content, content.pieces[p]) ?? Infinity) > 1;
     return open.find((p) => !have.has(root(p))) ?? open.find(holdsTwo) ?? open[0] ?? null;
@@ -1795,12 +1798,13 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-209: each upgrade that delivers a special piece (the Storage Unit) adds the milestone's to
-   * the reserve's extra slots, marked with the upgrade, after the wrong delivery's piece.
+   * the reserve's extra slots, marked with the upgrade, after the wrong delivery's piece. `keep`:
+   * the card a pin carried past the milestone (D-207), which joins the hand after the deliveries.
    */
-  function upgradePieces(state: RunState, events: GameEvent[]): RunState {
+  function upgradePieces(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     let s = state;
     for (const id of upgradesDue(s, 'specialPiece')) {
-      const piece = upgradePiece(s, id);
+      const piece = upgradePiece(s, id, keep);
       if (piece) s = addExtra(s, 'upgrade', [piece], events, id);
     }
     return s;
@@ -2315,7 +2319,7 @@ export function createRules(content: Content): Rules {
   function startWeek(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     // Step 1: transforms (and the lot's wish, D-205); step 2 (M4b): arrivals, in their phase's
     // first week; step 3: the draw.
-    let s = unpinned(arrive(settleWish(resolveTransforms(state, events), events), events));
+    let s = unpinned(arrive(settleWish(resolveTransforms(state, events), events), events, keep));
     s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
     // D-186: the kept card takes a slot of its row, on the draw's own keys: nothing shifts.
     if (keep) {
