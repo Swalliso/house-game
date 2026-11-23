@@ -20,6 +20,7 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
+import { matchesDef } from '../../rules/selectors.ts';
 import {
   EDGE,
   OPENING,
@@ -789,6 +790,103 @@ describe('fixtures', () => {
     const upright = only('renfieldsRoom', 'bunkBeds', 1).layout.items.map((it) => it.sprite);
     expect(upright).toContain('cot');
   });
+
+  // D-210: a Dog Door brings the dogs' bed after the rest of the room, so nothing else moves;
+  // where no floor is left, a small piece beside the key piece, else another piece, makes way.
+  it('a Dog Door lays the dogs’ bed down after the rest of the room, or keeps its badge', () => {
+    const fits = CONTENT.fixtures.dogDoor.fits;
+    const types = INDOOR.filter((id) => matchesDef(fits, CONTENT.pieces[id]));
+    expect(types).not.toContain('mudroom');
+    // The key pieces that never make way for it.
+    const KEY: Readonly<Partial<Record<PieceId, RegExp>>> = {
+      bedroom: /^bed-double/,
+      kitchen: /^range/,
+      lKitchen: /^range/,
+      diningRoom: /^(dining-table|table-round)/,
+      livingRoom: /^(sofa-\d|bookcase-|tv-)/,
+      homeOffice: /^(desk|pc-old)/,
+    };
+    const key = (it: Item) => `${it.sprite} ${it.x},${it.y},${it.over ?? ''}`;
+    const SIDES = ['', 'N', 'E', 'NS', 'EW', 'NESW'];
+    let cases = 0;
+    let shown = 0;
+    let laid = 0;
+    let clear = 0;
+    for (const id of types) {
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        for (let style = 0; style < arrangements(id); style++) {
+          for (const sides of SIDES) {
+            const plain = restyle(boxedIn(id, rot, sides), style);
+            const uid = plain.pieces.find((p) => p.defId === id)!.uid;
+            const dog = {
+              ...plain,
+              pieces: plain.pieces.map((p) =>
+                p.uid === uid ? { ...p, fixture: { id: 'dogDoor' as const, week: 0 } } : p,
+              ),
+            };
+            const at = `${id} r${rot} ${style} ${sides}`;
+            const m = modelOf(dog);
+            const layout = roomLayout(m, uid);
+            const was = roomItems(modelOf(plain), uid);
+            // Nana's Room has the dogs' bed already: it shows the Dog Door, and no second one.
+            const own = was.some((it) => it.sprite === 'own-dog-bed');
+            const beds = layout.items.filter((it) => it.sprite === 'own-dog-bed');
+            expect(beds.length, at).toBe(own || layout.fixtureShown ? 1 : 0);
+            expect(layout.fixtureShown, at).toBe(beds.length === 1);
+            const rest = layout.items.filter((it) => own || it.sprite !== 'own-dog-bed');
+            if (own || layout.dog || !layout.fixtureShown) {
+              // By her own dogs' bed, on free floor, or not at all: nothing moves.
+              expect(rest.map(key), at).toEqual(was.map(key));
+            } else {
+              // One piece makes way at most, never the key piece.
+              const gone = was.map((it) => it.sprite);
+              for (const it of rest)
+                if (gone.includes(it.sprite)) gone.splice(gone.indexOf(it.sprite), 1);
+              expect(gone.length, at).toBeLessThanOrEqual(1);
+              const k = KEY[id];
+              if (k && was.some((it) => k.test(it.sprite))) {
+                expect(
+                  rest.some((it) => k.test(it.sprite)),
+                  at,
+                ).toBe(true);
+              }
+            }
+            expect(problems(m, uid), at).toEqual([]);
+            // The bed keeps off the room's digit where it can, a score three digits long at 1×.
+            if (layout.fixtureShown && !own) {
+              const bed = beds[0]!;
+              const box = { x: bed.x, y: bed.y, ...artSize(bed.sprite) };
+              const l = pieceLabels({
+                cells: m.rooms.get(uid)!.cells,
+                inset: (c, side) => inset(m, c.x, c.y, side),
+                px: CELL,
+                dpr: 2,
+                digit: 3,
+                fixture: false,
+                unmet: false,
+              });
+              laid++;
+              if (!overlaps(box, digitBox(l.digit!, 3))) clear++;
+            }
+            // A Bedroom or a Living Room alone, in its first arrangement, always shows the dog.
+            if (sides === '' && style === 0 && ['bedroom', 'livingRoom'].includes(id)) {
+              expect(layout.fixtureShown, at).toBe(true);
+            }
+            // Every Kitchen does, where its table stood if the floor is full: it picks where its
+            // counter stands (D-208) as if the dog weren't there, then lays it down.
+            if (id === 'kitchen') expect(layout.fixtureShown, at).toBe(true);
+            cases++;
+            if (layout.fixtureShown) shown++;
+          }
+        }
+      }
+    }
+    // More than half of them show it (2026-11-23: 379 of 672); the rest show its badge.
+    expect(shown / cases).toBeGreaterThan(0.5);
+    // Nearly all keep off the digit (2026-11-23: 334 of 367, against 214 before they tried to);
+    // the rest have nowhere else, as in a small room with doors all round.
+    expect(clear / laid).toBeGreaterThan(0.85);
+  }, 30_000);
 
   it('a Kitchen Island stands in the middle of the kitchen, or keeps its badge', () => {
     // With the Living Room south of it, the front door is the Living Room's.
@@ -2110,16 +2208,21 @@ describe('a held set’s openings (D-176, D-202, D-208)', () => {
       'livingRoom',
       'hallway',
     ];
-    let openings = 0;
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
         const { m } = setModelOf(randomHouse(seed, SET_ROOMS));
-        openings += [...m.rooms.keys()].filter((uid) => isOpening(m, uid)).length;
         for (const uid of m.rooms.keys()) expect(problems(m, uid), `seed ${seed}`).toEqual([]);
       }),
       { numRuns: 300 },
     );
-    // Rooms with an opening in their walls: about 60 in 300 houses (the Entertainer is one a house).
+    // Such houses have rooms with an opening in their walls (the Entertainer is one a house): 71
+    // in these 300 (2026-11-23), the same every run. fast-check's 300 differ from run to run,
+    // and once drew only 40.
+    let openings = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const { m } = setModelOf(randomHouse(seed, SET_ROOMS));
+      openings += [...m.rooms.keys()].filter((uid) => isOpening(m, uid)).length;
+    }
     expect(openings).toBeGreaterThan(40);
   });
 

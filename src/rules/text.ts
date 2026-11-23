@@ -106,6 +106,9 @@ function featureNoun(content: Content, id: FeatureId, many: boolean): string {
 }
 
 /** What carries a tag: the lot's features first ("the street"), then pieces ("Garages"). */
+/** D-210: the tags that name who lives there, so a room given one is "a Pet room". */
+const NOUN_TAGS: ReadonlySet<Tag> = new Set<Tag>(['Pet', 'Kid']);
+
 function tagged(content: Content, tag: Tag): string[] {
   const features = Object.values(content.features)
     .filter((f) => f.tags.includes(tag) && !f.inert)
@@ -1214,10 +1217,14 @@ export function modifierText(content: Content, mod: Modifier): string {
       return isHost(mod.target)
         ? 'Earns nothing'
         : `${subjectText(content, mod.target)} earn nothing`;
-    case 'grantTag':
+    case 'grantTag': {
+      // D-210: a tag that names what lives there reads as a kind of room ("Makes it a Pet room",
+      // where "Makes it Pet" read as a slip); the others are adjectives (Sunny, Dark, Pretty).
+      const noun = NOUN_TAGS.has(mod.tag);
       return isHost(mod.target)
-        ? `Makes it ${mod.tag}`
-        : `${subjectText(content, mod.target)} are ${mod.tag}`;
+        ? `Makes it ${noun ? `a ${mod.tag} room` : mod.tag}`
+        : `${subjectText(content, mod.target)} are ${noun ? `${mod.tag} rooms` : mod.tag}`;
+    }
     case 'removeTag':
       return isHost(mod.target)
         ? `It’s never ${mod.tag}`
@@ -1460,6 +1467,18 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       .map((set) => `the ${set.name} set (×${multNumber(set.times!)})`),
     'and',
   );
+  // D-210: the tools with one, whose setup is only the week you use them: "the Photo Shoot".
+  const sparkleTools = joinWords(
+    Object.values(content.tools)
+      .filter(
+        (t) =>
+          t.offered &&
+          t.use.kind === 'weekModifiers' &&
+          t.use.modifiers.some((m) => m.kind === 'xMult'),
+      )
+      .map((t) => `the ${t.name}`),
+    'and',
+  );
   return {
     comfort: {
       title: L.points,
@@ -1471,7 +1490,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     sparkle: {
       title: L.xMult,
-      text: `Multiplies ${L.mult} itself. Rare: ${sparkleSets ? `${sparkleSets} and ` : ''}a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
+      text: `Multiplies ${L.mult} itself. Rare: ${sparkleSets ? `${sparkleSets} and ` : ''}a few Rare goods have it, ${sparkleTools ? `each with a setup, and ${sparkleTools} for the week you use it` : 'and each needs a setup'}. Each source counts once a week.`,
     },
     wow: {
       title: L.total,

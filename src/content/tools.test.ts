@@ -23,6 +23,7 @@ import type {
 } from '../rules/index.ts';
 import { rules, weekTotal } from '../rules/index.ts';
 import { rowOf } from '../rules/draw.ts';
+import { withFixture } from '../rules/fixtures.ts';
 import { emptyRows, houseFrom, setup, type Placement } from '../rules/testing.ts';
 import { PRICES } from './balance.ts';
 import { CONTENT } from './index.ts';
@@ -60,7 +61,7 @@ function eventsOf<K extends GameEvent['t']>(
   return events.filter((e): e is Extract<GameEvent, { t: K }> => e.t === t);
 }
 
-/** Appendix B's tool rarities (Weekend Crew from D-075). */
+/** Appendix B's tool rarities (Weekend Crew from D-075, Uncommon since D-210; the Photo Shoot). */
 const RARITY: Record<ToolId, Rarity> = {
   movingTruck: 'uncommon',
   copyMachine: 'rare',
@@ -74,7 +75,8 @@ const RARITY: Record<ToolId, Rarity> = {
   remodelEntertainer: 'common',
   remodelSuite: 'common',
   remodelFullHouse: 'uncommon',
-  weekendCrew: 'rare',
+  weekendCrew: 'uncommon',
+  photoShoot: 'uncommon',
 };
 
 /**
@@ -94,14 +96,15 @@ const ENTERTAINER: Placement[] = [
 ];
 
 describe('tools', () => {
-  it('are Appendix B’s 12, plus the Weekend Crew', () => {
+  it('are Appendix B’s 12, plus the Weekend Crew and the Photo Shoot', () => {
     expect(Object.keys(CONTENT.tools).sort()).toEqual(Object.keys(RARITY).sort());
     for (const def of Object.values(CONTENT.tools)) {
       expect(def.rarity, def.id).toBe(RARITY[def.id]);
-      // Priced by rarity from balance.ts, except the Weekend Crew's 5 (D-083).
-      expect(def.price, def.id).toBe(def.id === 'weekendCrew' ? 5 : PRICES.tool[def.rarity]);
+      // Priced by rarity from balance.ts, the Weekend Crew too since D-210 (Rare at 5 before).
+      expect(def.price, def.id).toBe(PRICES.tool[def.rarity]);
     }
     expect(PRICES.tool).toEqual({ common: 2, uncommon: 3, rare: 4 });
+    expect(CONTENT.tools.weekendCrew).toMatchObject({ rarity: 'uncommon', price: 3 });
   });
 
   it('the shop offers every one, now that M4a brings specs and the Suite and Full House sets', () => {
@@ -142,6 +145,59 @@ describe('Rush Order', () => {
     expect(rules.currentTally(used).total).toBe(5);
     const next = rules.apply(used, PASS).state;
     expect(rules.currentTally(next).total).toBe(3);
+  });
+});
+
+// D-210: the one ×Mult tool (D-056), for the week you pick.
+describe('Photo Shoot', () => {
+  it('×1.5 Charm this week, after the +Charm: with a Rush Order, 3 × 2.25 = 6.75, so 7', () => {
+    const s = build([['bedroom', 0, 0]], { supplies: [tool('rushOrder'), tool('photoShoot')] });
+    const rushed = useTool(s).state;
+    const preview = rules.previewTool(rushed, USE);
+    expect(preview.before).toEqual({ points: 3, mult: 150, total: 5 });
+    expect(preview.after).toEqual({ points: 3, mult: 225, total: weekTotal(3, 225) });
+    expect(preview.after.total).toBe(7);
+    const t = rules.currentTally(useTool(rushed).state);
+    expect(t.xMults).toEqual([
+      {
+        source: { kind: 'tool', id: 'photoShoot' },
+        label: 'Photo Shoot',
+        times: 150,
+        before: 150,
+        after: 225,
+      },
+    ]);
+  });
+
+  it('multiplies its week once: a second waits for another week, and next week is plain', () => {
+    const s = build([['bedroom', 0, 0]], {
+      supplies: [tool('photoShoot'), tool('photoShoot')],
+    });
+    const used = useTool(s).state;
+    expect(rules.currentTally(used)).toMatchObject({ mult: 150, total: 5 });
+    expect(rules.canUseTool(used, USE)).toEqual({
+      ok: false,
+      reason: 'This week already has its Photo Shoot.',
+    });
+    // Next week it's back to 3, and the second one can be used.
+    const next = rules.apply(used, PASS).state;
+    expect(rules.currentTally(next).total).toBe(3);
+    expect(rules.canUseTool(next, USE)).toEqual({ ok: true });
+    expect(rules.currentTally(useTool(next).state).total).toBe(5);
+  });
+
+  it('stacks with another ×Mult source, after it: the Chandelier’s ×1.25 in an Entertainer', () => {
+    const s = build(ENTERTAINER, { supplies: [tool('photoShoot')] });
+    const lit = { ...s, house: withFixture(s.house, 2, 'chandelier', 1) };
+    const t = rules.currentTally(useTool(lit).state);
+    expect(t.xMults.map((x) => [x.label, x.times])).toEqual([
+      ['Chandelier', 125],
+      ['Photo Shoot', 150],
+    ]);
+    const [chandelier, shoot] = t.xMults;
+    expect(shoot!.before).toBe(chandelier!.after);
+    expect(shoot!.after).toBe(Math.floor((chandelier!.after * 150 + 50) / 100));
+    expect(t.mult).toBe(shoot!.after);
   });
 });
 

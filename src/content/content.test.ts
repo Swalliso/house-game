@@ -218,6 +218,8 @@ describe('content', () => {
       'kitchenIsland',
       'bunkBeds',
       'bayWindow',
+      // The Dog Door, a room fixture (D-210).
+      'dogDoor',
     ]);
     expect(ids('layout')).toEqual([
       'hallway',

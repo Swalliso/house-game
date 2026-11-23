@@ -3,7 +3,8 @@
 // and they bend the board. The Remodel Plans for Suite and Full House join with those sets in
 // M4a, and Inspector's Visit acts only on specs, so the shop holds it back until M4a's
 // clients. Weekend Crew is D-075's banked building (D-083): this week's next play doesn't end
-// the week. Prices come from balance.ts by rarity.
+// the week. The Photo Shoot (D-210) multiplies one week's Charm. Prices come from balance.ts by
+// rarity.
 
 import type { Rarity, ToolDef, ToolId, ToolUse } from '../rules/index.ts';
 import { PRICES } from './balance.ts';
@@ -63,6 +64,13 @@ export const TOOLS: Readonly<Record<ToolId, ToolDef>> = {
     kind: 'levelSet',
     set: 'fullHouse',
   }),
-  // D-075, D-083: Rare and dearer, since a piece placed early earns for the rest of the run.
-  weekendCrew: tool('weekendCrew', 'Weekend Crew', 'rare', { kind: 'extraPlay' }, { price: 5 }),
+  // D-075, D-083: Rare at 5, since a piece placed early earns for the rest of the run. D-210:
+  // Uncommon at 3. Since D-163 a bought piece is free to place, so all it adds is a second card
+  // from the hand, and it was bought 4% of the times it was on a shelf.
+  weekendCrew: tool('weekendCrew', 'Weekend Crew', 'uncommon', { kind: 'extraPlay' }),
+  // D-210: the one ×Mult good below Rare (D-056). Its setup is the week you pick.
+  photoShoot: tool('photoShoot', 'Photo Shoot', 'uncommon', {
+    kind: 'weekModifiers',
+    modifiers: [{ kind: 'xMult', times: 150 }],
+  }),
 };

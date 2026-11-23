@@ -1090,9 +1090,12 @@ class Checker {
       this.fail('handDrawn’s kept card isn’t the state’s', { event: drawn.kept, state: s.kept });
     for (const e of events) {
       if (e.t === 'handDrawn') {
-        for (const c of e.hand) {
-          if (c.kind === 'piece' && CONTENT.pieces[c.id].member) this.fail('a member’s room drawn');
-        }
+        // A pin's kept card (D-186) was dealt before, not drawn now: the debug panel can give a
+        // member's room to the hand, and a pin keep it (D-210's content took chaos-5 there).
+        e.hand.forEach((c, i) => {
+          if (i !== e.kept && c.kind === 'piece' && CONTENT.pieces[c.id].member)
+            this.fail('a member’s room drawn');
+        });
       }
       if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
         for (const o of e.offers) {

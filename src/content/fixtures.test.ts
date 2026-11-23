@@ -1,11 +1,12 @@
-// One test per fixture (Appendix B · Fixtures; D-050, D-056, D-082, D-194), against the real content:
-// what each one does to its host on a small hand-built lot, where it fits (checkInstall), its
-// generated text, and its rarity, price, and draw weight. Numbers here follow fixtures.ts and
-// pieces.ts; when tuning changes a number, change the test with it.
+// One test per fixture (Appendix B · Fixtures; D-050, D-056, D-082, D-194, D-210), against the
+// real content: what each one does to its host on a small hand-built lot, where it fits
+// (checkInstall), its generated text, and its rarity, price, and draw weight. Numbers here follow
+// fixtures.ts and pieces.ts; when tuning changes a number, change the test with it.
 
 import { describe, expect, it } from 'vitest';
 import type {
   BlueprintId,
+  ClientId,
   FixtureId,
   HouseState,
   PieceId,
@@ -92,6 +93,7 @@ const RARITY: Record<FixtureId, Rarity> = {
   pergola: 'uncommon',
   gardenLights: 'common',
   chandelier: 'rare',
+  dogDoor: 'common', // D-210
 };
 
 /** Its text is a fits line plus one line per modifier, all reading cleanly. */
@@ -123,7 +125,7 @@ const INTERIOR: Placement[] = [
 ];
 
 describe('fixtures', () => {
-  it('are the 11 of Appendix B, priced by rarity from balance.ts', () => {
+  it('are the 12 of Appendix B (the Dog Door since D-210), priced by rarity from balance.ts', () => {
     expect(Object.keys(CONTENT.fixtures).sort()).toEqual(Object.keys(RARITY).sort());
     for (const def of Object.values(CONTENT.fixtures)) {
       expect(def.rarity).toBe(RARITY[def.id]);
@@ -219,6 +221,8 @@ describe('where the room fixtures go (D-172)', () => {
   const OUT: Partial<Record<FixtureId, readonly PieceId[]>> = {
     fireplace: ['bathroom', 'closet', 'garage', 'mudroom'],
     blackoutCurtains: ['bathroom', 'closet', 'garage'],
+    // D-210: a Mudroom is a Pet room already.
+    dogDoor: ['bathroom', 'closet', 'garage', 'mudroom'],
     // A skylit Bathroom and a soundproofed Garage are real things.
     skylight: [],
     soundproofing: [],
@@ -809,5 +813,75 @@ describe('Chandelier', () => {
       legal: false,
       reason: 'A Chandelier goes in a Dining Room or Living Room, not a Kitchen.',
     });
+  });
+});
+
+// D-210 (S28): a fixture that changes what its room is. Whatever reads Pet reaches the room.
+describe('Dog Door', () => {
+  /** The house's week-1 tally with the client's tastes in (but no house rules on the rooms). */
+  function tallyFor(house: HouseState, clientId: ClientId): Tally {
+    const mods = runModifiers(CONTENT, {
+      setup: setup('dog-door', clientId),
+      blueprints: [],
+    }).filter((m) => m.source.kind !== 'house');
+    const layout = computeLayout(CONTENT, house, mods.map((m) => m.mod).filter(isLayoutModifier));
+    return tallyHouse(CONTENT, layout, 1, true, { ...NO_CONTEXT, mods });
+  }
+
+  it('makes its room a Pet room, and +25%', () => {
+    expectText('dogDoor', 'Fits most rooms', ['Makes it a Pet room', 'Earns +25%']);
+    const bedroom: Placement[] = [['bedroom', 0, 0]];
+    expect(layoutOf(open, bedroom).tags.get(1)!.has('Pet')).toBe(false);
+    expect(
+      layoutOf(open, bedroom, [[1, 'dogDoor']])
+        .tags.get(1)!
+        .has('Pet'),
+    ).toBe(true);
+    // A Bedroom's 3 at +25%: 3.75 → 4.
+    expect(earned(open, bedroom)).toEqual([3]);
+    expect(earned(open, bedroom, [[1, 'dogDoor']])).toEqual([4]);
+  });
+
+  it('its room earns the Barkers’ +50% for Pet pieces', () => {
+    const plain = tallyFor(build(open, [['bedroom', 0, 0]]), 'barkers');
+    expect(plain.pieces[0]!.earned).toBe(3);
+    // 3 at +75% (the Barkers' +50% and its own +25%): 5.25 → 5.
+    const dog = tallyFor(build(open, [['bedroom', 0, 0]], [[1, 'dogDoor']]), 'barkers');
+    expect(dog.pieces[0]!.earned).toBe(5);
+    expect(dog.pieces[0]!.lines).toContainEqual({
+      label: 'The Barkers (Pet pieces)',
+      op: 'pct',
+      value: 50,
+      from: [],
+    });
+    // The Hendersons have no taste for Pets: its own +25% only.
+    expect(
+      tallyFor(build(open, [['bedroom', 0, 0]], [[1, 'dogDoor']]), 'hendersons').pieces[0]!.earned,
+    ).toBe(4);
+  });
+
+  it('counts for Nana’s Room’s +2 for each Pet beside her', () => {
+    // Nana's Room (uid 1, 2×2) and a Bedroom touching it (uid 2).
+    const placements: Placement[] = [
+      ['nanasRoom', 0, 0],
+      ['bedroom', 2, 0],
+    ];
+    expect(earned(open, placements)).toEqual([3, 4]);
+    // Her 3 and +2 for the Pet room beside her; the Bedroom's 4 at +25%: 5.
+    expect(earned(open, placements, [[2, 'dogDoor']])).toEqual([5, 5]);
+  });
+
+  it('fits most rooms, not a Mudroom, and no yard piece', () => {
+    const placements: Placement[] = [
+      ['mudroom', 0, 0],
+      ['kitchen', 2, 0],
+      ['lawn', 0, 4],
+    ];
+    expect(fits(open, placements, 'dogDoor', 1)).toEqual({
+      legal: false,
+      reason: 'A Dog Door goes in most rooms, not a Mudroom.',
+    });
+    expect(fits(open, placements, 'dogDoor', 2)).toEqual({ legal: true });
+    expect(fits(open, placements, 'dogDoor', 3)).toMatchObject({ legal: false });
   });
 });

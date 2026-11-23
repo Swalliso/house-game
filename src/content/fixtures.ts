@@ -1,8 +1,8 @@
-// Fixtures (D-050; Appendix B of implementation-plan.md): 7 for rooms, 3 for the yard, and the
-// Rare Chandelier (D-056). Every modifier targets `{ host: true }`, the piece the fixture is
-// installed in. They join the weekly draw from phase 2 at weight 5 each (about one hand in two
-// has one by midgame) and are sold in the shop; the Chandelier is shop only. Prices come from
-// balance.ts by rarity.
+// Fixtures (D-050; Appendix B of implementation-plan.md): 8 for rooms (the Dog Door, D-210), 3
+// for the yard, and the Rare Chandelier (D-056). Every modifier targets `{ host: true }`, the
+// piece the fixture is installed in. They join the weekly draw from phase 2 at weight 5 each
+// (about one hand in two has one by midgame) and are sold in the shop; the Chandelier is shop
+// only. Prices come from balance.ts by rarity.
 //
 // Skylight, Blackout Curtains, and Bunk Beds also earn +25% (D-082): their Appendix B effects
 // (Sunny, Dark, counting twice) only pay off with a blueprint or M4a's client specs, so on their
@@ -142,6 +142,23 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     // D-194: the +25% floor pays in a room with no "per view" pay of its own.
     modifiers: [
       { kind: 'grantView', target: HOST },
+      { kind: 'earn', target: HOST, pct: 25 },
+    ],
+  },
+  // D-210: a fixture that changes what its room is. Its room is a Pet room, so whatever reads
+  // Pet reaches it: the Barkers' +50%, Nana's Room's +2 beside it, the puppies' change order.
+  // D-082's +25% floor, so it pays in any house. Not in a Mudroom, a Pet room already.
+  dogDoor: {
+    id: 'dogDoor',
+    name: 'Dog Door',
+    tier: 'core',
+    rarity: 'common',
+    fits: roomsBut('bathroom', 'closet', 'garage', 'mudroom'),
+    drawWeight: 5,
+    fromPhase: 1,
+    price: PRICES.fixture.common,
+    modifiers: [
+      { kind: 'grantTag', target: HOST, tag: 'Pet' },
       { kind: 'earn', target: HOST, pct: 25 },
     ],
   },
