@@ -34,6 +34,7 @@ import type {
   ShopOffer,
   SwappedCard,
   Tally,
+  TerrainId,
   RunMode,
 } from '../src/rules/index.ts';
 import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../src/rules/index.ts';
@@ -44,7 +45,7 @@ import { goodValue } from './policies/shop.ts';
 
 /** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
 export type ReserveSource =
-  'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise' | 'upgrade';
+  'own' | 'crew' | 'arrival' | 'client' | 'stock' | 'surprise' | 'upgrade' | 'wish';
 
 export function reserveSource(r: ReservePiece): ReserveSource {
   if (r.crew) return 'crew';
@@ -53,6 +54,7 @@ export function reserveSource(r: ReservePiece): ReserveSource {
   if (r.stock) return 'stock';
   if (r.surprise) return 'surprise';
   if (r.upgrade !== undefined) return 'upgrade';
+  if (r.wish) return 'wish';
   return 'own';
 }
 
@@ -113,6 +115,11 @@ export interface RunRecord {
    * (D-188) the wrong delivery's, and (D-209) a company upgrade's (the Storage Unit's).
    */
   reservePlays: Record<ReserveSource, number>;
+  /**
+   * D-205: the lot's wish, if it has one: whose it is, the week it paid (null if it never did),
+   * and the week its piece was built from Your goods (null if never).
+   */
+  wish: { feature: TerrainId; filled: number | null; built: number | null } | null;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
   wallOffers: number[];
   /**
@@ -536,9 +543,13 @@ export function simulateRun(
     stock: 0,
     surprise: 0,
     upgrade: 0,
+    wish: 0,
   };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
   const stockWallOffers = Array.from({ length: phaseCount }, () => 0);
+  // D-205: the lot's wish, as the run starts.
+  const wishAt = rules.lotWish(s);
+  const wish: RunRecord['wish'] = wishAt && { feature: wishAt.feature, filled: null, built: null };
   /** D-197: the stock's Fence-type cards, from a `delivered` event or the run's first state. */
   const stockWalls = (phase: number, ids: readonly PieceId[]) => {
     if (phase >= phaseCount) return;
@@ -789,6 +800,7 @@ export function simulateRun(
       ) {
         const r = s.reserve[action.i];
         if (r) reservePlays[reserveSource(r)]++;
+        if (r?.wish && wish && action.t === 'place') wish.built ??= s.week;
       }
     }
     let applied: { state: RunState; events: GameEvent[] };
@@ -867,6 +879,8 @@ export function simulateRun(
         drawn ||= !e.reroll && !e.special;
       } else if (e.t === 'delivered') {
         if (e.from === 'stock') stockWalls(e.phase, e.cards);
+      } else if (e.t === 'wishFilled') {
+        if (wish) wish.filled = s.week;
       } else if (e.t === 'neighborResolved') {
         neighborHave = e.have;
       } else if (e.t === 'milestone') {
@@ -989,6 +1003,7 @@ export function simulateRun(
       early,
       struck,
       reservePlays,
+      wish,
       wallOffers,
       stockWallOffers,
       finalScore: s.score,

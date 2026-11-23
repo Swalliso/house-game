@@ -28,6 +28,7 @@ import type {
   Region,
   Selector,
   SpecDef,
+  TerrainId,
   TypeLimit,
 } from './index.ts';
 import { cellIndex } from './grid.ts';
@@ -188,6 +189,28 @@ export function outlineOf(content: Content, layout: Layout): Outline {
 /** Whole percent of the box the indoor tiles fill, rounded down (for display). */
 export function fillPct(o: Outline): number {
   return o.w * o.h === 0 ? 0 : Math.floor((o.tiles * 100) / (o.w * o.h));
+}
+
+/**
+ * D-205: a condition about one lot feature rather than the whole house: the pieces matching
+ * `sel` that touch it, by uid in placement order, each once. The lot's wish counts these. The
+ * features that carry one count once as a neighbor (the Pond, the Old Shed), so touching the
+ * feature is touching its one body: a lot has one of each.
+ */
+export function piecesTouching(
+  content: Content,
+  layout: Layout,
+  feature: TerrainId,
+  sel: Selector,
+): number[] {
+  const out: number[] = [];
+  for (const p of layout.house.pieces) {
+    const by = (layout.touching.get(p.uid) ?? []).some(
+      (n) => n.kind === 'terrain' && n.feature === feature,
+    );
+    if (by && matchesPiece(content, layout, sel, p.uid)) out.push(p.uid);
+  }
+  return out;
 }
 
 /** Whether a piece counts for a house condition's selector (by its own card; see the header). */

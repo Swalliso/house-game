@@ -73,6 +73,7 @@ import type {
   Content,
   DebugAction,
   DemolishPreview,
+  FeatureWish,
   FixtureId,
   FixtureValue,
   GameEvent,
@@ -81,6 +82,8 @@ import type {
   InstallAction,
   InstallGain,
   Legality,
+  Lot,
+  LotWishView,
   MilestoneRecord,
   MilestoneReward,
   MilestoneResult,
@@ -121,6 +124,7 @@ import type {
   Tag,
   TagSource,
   Tally,
+  TerrainId,
   TileInfo,
   ToolId,
   ToolValue,
@@ -137,6 +141,7 @@ import {
   neededTypes,
   newPiecesNeeded,
   perHouseLimits,
+  piecesTouching,
   progressOf,
   tilesInRegion,
   typeLimits,
@@ -233,7 +238,14 @@ import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, matchesPiece, meetsCondition, rootType, type Yard } from './selectors.ts';
+import {
+  isType,
+  matchesDef,
+  matchesPiece,
+  meetsCondition,
+  rootType,
+  type Yard,
+} from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
 import { shelfFor, type Shelf } from './shelf.ts';
 import { isRoom } from './layout.ts';
@@ -334,6 +346,12 @@ export interface Rules {
   canCompleteEarly(state: RunState): EarlyOffer;
   /** What demolishing the tile at (x, y) would do. */
   previewDemolish(state: RunState, x: number, y: number): DemolishPreview;
+  /**
+   * D-205: the lot's one wish: where it is, what it counts and how many, the pieces that count
+   * as the house stands (or with a play, as they would), the cards it counts, what it pays, and
+   * whether it has. Null for a first job and a lot with none (or whose Old Shed went unfilled).
+   */
+  lotWish(state: RunState, play?: Play): LotWishView | null;
   /** A piece's timers as text: "Becomes a Tree at the start of week 9". */
   pieceTimers(state: RunState, uid: number): string[];
   /** Every legal placement of every card in the hand and the reserve (distinct rotations). */
@@ -1242,13 +1260,18 @@ export function createRules(content: Content): Rules {
   // -------------------------------------------------------------------------------------
   // Rewards and finds.
 
-  /** Pays a reward. A tool goes into the supplies, or is sold at once for half if they're full. */
+  /**
+   * Pays a reward. A tool goes into the supplies, or is sold at once for half if they're full.
+   * D-205: a piece goes into the reserve's extra slots, marked `wish`. `find` says what paid it,
+   * for its event: a find (`findClaimed`), or the lot's wish with the pieces that filled it
+   * (`wishFilled`).
+   */
   function payReward(
     state: RunState,
     reward: Reward,
     key: string,
     events: GameEvent[],
-    find?: { feature: Extract<GameEvent, { t: 'findClaimed' }>['feature']; x: number; y: number },
+    find?: { feature: TerrainId; x: number; y: number; wish?: readonly number[] },
   ): RunState {
     let s = state;
     const budget = reward.budget ?? 0;
@@ -1278,13 +1301,17 @@ export function createRules(content: Content): Rules {
         s = { ...s, budget: s.budget + soldTool, budgetEarned: s.budgetEarned + soldTool };
       }
     }
+    if (reward.piece) s = { ...s, reserve: [...s.reserve, { id: reward.piece, wish: true }] };
     if (find) {
-      events.push({
-        t: 'findClaimed',
-        ...find,
+      const { wish, ...at } = find;
+      const paid = {
+        ...at,
         reward: { ...rewardWithout(reward), ...(tool ? { tool } : {}) },
         ...(soldTool !== undefined ? { soldTool } : {}),
-      });
+      };
+      events.push(
+        wish ? { t: 'wishFilled', ...paid, pieces: wish } : { t: 'findClaimed', ...paid },
+      );
     }
     return s;
   }
@@ -1316,6 +1343,129 @@ export function createRules(content: Content): Rules {
     return s;
   }
 
+  // -------------------------------------------------------------------------------------
+  // D-205: the lot's wish.
+
+  const wishSites = new WeakMap<Lot, { feature: TerrainId; cells: readonly Cell[] } | null>();
+
+  /**
+   * Where a lot's one wish is: the first of `balance.lotWish`'s features the lot has (the Pond,
+   * else the Old Shed), with its tiles in reading order. Worked out from the lot alone, so no
+   * stream draws it, and once the Old Shed is demolished a lot without a Pond has none.
+   */
+  function wishSite(lot: Lot): { feature: TerrainId; cells: readonly Cell[] } | null {
+    const known = wishSites.get(lot);
+    if (known !== undefined) return known;
+    let site: { feature: TerrainId; cells: readonly Cell[] } | null = null;
+    for (const feature of b.lotWish) {
+      if (!content.features[feature].wish) continue;
+      const cells: Cell[] = [];
+      lot.terrain.forEach((t, i) => {
+        if (t === feature) cells.push({ x: i % lot.width, y: Math.floor(i / lot.width) });
+      });
+      if (cells.length > 0) {
+        site = { feature, cells };
+        break;
+      }
+    }
+    wishSites.set(lot, site);
+    return site;
+  }
+
+  /**
+   * D-205: the run's wish: the lot's, or once it has paid, the one that paid (its feature may be
+   * gone since). A first job carries none.
+   */
+  function wishOf(state: RunState, lot = state.house.lot) {
+    if (state.setup.mode === 'firstJob') return null;
+    const site = wishSite(lot);
+    const feature = state.wishFilled ?? site?.feature;
+    const def = feature ? content.features[feature].wish : undefined;
+    if (!feature || !def) return null;
+    return { feature, def, cells: site?.feature === feature ? site.cells : [] };
+  }
+
+  /**
+   * D-205: the lot's wish pays the first time `need` of the pieces it counts touch its feature,
+   * and never again. It's looked at after everything that changes the house: a play (placed,
+   * extended, renovated or installed, from the hand or Your goods), a supplies install, a move,
+   * a demolition, and the week's transforms. `house`: the house to look at when the state
+   * doesn't hold it yet (a week's play, before its tally).
+   */
+  function settleWish(state: RunState, events: GameEvent[], house = state.house): RunState {
+    if (state.wishFilled) return state;
+    const wish = wishOf(state, house.lot);
+    if (!wish) return state;
+    const layout = layoutFor(state, house);
+    const counted = piecesTouching(content, layout, wish.feature, wish.def.count);
+    if (counted.length < wish.def.need) return state;
+    const at = middleCell(wish.cells);
+    return payReward(
+      { ...state, wishFilled: wish.feature },
+      wish.def.reward,
+      `wish/${wish.feature}`,
+      events,
+      { feature: wish.feature, x: at.x, y: at.y, wish: counted },
+    );
+  }
+
+  /** The tile nearest the middle of some tiles, the first in reading order on a tie. */
+  function middleCell(cells: readonly Cell[]): Cell {
+    const mx = cells.reduce((a, c) => a + c.x, 0) / cells.length;
+    const my = cells.reduce((a, c) => a + c.y, 0) / cells.length;
+    let best = cells[0]!;
+    let bestD = Infinity;
+    for (const c of cells) {
+      const d = (c.x - mx) ** 2 + (c.y - my) ** 2;
+      if (d < bestD - 1e-9) {
+        best = c;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  const wantsCache = new WeakMap<FeatureWish, PieceId[]>();
+  /** The cards a wish counts, by their definitions (members' rooms and the Addition aside). */
+  function wantsOf(wish: FeatureWish): PieceId[] {
+    let ids = wantsCache.get(wish);
+    if (!ids) {
+      ids = Object.values(content.pieces)
+        .filter((d) => !d.member && !d.addition && matchesDef(wish.count, d))
+        .map((d) => d.id);
+      wantsCache.set(wish, ids);
+    }
+    return ids;
+  }
+
+  const wishViews = new WeakMap<RunState, LotWishView | null>();
+  /** D-205: the lot's wish as the screen shows it, as the house stands or with a play. */
+  function lotWish(state: RunState, play?: Play): LotWishView | null {
+    let house = state.house;
+    if (play && state.screen === 'build' && !state.wishFilled) {
+      const check = checkPlay(state, play);
+      if (check.legal) house = applyPlay(state, play, check).house;
+    } else if (wishViews.has(state)) {
+      return wishViews.get(state)!;
+    }
+    const wish = wishOf(state, house.lot);
+    const view: LotWishView | null = wish && {
+      feature: wish.feature,
+      cells: wish.cells,
+      count: wish.def.count,
+      need: wish.def.need,
+      counted:
+        wish.cells.length > 0
+          ? piecesTouching(content, layoutFor(state, house), wish.feature, wish.def.count)
+          : [],
+      wants: wantsOf(wish.def),
+      reward: wish.def.reward,
+      filled: !!state.wishFilled,
+    };
+    if (house === state.house) wishViews.set(state, view);
+    return view;
+  }
+
   /** D-211: whether a reward pays anything at all (an empty one pays nothing). */
   const pays = (reward: Reward): boolean =>
     !!(
@@ -1324,7 +1474,8 @@ export function createRules(content: Content): Rules {
       reward.rerolls ||
       reward.demolitions ||
       reward.overtime ||
-      reward.tool
+      reward.tool ||
+      reward.piece
     );
 
   /**
@@ -2145,8 +2296,9 @@ export function createRules(content: Content): Rules {
 
   /** `keep`: the card last week's pin carries in (D-186). */
   function startWeek(state: RunState, events: GameEvent[], keep?: Keep): RunState {
-    // Step 1: transforms; step 2 (M4b): arrivals, in their phase's first week; step 3: the draw.
-    let s = unpinned(arrive(resolveTransforms(state, events), events));
+    // Step 1: transforms (and the lot's wish, D-205); step 2 (M4b): arrivals, in their phase's
+    // first week; step 3: the draw.
+    let s = unpinned(arrive(settleWish(resolveTransforms(state, events), events), events));
     s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
     // D-186: the kept card takes a slot of its row, on the draw's own keys: nothing shifts.
     if (keep) {
@@ -3226,7 +3378,7 @@ export function createRules(content: Content): Rules {
             house: week.house,
             supplies: state.supplies.filter((_, k) => k !== play.i),
           };
-          return done(payFinished(s, state.house, week.house, events));
+          return done(settleWish(payFinished(s, state.house, week.house, events), events));
         }
         const check = play ? checkPlay(state, play) : undefined;
         const fromReserve = !!play && fromGoods(play);
@@ -3256,7 +3408,7 @@ export function createRules(content: Content): Rules {
           }
           // D-211: a room the play finished pays, then any find it dug up.
           s = payFinished(s, state.house, result.house, events);
-          return done(payFinds(s, check?.finds, events, state.house.lot));
+          return done(settleWish(payFinds(s, check?.finds, events, state.house.lot), events));
         }
         const week = resolveWeek(state, play, true, check);
         if (week.placed) events.push(week.placed);
@@ -3271,9 +3423,10 @@ export function createRules(content: Content): Rules {
           s = markBroken(s, breaksOf(state, week.house, uid), uid, events);
         }
         // D-211: a room the play finished pays before the tally, as a find does; then a Time
-        // Capsule built over.
+        // Capsule built over, and then the lot's wish (D-205).
         s = payFinished(s, state.house, week.house, events);
         s = payFinds(s, check?.finds, events);
+        s = settleWish(s, events, week.house);
         // D-186: the pinned card comes into next week's hand, unless it's the card played.
         const keep = keepOf(s, play?.from === 'hand' ? play.i : undefined);
         s = recordTally(s, week.house, week.tally, play === null, false, events);
@@ -3360,7 +3513,8 @@ export function createRules(content: Content): Rules {
             ),
           };
         }
-        // The Old Shed pays its find reward once, keyed by its top-left tile.
+        // The Old Shed pays its find reward once, keyed by its top-left tile. Its wish goes with
+        // it, if it hasn't paid (D-205: wishOf).
         const reward = target.kind === 'feature' ? content.features[target.feature].reward : null;
         if (target.kind === 'feature' && reward) {
           const c = target.cells[0]!;
@@ -3370,7 +3524,7 @@ export function createRules(content: Content): Rules {
             y: c.y,
           });
         }
-        return done(s);
+        return done(settleWish(s, events));
       }
       case 'completeEarly': {
         const offer = canCompleteEarly(state);
@@ -3415,7 +3569,7 @@ export function createRules(content: Content): Rules {
       case 'useTool': {
         const can = canUseTool(toolCtx, state, action);
         if (!can.ok) throw new IllegalAction(can.reason!);
-        return done(useTool(toolCtx, state, action, events));
+        return done(settleWish(useTool(toolCtx, state, action, events), events));
       }
       case 'leaveShop':
         return done(leaveShop(state, events));
@@ -4472,6 +4626,9 @@ export function createRules(content: Content): Rules {
     const house = removeTarget(state.house, check.target);
     const afterTally = tallyOf(state, house, false);
     const after = score(afterTally);
+    // D-205: the Old Shed takes its wish with it, if it hasn't paid.
+    const wish = state.wishFilled ? null : wishOf(state);
+    const endsWish = !!wish && !!target && 'feature' in target && target.feature === wish.feature;
     return {
       legal: true,
       target,
@@ -4481,6 +4638,7 @@ export function createRules(content: Content): Rules {
       delta: after.total - before.total,
       ...specFlips(beforeTally, afterTally),
       ...setFlips(beforeTally, afterTally),
+      ...(endsWish ? { endsWish: true as const } : {}),
     };
   }
 
@@ -4581,6 +4739,7 @@ export function createRules(content: Content): Rules {
     canReroll,
     canCompleteEarly,
     previewDemolish,
+    lotWish,
     pieceTimers,
     legalPlacements,
     legalPlays,
