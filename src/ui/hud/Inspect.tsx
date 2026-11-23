@@ -762,6 +762,8 @@ function PlacingInfo() {
           {name} <span class="earns">earns {p.newPiece?.earned ?? 0}</span>
         </h2>
       )}
+      {/* D-211: right under the title, so it's in view while the panel's body is short. */}
+      {p.finishes && <FinishNote finishes={p.finishes} />}
       {fromLine && <p class="muted">{fromLine}</p>}
       {member}
       {p.breaks && <BreaksNote id={p.breaks} />}
@@ -818,7 +820,6 @@ function PlacingInfo() {
           </span>
         </p>
       ))}
-      {p.finishes && <FinishNote finishes={p.finishes} />}
       {p.clearedTrees.length > 0 && (
         <p class="muted">
           Clears {p.clearedTrees.length} {p.clearedTrees.length === 1 ? 'Tree' : 'Trees'}.
