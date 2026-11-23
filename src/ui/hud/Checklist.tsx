@@ -5,7 +5,9 @@
 // work out every line and its progress: the UI never scores anything itself. M4b adds who's
 // still to move in, under the household, and the change orders running, as their own group,
 // where the ones a milestone just resolved stay, marked with how they went, until the next
-// phase's first week is played.
+// phase's first week is played. D-206 adds a neighbor's ask under its own tag after them, as
+// one row ("Fence along the left", what it pays, how many tiles stand there), kept the same way
+// once its milestone resolves it.
 //
 // Its rows keep short (D-142): a line that doesn't hold shows only what's still missing, who's
 // moving in is a name and a milestone, and the wishes sit under a one-word tag. Once a wish
@@ -50,6 +52,7 @@ import {
   type CrewId,
   type LotTraitDef,
   type Modifier,
+  type NeighborView,
   type Play,
   type ProgressPart,
   type Reward,
@@ -114,6 +117,20 @@ const resolvedOrders = computed<readonly ChangeOrderRecord[]>(() => {
   const phase =
     s.screen === 'won' ? s.phase : s.slot === 1 && s.overtimeWeek === 0 ? s.phase - 1 : -1;
   return s.changeOrders.filter((r) => r.result !== undefined && r.phase === phase);
+});
+
+/**
+ * D-206: the neighbor's ask, as the run on show has it (with a placement looked at, its count is
+ * the play's): while it runs, and once its milestone has resolved it, until the next phase's
+ * first week is played, as a change order's result stays.
+ */
+const neighborAsk = computed<NeighborView | null>(() => {
+  const s = judged.value;
+  const v = rules.neighbor(s, looking.value ?? undefined);
+  if (!v || v.result === undefined) return v;
+  const phase =
+    s.screen === 'won' ? s.phase : s.slot === 1 && s.overtimeWeek === 0 ? s.phase - 1 : -1;
+  return v.phase === phase ? v : null;
 });
 
 /**
@@ -842,28 +859,22 @@ const milestoneOf = (phase: number) => `the ${rules.phaseName(phase)} milestone`
 
 /**
  * What a change order pays, coin first as everywhere (D-098): "●+4", struck through in the bad
- * color once it's lost (kit.css .price-full). Every order pays budget today; anything else
- * reads in the rules' words.
+ * color once it's lost (kit.css .price-full). D-206: the neighbor's overtime week reads the same
+ * way with the top bar's clock, "◷+1", so the line keeps to one row. Anything else reads in the
+ * rules' words.
  */
 function Pays({ reward, lost }: { reward: Reward | undefined; lost: boolean }) {
   if (!reward) return null;
   const words = rewardText(CONTENT, reward);
-  const onlyBudget =
-    !!reward.budget &&
-    !reward.score &&
-    !reward.rerolls &&
-    !reward.demolitions &&
-    !reward.overtime &&
-    !reward.tool;
-  if (!onlyBudget) return lost ? <s>{words}</s> : <>{words}</>;
+  const kinds = (Object.keys(reward) as (keyof Reward)[]).filter((k) => !!reward[k]);
+  const only = kinds.length === 1 ? kinds[0] : undefined;
+  const icon: IconName | null = only === 'budget' ? 'coin' : only === 'overtime' ? 'clock' : null;
+  const n = only === 'budget' ? reward.budget : reward.overtime;
+  if (!icon) return lost ? <s>{words}</s> : <>{words}</>;
   return (
     <span class="price order-price" data-tip={lost ? `${words}: lost` : `Pays ${words}`}>
-      <Icon name="coin" />
-      {lost ? (
-        <s class="price-full num">+{reward.budget}</s>
-      ) : (
-        <span class="price-now num">+{reward.budget}</span>
-      )}
+      <Icon name={icon} />
+      {lost ? <s class="price-full num">+{n}</s> : <span class="price-now num">+{n}</span>}
     </span>
   );
 }
@@ -918,6 +929,48 @@ function OrderLine({ order, s, breaks }: { order: ChangeOrderView; s: RunState; 
         <Pays reward={order.reward} lost={broken} />
       </span>
       <span class="check-progress">{status}</span>
+    </li>
+  );
+}
+
+/**
+ * D-206: the neighbor's ask, a line of its own: their piece along their side, how many of its
+ * tiles stand in the strip (a check once enough do) by the milestone, and what it pays; once its
+ * milestone has resolved it, met or missed, as a change order's line turns. The result is a word
+ * and a mark, never color alone.
+ */
+function NeighborLine({ ask }: { ask: NeighborView }) {
+  const piece = CONTENT.pieces[ask.piece].name;
+  const at = milestoneOf(ask.phase);
+  const columns = CONTENT.balance.neighborAsk.depth;
+  const tip =
+    `Your neighbor on the ${ask.side} asks for ${ask.tiles} tiles of ${piece} in the ` +
+    `${columns} columns along the lot’s ${ask.side} side, shaded on the board while they wait. ` +
+    `Have them there by ${at} for ${rewardText(CONTENT, ask.reward)}. Asked once a run.`;
+  const result = ask.result;
+  const mark: IconName = result === 'missed' ? 'cross' : ask.met ? 'check' : 'pending';
+  const tone = result === 'missed' ? 'lost' : ask.met ? 'met' : 'unmet';
+  return (
+    <li class={`check-line order neighbor ${result ? 'resolved' : ''} ${tone}`}>
+      <Mark icon={mark} />
+      <span class="check-name">
+        <Tip title="The neighbor’s ask" text={tip}>
+          {piece} along the {ask.side}
+        </Tip>
+      </span>
+      <span class="order-pays">
+        <Pays reward={ask.reward} lost={result === 'missed'} />
+      </span>
+      <span class="check-progress">
+        {result === undefined ? (
+          `${Math.min(ask.have, ask.tiles)} of ${ask.tiles} tiles · by ${at}`
+        ) : (
+          <>
+            <strong class="order-result">{result === 'met' ? 'Met' : 'Missed'}</strong>
+            {result === 'met' ? `: paid at ${at}` : `: nothing paid at ${at}`}
+          </>
+        )}
+      </span>
     </li>
   );
 }
@@ -1021,6 +1074,7 @@ export function Checklist() {
   const held = rows.filter((r) => r.line.met).length;
   const running = orders.value;
   const done = resolvedOrders.value;
+  const ask = neighborAsk.value;
   // A placement being looked at that would break a restriction (it stays legal).
   const breaks = p?.legal ? p.breaks : undefined;
 
@@ -1202,6 +1256,17 @@ export function Checklist() {
               {running.map((o, k) => (
                 <OrderLine key={`${o.id}-${k}`} order={o} s={base} breaks={breaks === o.id} />
               ))}
+            </ul>
+          </>
+        )}
+        {ask && (
+          <>
+            {/* D-206: the neighbor's ask, under its own one-word tag (D-142). */}
+            <h3 class="plank-tag">
+              <Tip term="neighbor">Neighbor</Tip>
+            </h3>
+            <ul class="check-group neighbor-ask">
+              <NeighborLine ask={ask} />
             </ul>
           </>
         )}

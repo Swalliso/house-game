@@ -53,6 +53,9 @@ const REGION_TEXT: Record<Region, string> = {
   frontYard: 'in the front yard',
   backYard: 'in the back yard',
   fencedYard: 'in a fenced yard',
+  // D-206: the strips along a neighbor's lot.
+  leftSide: 'along the lot’s left side',
+  rightSide: 'along the lot’s right side',
 };
 
 /** "in the front yard", "in the sun". */
@@ -347,6 +350,12 @@ export function houseConditionText(content: Content, cond: HouseCondition): stri
   }
   if ('group' in cond) {
     return `${cond.minTiles} or more tiles of ${selectorText(content, cond.group, 'some')} in one group`;
+  }
+  if ('tilesIn' in cond) {
+    // D-206: "5 tiles of Fence along the lot’s left side".
+    const t = cond.tilesIn;
+    const tiles = t.min === 1 ? 'a tile' : `${t.min} tiles`;
+    return `${tiles} of ${selectorText(content, t.of, 'one')} ${regionText(t.region)}`;
   }
   if ('set' in cond) {
     const n = cond.min ?? 1;
@@ -1418,7 +1427,8 @@ export type Term =
   | 'reach'
   | 'requirement'
   | 'link'
-  | 'timer';
+  | 'timer'
+  | 'neighbor';
 
 export function glossary(content: Content): Record<Term, { title: string; text: string }> {
   const b = content.balance;
@@ -1639,6 +1649,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         'Some pieces change with time, counted in weeks from when they were placed: a Sapling ' +
         'becomes a Tree. The inspect panel says when.',
     },
+    // D-206: the neighbor's ask, linked from its line on the checklist.
+    neighbor: { title: 'The neighbor’s ask', text: neighborAskText(content) },
     // D-157: strikes are used from the hand; the shop sells more.
     strike: {
       title: 'Strikes',
@@ -1651,6 +1663,24 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         `always stay.`,
     },
   };
+}
+
+/**
+ * D-206: what the neighbor's ask is, with its numbers from the content: "Once a run, as Roofing
+ * starts, a neighbor may ask for 5 tiles of Fence in the 2 columns along their side of the lot.
+ * Have them there by the Roofing milestone and they give you +1 overtime week. …"
+ */
+export function neighborAskText(content: Content): string {
+  const a = content.balance.neighborAsk;
+  const phase = content.balance.phases[a.phase]?.name ?? `phase ${a.phase + 1}`;
+  const piece = content.pieces[a.piece]?.name ?? a.piece;
+  const columns = a.depth === 1 ? 'the column' : `the ${a.depth} columns`;
+  return (
+    `Once a run, as ${phase} starts, a neighbor may ask for ${a.tiles} tiles of ${piece} in ` +
+    `${columns} along their side of the lot, shaded on the board while they wait. Have them ` +
+    `there by the ${phase} milestone for ${rewardText(content, a.reward)}. They don’t ask on ` +
+    `a first job, or along a side with water or old Trees.`
+  );
 }
 
 // ---------------------------------------------------------------------------------------

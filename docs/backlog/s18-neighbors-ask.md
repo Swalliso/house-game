@@ -87,13 +87,13 @@ Starting numbers are marked.
 
 ## Done when
 
-- [ ] A standard run with a clear side gets one ask at the chosen phase; a first job and a
+- [x] A standard run with a clear side gets one ask at the chosen phase; a first job and a
       blocked side get none.
-- [ ] Enough Fence tiles in the strip by the milestone pays one overtime week, once.
-- [ ] The figure, the count, the tint and the two moments play, with a still version under
+- [x] Enough Fence tiles in the strip by the milestone pays one overtime week, once.
+- [x] The figure, the count, the tint and the two moments play, with a still version under
       Reduce motion and a line for those who need words.
-- [ ] Rules tests cover the region, the tile count, the skips, the payout and a replay.
-- [ ] The `--check` comparison is in the log entry, and the targets are untouched.
+- [x] Rules tests cover the region, the tile count, the skips, the payout and a replay.
+- [x] The `--check` comparison is in the log entry, and the targets are untouched.
 
 ## How to check
 

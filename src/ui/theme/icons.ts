@@ -184,6 +184,17 @@ export const ICONS = {
     kk........
     kkkk......
   `,
+  /** D-206: the neighbor's ask, a wooden fence: three pickets on a rail, as the Fence's own. */
+  fence: `
+    .k...k...k.
+    kHk.kHk.kHk
+    kkkkkkkkkkk
+    khhhhhhhhhk
+    kkkkkkkkkkk
+    klk.klk.klk
+    kmk.kmk.kmk
+    kkk.kkk.kkk
+  `,
   // --- Tags (12) -----------------------------------------------------------------------------
   Quiet: `
     kkkkkkk.
