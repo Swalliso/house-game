@@ -622,6 +622,7 @@ function animates(events: readonly GameEvent[]): boolean {
       e.t === 'extended' ||
       e.t === 'moved' ||
       e.t === 'findClaimed' ||
+      e.t === 'roomFinished' ||
       e.t === 'toolUsed' ||
       e.t === 'changeOrderAnswered',
   );
@@ -656,8 +657,16 @@ async function lightBeat(uid: number, after: RunState): Promise<void> {
   if (skipping) return;
   lightSwitched.value = { uid, id: nextId++ };
   audio.play('light-on');
-  // The house as the board draws it, the client's own things in their room too (D-183) and the
-  // held sets' doors (D-176).
+  const at = lampOf(after, uid);
+  if (at) boardBurst('glints', at, { delayMs: FEEL.lightOn.burstDelayMs, scale: 0.7 });
+  await wait(FEEL.lightOn.beatMs);
+}
+
+/**
+ * D-181: where a finished room's lamp is lit, in cells: the house as the board draws it, the
+ * client's own things in their room too (D-183) and the held sets' doors (D-176).
+ */
+function lampOf(after: RunState, uid: number): { x: number; y: number } | null {
   const model = houseModel(
     after.house,
     hallLinks(after),
@@ -666,14 +675,32 @@ async function lightBeat(uid: number, after: RunState): Promise<void> {
     heldSets(after),
   );
   const at = lampSpot(model, uid);
-  if (at) {
-    boardBurst(
-      'glints',
-      { x: at.x / CELL, y: at.y / CELL },
-      { delayMs: FEEL.lightOn.burstDelayMs, scale: 0.7 },
-    );
-  }
-  await wait(FEEL.lightOn.beatMs);
+  return at ? { x: at.x / CELL, y: at.y / CELL } : null;
+}
+
+/**
+ * D-211: a finished room pays, after its light has come on: coins from its lamp, a note of what
+ * it paid over it, and the top bar's budget counting it in (`shown`, the run as the top bar
+ * shows it, with the payout). Skipped, the budget is just in.
+ */
+async function finishPayBeat(
+  e: Extract<GameEvent, { t: 'roomFinished' }>,
+  after: RunState,
+  shown: RunState,
+): Promise<void> {
+  setShownRun(shown);
+  if (skipping) return;
+  const f = FEEL.finishPay;
+  const at = lampOf(after, e.uid) ?? pieceCenter([after], e.uid);
+  popup(
+    at.x,
+    Math.max(1.5, at.y - f.rise),
+    `Finished! ${rewardText(CONTENT, e.reward)}`,
+    'note',
+    f.beatMs,
+  );
+  boardBurst('coins', at, { scale: f.coins });
+  await wait(f.beatMs);
 }
 
 /**
@@ -1394,6 +1421,11 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           await wait(FEEL.installMs * 0.5);
           break;
         }
+        case 'roomFinished':
+          // D-211: its light came on with the beat before (lightAt); now it pays.
+          base = { ...base, budget: base.budget + (e.reward.budget ?? 0) };
+          await finishPayBeat(e, after, base);
+          break;
         case 'findClaimed': {
           if (!skipping) {
             const name = CONTENT.features[e.feature].name;

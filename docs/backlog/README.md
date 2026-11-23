@@ -110,7 +110,7 @@ reading the code, not from building anything.
 | [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Accepted 2026-11-18: #96, batch #93 (D-178) |
 | [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Accepted 2026-11-18: #97, batch #93 (D-179) |
 | [S06](s06-rain-for-rainy-season.md) | It rains while Rainy season runs, with puddles on the Patios | S | UI only | | Accepted 2026-11-18: #98, batch #93 (D-180) |
-| [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2 waits for the batch | Stage 1 Accepted 2026-11-18: #99, batch #93 (D-181); stage 2 waits for the user's go |
+| [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2: the user's go, given 2026-11-23 | Stage 1 Accepted 2026-11-18: #99, batch #93 (D-181). Stage 2 built 2026-11-23 (D-211, `phase/finished-room-pays`): a finished room pays 2 budget, once; waiting on the user's playtest |
 | [S08](s08-client-at-the-door.md) | The client appears at each milestone, with hearts on their wishes | M | UI and art | Easier after S03 | Accepted 2026-11-18: #100, batch #93 (D-182) |
 | [S09](s09-their-things-move-in.md) | The Count's coffin and the Barkers' dog bed | M | UI and art | | Accepted 2026-11-18: #101, batch #93 (D-183) |
 | [S10](s10-house-builds-itself.md) | The house rebuilds itself on the end screen | M | UI only | S01 played | Built 2026-11-20 (D-187): Play in the photo viewer, then the rebuild on the board the user asked for after it; waiting on their playtest on /dev/ |

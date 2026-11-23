@@ -1114,6 +1114,9 @@ export const TEST_BALANCE: Balance = {
     pointsPerTile: 1,
     minShared: 2,
   },
+  // D-211: finishing a room pays nothing here, so the test content's budgets and events are as
+  // before; finished.test.ts turns it on.
+  finishReward: {},
   drawAtLimitPct: 50,
   swapTries: 3,
   jobBoard: {

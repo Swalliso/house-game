@@ -521,6 +521,11 @@ export function HowToPlayText() {
             While you hold such a card, the rooms it can extend or renovate are outlined: click one,
             then End week.
           </li>
+          {/* D-181, D-211: a grown room with a fixture is finished, and its lamp comes on. */}
+          <li>
+            A room you’ve grown that has a fixture is <b>finished</b>: its lamp comes on
+            {b.finishReward.budget ? `, and it pays ${b.finishReward.budget} budget, once.` : '.'}
+          </li>
         </ul>
       </Section>
 
@@ -625,7 +630,9 @@ export function HowToPlayText() {
         <ul>
           <li>
             You earn budget at each milestone ({b.milestoneBudget}), for each week saved by
-            completing early, from economy pieces, and by selling goods back for half.
+            completing early, {/* D-211: a room finished pays once. */}
+            {b.finishReward.budget ? `for each room you finish (${b.finishReward.budget}), ` : ''}
+            from economy pieces, and by selling goods back for half.
           </li>
           {b.leftoverBudgetWow > 0 && (
             <li>
