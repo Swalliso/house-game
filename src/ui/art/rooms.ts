@@ -1585,6 +1585,7 @@ const CATS: Readonly<Partial<Record<ClientId, SpriteId>>> = {
   vladislav: 'cat-black',
   juniper: 'cat',
   dale: 'cat',
+  bigsbys: 'cat', // D-219
 };
 
 /** The room type the cat lives in: the run's first one of it (catIn). */
@@ -1661,7 +1662,7 @@ function catKeepsOff(m: HouseModel, room: Room): Rect[] {
   // A member in the doorway from their room south of it (people.ts doorwaySpot): their feet on
   // the south edge of its clear floor, anywhere along it.
   const household = m.client ? CONTENT.clients[m.client].household.arrivals : [];
-  const members = new Set(household.flatMap((a) => a.room));
+  const members = new Set(household.flatMap((a) => a.room ?? []));
   for (const dw of m.doors) {
     const south = dw.dir === 'h' && dw.a === room.uid ? m.rooms.get(dw.b) : undefined;
     if (!south || !members.has(south.defId)) continue;
@@ -1677,7 +1678,8 @@ function catKeepsOff(m: HouseModel, room: Room): Rect[] {
     const { mat, gap } = front;
     const mid = mat.x + mat.w / 2;
     const built = new Set([...m.rooms.values()].map((r) => r.defId));
-    const n = household.filter((a) => !a.room.some((id) => built.has(id))).length;
+    // D-219: a member with no room of their own (the Bigsbys') has no figure, so never waits.
+    const n = household.filter((a) => a.room && !a.room.some((id) => built.has(id))).length;
     heads(mid - (n / 2 + 1) * pair - 1, mid + (n / 2) * pair + figure.w + 1, mat.y + mat.h, gap.y);
   }
   return out;

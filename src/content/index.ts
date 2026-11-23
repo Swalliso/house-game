@@ -486,7 +486,8 @@ export function validateContent(content: Content): string[] {
     );
   }
 
-  // M4b: arrival ids are unique across households, and each member room is one arrival's.
+  // M4b: arrival ids are unique across households, and each member room is one arrival's. D-219:
+  // a member with no room of their own brings a plain Bedroom card.
   const arrivalIds = new Set<string>();
   const memberOf = new Map<PieceId, string>();
   for (const [key, client] of Object.entries(content.clients)) {
@@ -518,6 +519,11 @@ export function validateContent(content: Content): string[] {
       if (!a.name || !a.text) problems.push(`${at}: needs a name and text`);
       if (a.cards.length === 0) problems.push(`${at}: no cards`);
       a.cards.forEach((id) => known(id, at));
+      if (a.room === undefined) {
+        if (!a.cards.includes('bedroom'))
+          problems.push(`${at}: no room of their own, so a Bedroom`);
+        continue;
+      }
       if (a.room.length === 0) problems.push(`${at}: no room`);
       for (const id of a.room) {
         known(id, at);
@@ -529,7 +535,7 @@ export function validateContent(content: Content): string[] {
         // Room for everyone needs it from the arrival on (house-rules.ts builds that).
         if (!specNamed.includes(id)) problems.push(`${at}: the checklist never names ${id}`);
       }
-      if (!a.cards.some((id) => a.room.includes(id))) {
+      if (!a.cards.some((id) => a.room!.includes(id))) {
         problems.push(`${at}: none of its cards is its room`);
       }
     }

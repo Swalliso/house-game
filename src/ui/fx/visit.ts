@@ -33,6 +33,8 @@ export const CLIENT_FIGURES: Record<ClientId, SpriteId> = {
   barkers: 'client-barkers',
   juniper: 'client-juniper',
   dale: 'client-dale',
+  // D-219: the spike has no art of its own, so the Bigsbys come as the Hendersons' family figure.
+  bigsbys: 'client-hendersons',
 };
 
 /**
@@ -45,6 +47,7 @@ export const WISH_PIECES: Partial<Record<ClientId, Readonly<Record<string, Piece
   vladislav: { library: 'library' },
   barkers: { doghouses: 'doghouse', mudroom: 'mudroom' },
   dale: { offices: 'homeOffice' },
+  bigsbys: { playroom: 'playroom' },
 };
 
 /** At most this many hearts: a wish's pieces could run to a few, and the visit is short. */

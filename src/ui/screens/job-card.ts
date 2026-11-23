@@ -6,6 +6,7 @@
 
 import {
   CONTENT,
+  eachMilestone,
   modifierText,
   rules,
   specText,
@@ -34,11 +35,13 @@ export function bedroomsText(client: ClientDef): string {
 
 /**
  * Who joins the household mid-run (D-103), in a line: "The twins and Grandma move in later",
- * "Renfield moves in later". A household that doesn't grow says its Bedrooms.
+ * "Renfield moves in later". A household that doesn't grow says its Bedrooms. D-219: one that
+ * grows by a Bedroom each milestone (the Bigsbys) says so, rather than naming all five.
  */
 export function householdLine(client: ClientDef): string {
   const arrivals: readonly ArrivalDef[] = client.household.arrivals;
   if (arrivals.length === 0) return bedroomsText(client);
+  if (eachMilestone(client.household)) return 'Someone moves in each milestone';
   const names = arrivals.map((a, k) => (k === 0 ? a.name : midName(a)));
   const who =
     names.length <= 2
