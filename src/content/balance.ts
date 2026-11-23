@@ -72,22 +72,24 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089) with the
-  // biomes' lots and Creekside at +100% (D-174), on D-171's crews, then set against played runs
-  // (D-146): α × the greedy bot's median cumulative Wow at each milestone on seeds sim-*. The
-  // fit's estimate overstates what an overtime week rescues (in play the next shop hasn't opened
-  // yet), so α sits where greedy's played survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%: on
-  // 2,000 runs of check-* it was 100, 99.5, 94.5, 86.2, 71.8, 59.9 and 46.4%, and 48.0% won on
-  // 2,000 runs no fit had seen (hold-*). Each client's targetPct scales these, D-169's factors
-  // held: the fit's own (120, 75, 95, 70, 140) played the clients 17 points apart.
+  // D-220 (option A, the batch's re-fit): fitted again on develop with D-199 to D-212 in, by
+  // D-146's two steps: α × the greedy bot's median cumulative Wow at each milestone on 400
+  // untargeted runs of seeds sim-* (the five clients and four crews in turn), set against played
+  // runs. The fit's estimate overstates what an overtime week rescues (in play the next shop
+  // hasn't opened yet; on D-174's targets by 14.8 points at the end), so α sits where greedy's
+  // played survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%: on 300 runs of check-* it was
+  // 100, 99.7, 95.0, 87.3, 74.0, 58.7 and 46.7%, and 47.0% won on 300 runs of hold-*. Groundbreaking
+  // and Foundation keep D-174's 40 and 800 (their medians moved 2% and 5%). Each client's
+  // targetPct scales these: D-169's factors, but Count Vladislav's 70 (it was 80), set from his
+  // own gap as D-169 set them.
   phases: [
-    { name: 'Groundbreaking', target: 40 }, // median 208, α 0.19
-    { name: 'Foundation', target: 800 }, // median 1513, α 0.53
-    { name: 'Framing', target: 3850 }, // median 5209, α 0.74
-    { name: 'Roofing', target: 10700 }, // median 11736, α 0.91
-    { name: 'Drywall', target: 25100 }, // median 24252, α 1.03
-    { name: 'Finishes', target: 47800 }, // median 42380, α 1.13
-    { name: 'Final Walkthrough', target: 91300 }, // median 74315, α 1.23
+    { name: 'Groundbreaking', target: 40 }, // median 212, α 0.19
+    { name: 'Foundation', target: 800 }, // median 1595, α 0.50
+    { name: 'Framing', target: 4400 }, // median 5995, α 0.73
+    { name: 'Roofing', target: 12000 }, // median 13351, α 0.90
+    { name: 'Drywall', target: 29300 }, // median 28097, α 1.04
+    { name: 'Finishes', target: 57400 }, // median 50394, α 1.14
+    { name: 'Final Walkthrough', target: 105000 }, // median 95173, α 1.10
   ],
   // sim:targets:end
 
@@ -270,14 +272,17 @@ export const BALANCE: Balance = {
   // runs), so it was 57% (29%). On D-174's targets, fitted again with the biomes' lots, 57% left
   // it 26.8% and 53% 33.5%, so it's 55%: the Hendersons' 110% of the curve is 61%, and the bot
   // meets Roofing 90% and Drywall 70% of the time and wins 28% (400 runs). Milestone 2 alone at
-  // 450 only moved the wall. A percent of the client's own, so every client keeps its place in
-  // the order.
+  // 450 only moved the wall. On D-220's targets (option A, 12 to 20% higher from Framing) it's
+  // 48%, which holds a first job's targets from Framing on within 4% of D-174's at 55% (the
+  // Hendersons' 53% of the curve: Roofing 6,360 where it was 6,527, the last 55,650 where it was
+  // 55,693); the casual bot wasn't run again. A percent of the client's own, so every client
+  // keeps its place in the order.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
     firstSeed: 'oh-4243',
-    firstTargetPct: 55,
+    firstTargetPct: 48,
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of

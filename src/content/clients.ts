@@ -87,7 +87,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'earn', target: { piece: 'herbGarden' }, pct: -100 }, // garlic
     ],
     pool: [{ kind: 'drawWeight', target: { piece: 'library' }, add: 20 }],
-    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 70, // set against played runs (D-169), then from his own gap on D-220's targets
   },
   barkers: {
     id: 'barkers',
