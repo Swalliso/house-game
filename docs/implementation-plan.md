@@ -366,6 +366,7 @@ interface RunState {
   overtimeLeft: number
   swapped: { i: number; was: Card }[]  // D-121: the hand's cards that replaced a card with no play, and what each replaced
   pinned?: number                      // D-186: the hand card pinned for next week; one at a time, gone with its card or the hand
+  pinnedOver?: { card: Card; k: number }   // D-207: the pinned card waiting past a milestone (its change orders and shop) for the next phase's first week, and its slot in its row
   kept?: number                        // D-186: the hand card last week's pin kept; it can't be pinned again, and swaps skip it
   held?: ShelfGood                     // D-196: the shop good held for the next shop; one at a time, until bought, moved, let go, or dropped
   blueprints: { id: BlueprintId; boughtWeek: number }[]   // 4 slots; sells for half its list price
@@ -464,7 +465,7 @@ The UI keeps an event queue and plays it through an animation director (place â†
 | `build` | `place`, `install` from the hand, `renovate` (D-102), `extend` (D-168), or `pass`: ends the week | â†’ end of week (below) |
 | | `reroll` if `rerollsLeft > 0` | new hand; `draws + 1` |
 | | `strikeCard` if `strikesLeft > 0`, its type comes up in the weekly draw, and its row keeps its floor (D-157) | its type struck for the run; each hand card of it replaced from its row; `draws` unchanged |
-| | `pin` on any hand card but the one last week's pin kept (D-186) | the pin set on it, moved to it, or taken off it; nothing else changes |
+| | `pin` on any hand card but the one last week's pin kept (D-186), and not in the run's last week, which no week follows (D-207: `lastWeekOfRun`) | the pin set on it, moved to it, or taken off it; nothing else changes |
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
 | | `completeEarly` if score â‰¥ target, weeks remain in the phase, and it isn't an overtime week | â†’ fast-forward (below) |
@@ -492,7 +493,7 @@ The UI keeps an event queue and plays it through an animation director (place â†
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
-   Between steps 3 and 4 (D-186), the card last week's pin kept goes back into its row, at the slot it was pinned from (the row's last if the row is shorter), in place of the card drawn there; if the draw dealt the same card elsewhere in the row, that slot takes the displaced card instead, so the row stays distinct. The draw's keys don't change, so nothing shifts. The swaps skip the kept card, and so do a reroll and the Catalog's redraw, which redraw the rest around it. A milestone, its shop and Complete early drop a pin, and an overtime week takes it.
+   Between steps 3 and 4 (D-186), the card last week's pin kept goes back into its row, at the slot it was pinned from (the row's last if the row is shorter), in place of the card drawn there; if the draw dealt the same card elsewhere in the row, that slot takes the displaced card instead, so the row stays distinct. The draw's keys don't change, so nothing shifts. The swaps skip the kept card, and so do a reroll and the Catalog's redraw, which redraw the rest around it. An overtime week takes a pin. Past a milestone (D-207), from the last week, an overtime week or Complete early, the pinned card waits as `pinnedOver` through the change orders and the shop, and the next phase's first week takes it the same way, unless the shop struck its type (an old run code's typed strike). The end of the run drops it.
 
 **Fast-forward (D-040):**
 
