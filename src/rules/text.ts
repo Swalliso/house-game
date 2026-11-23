@@ -396,7 +396,7 @@ export function specText(content: Content, spec: SpecDef): string {
     return fencedYardText(content, spec.condition.fencedYardTiles.min);
   }
   const text = spec.text ?? houseConditionText(content, spec.condition);
-  const sentence = text.charAt(0).toUpperCase() + text.slice(1);
+  const sentence = capitalize(text);
   return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
 }
 
@@ -439,12 +439,12 @@ export function effectText(content: Content, effect: Effect): string {
       if (effect.amount) parts.push(`get ${signed(effect.amount)}`);
       if (effect.scope === 'region') {
         const subject = who.replace(/\bneighbors\b/, 'pieces');
-        return `${subject.charAt(0).toUpperCase() + subject.slice(1)} in the fenced yard it borders ${parts.join(' and ')}`;
+        return `${capitalize(subject)} in the fenced yard it borders ${parts.join(' and ')}`;
       }
       // D-199: "Social pieces within 2 tiles earn +25%".
       if (effect.scope !== 'adjacent') {
         const subject = reachSubject(content, effect.match);
-        return `${subject.charAt(0).toUpperCase() + subject.slice(1)} ${withinText(effect.scope.within)} ${parts.join(' and ')}`;
+        return `${capitalize(subject)} ${withinText(effect.scope.within)} ${parts.join(' and ')}`;
       }
       return `Touching ${who} ${parts.join(' and ')}`;
     }
@@ -641,7 +641,7 @@ export function cardText(content: Content, def: PieceDef): CardText {
     const names = with_.map((f) => featureNoun(content, f.id, true));
     const singular = with_.length === 1 && isSingularFeature(with_[0]!.id);
     const sentence = `${joinWords(names, 'and')} ${singular ? 'is' : 'are'} ${tag}.`;
-    notes.push(sentence.charAt(0).toUpperCase() + sentence.slice(1));
+    notes.push(capitalize(sentence));
   }
   if (props.has('viewSource')) {
     const sources = [
@@ -836,7 +836,7 @@ function handEffectText(content: Content, effect: Effect): string {
 function handModifierText(content: Content, mod: Modifier): string {
   if (mod.kind === 'blockPenalties' && isHost(mod.target)) {
     const from = selectorText(content, mod.from, 'some');
-    return `${from.charAt(0).toUpperCase() + from.slice(1)} can’t lower it`;
+    return `${capitalize(from)} can’t lower it`;
   }
   if (mod.kind === 'grantView' && isHost(mod.target)) return 'Gives it a view';
   if (mod.kind === 'countsAs' && isHost(mod.target) && (mod.times ?? 1) > 1) {
@@ -871,7 +871,7 @@ function handModifierText(content: Content, mod: Modifier): string {
 function extendTypesText(content: Content): string {
   const names = content.balance.extend.types.map((t) => content.pieces[t].name);
   const text = article(joinWords(names, 'or'));
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return capitalize(text);
 }
 
 /** "once", "twice", "3 times". */
@@ -1123,7 +1123,7 @@ const isHost = (sel: Selector) => sel !== 'all' && 'host' in sel;
 function subjectText(content: Content, sel: Selector): string {
   if (sel === 'all') return 'Every piece';
   const text = selectorText(content, sel, 'some').replace(/\bneighbors\b/, 'pieces');
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return capitalize(text);
 }
 
 /** A fixture's host-plus-something target, as a phrase: "in a Living Room or Library". */
@@ -1240,7 +1240,7 @@ export function modifierText(content: Content, mod: Modifier): string {
       const which = mod.from !== 'all' && 'tag' in mod.from ? tagged(content, mod.from.tag) : [];
       const named = which.length > 0 && which.length <= 5 ? ` (${joinWords(which, 'and')})` : '';
       const who = isHost(mod.target) ? 'it' : selectorText(content, mod.target, 'some');
-      return `${from.charAt(0).toUpperCase() + from.slice(1)}${named} can’t take points off ${who}`;
+      return `${capitalize(from)}${named} can’t take points off ${who}`;
     }
     case 'countsAs': {
       const name = content.pieces[mod.as].name;
@@ -1271,7 +1271,7 @@ export function modifierText(content: Content, mod: Modifier): string {
     }
     case 'perCountOver': {
       const what = selectorText(content, mod.match, 'some');
-      return `${what.charAt(0).toUpperCase() + what.slice(1)} earn ${signed(mod.pct)}% for each one over ${mod.over}`;
+      return `${capitalize(what)} earn ${signed(mod.pct)}% for each one over ${mod.over}`;
     }
     case 'setBonus': {
       const who = mod.set ? `The ${content.sets[mod.set].name}` : 'Every set';
@@ -1291,13 +1291,13 @@ export function modifierText(content: Content, mod: Modifier): string {
         !!content.pieces[id].special && content.pieces[id].fromPhase > 0;
       if (!mod.pct && (mod.add ?? 0) > 0 && ids?.every((id) => unseen(id) || late(id))) {
         const all = selectorText(content, mod.target, 'every');
-        const shown = `${all.charAt(0).toUpperCase() + all.slice(1)} show up in the weekly draw`;
+        const shown = `${capitalize(all)} show up in the weekly draw`;
         if (ids.every(unseen)) return shown;
         return `${shown} from the start${ids.some(unseen) ? '' : ', and more often'}`;
       }
       const what = selectorText(content, mod.target, 'some');
       const amount = mod.pct ? `${signed(mod.pct)}%` : `${signed(mod.add ?? 0)}`;
-      return `${what.charAt(0).toUpperCase() + what.slice(1)} come up more often (${amount})`;
+      return `${capitalize(what)} come up more often (${amount})`;
     }
     case 'rule': {
       const n = mod.add ?? 0;
@@ -1790,7 +1790,7 @@ function stockHint(content: Content): string {
   const one = pieces.length === 1;
   const what = stockText(content);
   return (
-    `${what.charAt(0).toUpperCase() + what.slice(1)} ${one ? 'waits' : 'wait'} in Your goods, ` +
+    `${capitalize(what)} ${one ? 'waits' : 'wait'} in Your goods, ` +
     (refill ? 'top right. ' : `top right, until you need ${one ? 'it' : 'them'}. `) +
     `Placing ${one ? 'it' : 'one'} doesn’t use your week.` +
     (refill ? ' Another comes each milestone.' : '')
@@ -1920,7 +1920,7 @@ export function rewardText(content: Content, r: Reward): string {
   // D-205: a piece, into Your goods.
   if (r.piece) parts.push(article(content.pieces[r.piece].name));
   const text = joinWords(parts, 'and');
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return capitalize(text);
 }
 
 /**
@@ -1979,7 +1979,7 @@ export function deliveryText(d: UpgradeDelivery): string {
       return 'A special piece arrives each milestone';
     case 'tool': {
       const what = article(RARITY_WORDS[d.rarity]);
-      return `${what.charAt(0).toUpperCase()}${what.slice(1)} tool arrives each milestone`;
+      return `${capitalize(what)} tool arrives each milestone`;
     }
     case 'blueprintPick':
       return `Pick 1 of ${d.options} ${RARITY_WORDS[d.rarity]} blueprints as you buy it`;
@@ -2009,11 +2009,10 @@ export function crateText(content: Content, def: CrateDef): string[] {
  * restriction forbids and pays, or what a phase effect does.
  */
 export function changeOrderText(content: Content, def: ChangeOrderDef): string[] {
-  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   switch (def.kind) {
     case 'request':
       return [
-        `${cap(houseConditionText(content, def.condition))}, by the next milestone`,
+        `${capitalize(houseConditionText(content, def.condition))}, by the next milestone`,
         `Met: ${rewardText(content, def.reward)}`,
       ];
     case 'restriction': {

@@ -1594,7 +1594,7 @@ export function createRules(content: Content): Rules {
    */
   function addExtra(
     s: RunState,
-    from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade',
+    from: Extract<GameEvent, { t: 'delivered' }>['from'],
     cards: readonly PieceId[],
     events: GameEvent[],
     upgrade?: UpgradeId,

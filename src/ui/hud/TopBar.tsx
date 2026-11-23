@@ -18,7 +18,13 @@ import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } fr
 import { howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import { BudgetCount } from './BudgetCount.tsx';
 import { shown } from './first-job.ts';
-import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
+import {
+  arrivalWeek,
+  isPlural,
+  overtimeClocks,
+  overtimeUsed,
+  upcomingArrivals,
+} from './household.ts';
 import { weekTicks } from './meter.ts';
 import { Tip } from './Tip.tsx';
 import './topbar.css';
@@ -228,9 +234,9 @@ function NextArrival({ s }: { s: RunState }) {
 
 function Resources() {
   const s = shownRun.value ?? run.value;
-  // D-206: a neighbor's gift can leave more weeks than the run started with: a clock each.
-  const total = Math.max(rules.rule(s, 'overtime'), s.overtimeLeft);
-  const left = Math.max(0, s.overtimeLeft);
+  // D-206: a neighbor's gift can leave more weeks than the run started with: a clock each, and
+  // the weeks spent before it stay spent clocks.
+  const { total, left } = overtimeClocks(s);
   // The week just given pops in (topbar.css), once per gift.
   const gift = overtimeGift.value;
   const overtimeTitle = 'Overtime weeks left: spent automatically when a target is missed';
