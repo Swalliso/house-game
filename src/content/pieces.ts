@@ -1,11 +1,12 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
 // and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
-// then the 9 special pieces: the shop's, the crates', and the Catalog's (weight 0, but for the
-// Sunroom, drawn from Foundation since D-120, and the Birdhouse and the Fire Pit, drawn from
-// Roofing and Drywall since D-145), the Porch (D-145, drawn from Drywall), the Fountain (D-199,
-// drawn from Framing), then (M4b) the 7 member rooms (weight 0), which arrive with the household
-// (D-103). The Pool, the Library, the Henhouse and the Fountain are landmarks (D-199): each
-// reaches the pieces within 2 tiles of it.
+// then the 9 special pieces: the shop's, the crates', and the Catalog's (`special`, weight 0,
+// but for the Henhouse and the Library, dealt from Framing too since D-200), and three that
+// left them for the weekly draw (the Sunroom, drawn from Foundation since D-120, and the
+// Birdhouse and the Fire Pit, drawn from Roofing and Drywall since D-145), the Porch (D-145,
+// drawn from Drywall), the Fountain (D-199, drawn from Framing), then (M4b) the 7 member rooms
+// (weight 0), which arrive with the household (D-103). The Pool, the Library, the Henhouse and
+// the Fountain are landmarks (D-199): each reaches the pieces within 2 tiles of it.
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -492,8 +493,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   },
 
   // ---------------------------------------------------------------------------------------
-  // Special pieces (Appendix B; weight 0, so never in the base draw, but for the Sunroom since
-  // D-120, which left the shop for the weekly draw). The first four are Core
+  // Special pieces (Appendix B; `special`: the shop's, the Showroom's and the Catalog's).
+  // Weight 0, so never in the base draw, but for the Henhouse and the Library, dealt from
+  // Framing at half a card's weight too (D-200), and the Sunroom (D-120), the Birdhouse and the
+  // Fire Pit (D-145), which left the shop for the weekly draw. The first four are Core
   // pieces from content-brainstorm.md; the last five were Stretch and are promoted as shop
   // pieces, so the shop has buildings worth buying (D-051). Shapes Appendix B leaves open are
   // D-082's defaults: Playroom and Library 2×2, Mudroom 1×2, Pool 2×3.
@@ -504,6 +507,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'indoor',
     shape: ['##', '##'],
     tags: ['Loud', 'Kid'],
+    special: true,
     drawWeight: 0,
     complexity: 2,
     fromPhase: 0,
@@ -519,9 +523,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'indoor',
     shape: ['##', '##'],
     tags: ['Quiet'],
-    drawWeight: 0,
+    special: true,
+    drawWeight: 5, // D-200: dealt from Framing, at half a card's weight
     complexity: 1,
-    fromPhase: 0,
+    fromPhase: 2,
     perHouse: 1, // D-165: one of each special room
     effects: [
       // D-199: a landmark. It quiets the rooms within 2 tiles, and hushes what's Loud there.
@@ -537,6 +542,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'indoor',
     shape: ['##'],
     tags: ['Pet'],
+    special: true,
     drawWeight: 0,
     complexity: 3,
     fromPhase: 0,
@@ -556,6 +562,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     shape: ['###', '###'],
     tags: ['Wet', 'Sunny', 'Loud'],
+    special: true,
     drawWeight: 0,
     complexity: 2,
     fromPhase: 0,
@@ -592,6 +599,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     shape: ['#'],
     tags: ['Wet', 'Social'],
+    special: true,
     drawWeight: 0,
     complexity: 1,
     fromPhase: 0,
@@ -635,9 +643,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'outbuilding',
     shape: ['##'],
     tags: ['House'],
-    drawWeight: 0,
+    special: true,
+    drawWeight: 5, // D-200: dealt from Framing, at half a card's weight
     complexity: 2,
-    fromPhase: 0,
+    fromPhase: 2,
     effects: [
       // D-199: a landmark. The hens feed the garden within 2 tiles: every Green piece there, in
       // place of its own +1 for each Herb Garden or Flower Bed it touched.

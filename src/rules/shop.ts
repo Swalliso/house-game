@@ -427,12 +427,10 @@ export function stockGoods(
     blueprints = blueprints.filter((x) => x !== id);
   }
 
-  // Special pieces; a member's room (M4b) arrives with its member and is never sold.
+  // Special pieces, dealt ones too (D-200); a member's room (M4b) arrives with its member and is
+  // never sold.
   let pieces = (Object.keys(content.pieces) as PieceId[]).filter(
-    (id) =>
-      content.pieces[id].drawWeight === 0 &&
-      !content.pieces[id].member &&
-      !content.pieces[id].addition,
+    (id) => content.pieces[id].special,
   );
   let fixtures = Object.keys(content.fixtures) as FixtureId[];
   for (let k = 0; k < stock.cards; k++) {
@@ -560,7 +558,7 @@ export function crateOptions(
     const all = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
       const def = content.pieces[id];
       if (def.member || def.addition) return false;
-      if (crate.pool === 'special' && def.drawWeight !== 0) return false;
+      if (crate.pool === 'special' && !def.special) return false;
       return !crate.filter || matchesDef(crate.filter, def);
     });
     // The Showroom's special pieces at their limit wait behind the rest (D-192), while the

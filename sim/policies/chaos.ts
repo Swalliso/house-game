@@ -76,8 +76,9 @@ function goodsNow(rules: Rules, s: RunState): Good[] {
   }
   if (s.reserve.filter((r) => !inExtraSlot(r)).length < slots.reserve) {
     for (const d of Object.values(c.pieces)) {
-      // Special pieces; a member's room (M4b) only ever arrives with its member.
-      if (d.drawWeight === 0 && !d.member) out.push({ kind: 'piece', id: d.id });
+      // Special pieces, dealt ones too (D-200); a member's room (M4b) only ever arrives with its
+      // member.
+      if (d.special) out.push({ kind: 'piece', id: d.id });
     }
   }
   if (s.supplies.length < slots.supplies) {

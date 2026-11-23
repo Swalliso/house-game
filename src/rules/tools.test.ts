@@ -616,9 +616,8 @@ describe('Catalog (specialHand)', () => {
     expect(new Set(pool.map((p) => p.weight))).toEqual(new Set([100]));
     expect(pool.some((p) => p.card.kind === 'fixture' && p.card.id === 'chandelier')).toBe(false);
     expect(pool.filter((p) => p.card.kind === 'fixture')).toHaveLength(10);
-    // The test content's 9 special pieces, its Porch (D-145) and its Fountain (D-199), which are
-    // weight 0 there.
-    expect(pool.filter((p) => p.card.kind === 'piece')).toHaveLength(11);
+    // The test content's 9 special pieces and its Porch (D-145), which is weight 0 there.
+    expect(pool.filter((p) => p.card.kind === 'piece')).toHaveLength(10);
 
     // In phase 1 (after shop 1 in TEST_CONTENT), fixtures come up too; the Chandelier never.
     const r = createRules(C);
@@ -638,24 +637,28 @@ describe('Catalog (specialHand)', () => {
         if (card.kind === 'fixture') {
           sawFixture = true;
           expect(card.id).not.toBe('chandelier');
-        } else expect(C.pieces[card.id].drawWeight).toBe(0);
+        } else expect(C.pieces[card.id].special).toBe(true);
       }
     }
     expect(sawFixture).toBe(true);
   });
 
-  it('skips struck types and special pieces from a later phase; its rows are the rules’ sizes', () => {
-    // The Pool from phase 1 on, and the Library struck: neither comes up in phase 0. With a
-    // Bigger Truck (+1 Rooms card, D-121) the hand has 3 + 2 cards.
-    const late = createRules(withPieces({ pool: { fromPhase: 1 } }, BIG));
+  it('skips struck types, not special pieces the weekly draw deals later; its rows are the rules’ sizes', () => {
+    // The Library struck: it never comes up. The Pool dealt from phase 1 on still comes up in
+    // phase 0: a special piece's `fromPhase` is the weekly draw's (D-200). With a Bigger Truck
+    // (+1 Rooms card, D-121) the hand has 3 + 2 cards.
+    const late = createRules(withPieces({ pool: { drawWeight: 5, fromPhase: 1 } }, BIG));
+    let sawPool = false;
     for (let k = 0; k < 15; k++) {
       let s = build([], { rules: late, seed: `catalog-strike-${k}`, tools: ['catalog'] });
       s = { ...s, struck: [pc('library')], upgrades: ['biggerTruck'] };
+      expect(s.phase).toBe(0);
       const hand = late.apply(s, use(0)).state.hand;
       expect(hand).toHaveLength(5);
-      expect(hand.map((c) => c.id)).not.toContain('pool');
+      sawPool ||= hand.some((c) => c.id === 'pool');
       expect(hand.map((c) => c.id)).not.toContain('library');
     }
+    expect(sawPool).toBe(true);
   });
 
   it('needs a hand to redraw', () => {

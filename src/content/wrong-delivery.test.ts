@@ -60,7 +60,8 @@ describe('the wrong delivery (D-188)', () => {
     expect(pieces).toEqual(['pool', 'hotTub', 'henhouse']);
     expect(CONTENT.balance.phases[phase]!.name).toBe('Framing');
     for (const id of pieces) {
-      expect(CONTENT.pieces[id]!.drawWeight, id).toBe(0);
+      // Special pieces; the weekly draw deals the Henhouse from Framing too (D-200).
+      expect(CONTENT.pieces[id]!.special, id).toBe(true);
       expect(CONTENT.pieces[id]!.perHouse, id).toBeUndefined();
     }
     expect(validateContent(CONTENT)).toEqual([]);
@@ -79,7 +80,7 @@ describe('the wrong delivery (D-188)', () => {
     };
     const problems = validateContent(broken).join('\n');
     expect(problems).toMatch(/surpriseDelivery: unknown piece "jacuzzi"/);
-    expect(problems).toMatch(/surpriseDelivery: bedroom is in the weekly draw/);
+    expect(problems).toMatch(/surpriseDelivery: bedroom isn't a special piece/);
     expect(problems).toMatch(/surpriseDelivery: ivysRoom is a member's room or an Addition/);
     expect(problems).toMatch(/surpriseDelivery: addition is a member's room or an Addition/);
     expect(problems).toMatch(/surpriseDelivery: a piece twice/);

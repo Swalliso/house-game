@@ -433,8 +433,17 @@ export interface PieceDef {
   drawWeight: number;
   /** D-055: 1 = plain earners, 2 = conditions and timers, 3 = build-arounds. */
   complexity: 1 | 2 | 3;
-  /** Hard gate: the earliest phase (0-based) it can be drawn. */
+  /**
+   * Hard gate: the earliest phase (0-based) it can be drawn. A special piece's gates only its
+   * own `drawWeight` (D-200): a client's or crew's weight deals it from week 1.
+   */
   fromPhase: number;
+  /**
+   * A special piece (D-051, D-200): the shop's, the Showroom's and the Catalog's in every
+   * phase, and the wrong delivery's (D-188). It may be dealt too: the Henhouse and the Library
+   * are, from Framing, at their `drawWeight`.
+   */
+  special?: true;
   effects: readonly Effect[];
   /**
    * A pack (D-106): the card places 1–`maxTiles` connected tiles that the player clicks out,

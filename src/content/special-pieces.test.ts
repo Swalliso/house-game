@@ -1,9 +1,11 @@
 // One test per special piece (Appendix B · Special pieces; D-051, D-082), against the real
 // content: what each one earns on a small hand-built lot, its budget, its shape and tags, its
-// generated card text, and that it's shop only (weight 0, at the shop's piece price). Three have
-// left the shop for the weekly draw at half a card's weight, and keep their tests here: the
-// Sunroom (D-120), and the Birdhouse and the Fire Pit, which arrive late (D-145). Numbers here
-// follow pieces.ts; when tuning changes a number, change the test with it.
+// generated card text, and that it's the shop's (`special`, at the shop's piece price), weight 0
+// but for the Henhouse and the Library, which are dealt from Framing too (D-200;
+// specials-in-the-hand.test.ts). Three have left the shop for the weekly draw at half a card's
+// weight, and keep their tests here: the Sunroom (D-120), and the Birdhouse and the Fire Pit,
+// which arrive late (D-145). Numbers here follow pieces.ts; when tuning changes a number, change
+// the test with it.
 
 import { describe, expect, it } from 'vitest';
 import type { Category, HouseState, PieceId, Tag, Tally } from '../rules/index.ts';
@@ -27,6 +29,9 @@ const SPECIAL = [
 
 /** The special pieces that left the shop for the weekly draw (D-145): from this milestone on. */
 const LATE = { birdhouse: 3, firePit: 4 } as const satisfies Partial<Record<PieceId, number>>;
+
+/** The special pieces the weekly draw deals too (D-200): from this milestone on. */
+const DEALT = { library: 2, henhouse: 2 } as const satisfies Partial<Record<PieceId, number>>;
 
 /** The tally of a house in `week`. */
 function tallyOf(house: HouseState, week = 1): Tally {
@@ -64,8 +69,9 @@ function shapeOf(id: PieceId) {
 }
 
 /**
- * Appendix B's category and tags for the piece, and its card text reads cleanly. It's shop only
- * (weight 0), or one of the late arrivals (D-145): half a card's weight, from its milestone.
+ * Appendix B's category and tags for the piece, and its card text reads cleanly. It's the shop's
+ * (weight 0, or dealt from Framing too, D-200), or one of the late arrivals (D-145): half a
+ * card's weight, from its milestone.
  */
 function expectCard(
   id: PieceId,
@@ -76,7 +82,9 @@ function expectCard(
   const def = CONTENT.pieces[id];
   expect(def.category).toBe(category);
   expect([...def.tags].sort()).toEqual([...tags].sort());
-  const from = (LATE as Partial<Record<PieceId, number>>)[id];
+  const late = (LATE as Partial<Record<PieceId, number>>)[id];
+  const from = late ?? (DEALT as Partial<Record<PieceId, number>>)[id];
+  expect(def.special).toBe(late === undefined ? true : undefined);
   expect(def.drawWeight).toBe(from === undefined ? 0 : 5);
   expect(def.fromPhase).toBe(from ?? 0);
   const text = cardText(CONTENT, def);
@@ -91,20 +99,30 @@ function expectCard(
 const open = emptyRows(10, 10);
 
 describe('special pieces', () => {
-  it('are the 6 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
+  it('are the 6 flagged pieces: all in the shop and the Catalog, two dealt from Framing', () => {
     // Member rooms (M4b) are weight 0 too, but arrive with the household (households.test.ts).
     // The Sunroom left them for the weekly draw (D-120), then the Birdhouse and the Fire Pit
     // (D-145). The Addition (D-171) is weight 0 as well: the Architect's stock is its only way in.
+    // The Henhouse and the Library stay special pieces, and the draw deals them too (D-200).
+    const special = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
+      (id) => CONTENT.pieces[id].special,
+    );
+    expect(special.sort()).toEqual([...SPECIAL].sort());
     const weightless = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
       (id) =>
         CONTENT.pieces[id].drawWeight === 0 &&
         !CONTENT.pieces[id].member &&
         !CONTENT.pieces[id].addition,
     );
-    expect(weightless.sort()).toEqual([...SPECIAL].sort());
+    expect(weightless.sort()).toEqual(SPECIAL.filter((id) => !(id in DEALT)).sort());
     for (let phase = 0; phase < CONTENT.balance.phases.length; phase++) {
       const drawn = drawWeights(CONTENT, phase).map((w) => w.card.id);
-      for (const id of SPECIAL) expect(drawn).not.toContain(id);
+      for (const id of SPECIAL) {
+        const from = (DEALT as Partial<Record<PieceId, number>>)[id];
+        expect(drawn.includes(id), `${id} in milestone ${phase + 1}`).toBe(
+          from !== undefined && phase >= from,
+        );
+      }
       // The Catalog (M3b) draws them at equal weight.
       const catalog = drawWeights(CONTENT, phase, { special: true }).filter(
         (w) => w.card.kind === 'piece',

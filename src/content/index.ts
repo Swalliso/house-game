@@ -324,6 +324,11 @@ export function validateContent(content: Content): string[] {
         problems.push(`${where}: transforms into ${into.id}, which has another shape`);
       }
     }
+    // D-200: a special piece is the shop's, so never a member's room or the Addition, which no
+    // shop sells.
+    if (def.special && (def.member || def.addition)) {
+      problems.push(`${where}: a member's room or an Addition is never a special piece`);
+    }
     // M4b: a member's room (D-103) counts as a Bedroom and is never in the draw.
     if (def.member) {
       if (def.drawWeight !== 0) problems.push(`${where}: a member's room has weight 0`);
@@ -568,14 +573,15 @@ export function validateContent(content: Content): string[] {
     problems.push(`${stockAt}: firstJobSlot must be a week of the phase`);
   }
 
-  // D-188: the wrong delivery is pieces the weekly draw never deals (draw weight 0), none of them
-  // a member's room or an Addition, none twice, in a phase of the run.
+  // D-188: the wrong delivery is special pieces (D-200: the shop's, which the Henhouse still is
+  // now the weekly draw deals it from Framing), none of them a member's room or an Addition, none
+  // twice, in a phase of the run.
   const surprise = content.balance.surpriseDelivery;
   const surpriseAt = 'balance surpriseDelivery';
   for (const id of surprise.pieces) {
     known(id, surpriseAt);
     const def = content.pieces[id];
-    if (def && def.drawWeight !== 0) problems.push(`${surpriseAt}: ${id} is in the weekly draw`);
+    if (def && !def.special) problems.push(`${surpriseAt}: ${id} isn't a special piece`);
     if (def && (def.member || def.addition)) {
       problems.push(`${surpriseAt}: ${id} is a member's room or an Addition`);
     }
