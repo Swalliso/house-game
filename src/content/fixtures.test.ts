@@ -860,6 +860,31 @@ describe('Dog Door', () => {
     ).toBe(4);
   });
 
+  it('its room earns double while the Barkers’ puppies are in (a change order that reads Pet)', () => {
+    const puppies = CONTENT.changeOrders.puppies;
+    if (puppies.kind !== 'phase') throw new Error('the puppies are a phase effect');
+    const mods = runModifiers(CONTENT, {
+      setup: setup('dog-door', 'barkers'),
+      blueprints: [],
+      timedEffects: [{ source: 'puppies', until: { phase: 0 }, modifiers: puppies.modifiers }],
+    }).filter((m) => m.source.kind !== 'house');
+    const tally = (house: HouseState) =>
+      tallyHouse(
+        CONTENT,
+        computeLayout(CONTENT, house, mods.map((m) => m.mod).filter(isLayoutModifier)),
+        1,
+        true,
+        { ...NO_CONTEXT, mods },
+      ).pieces[0]!;
+    // A plain Bedroom isn't a Pet piece: its 3.
+    expect(tally(build(open, [['bedroom', 0, 0]])).earned).toBe(3);
+    // A Dog Door's: 3 at +175% (the puppies' +100%, the Barkers' +50%, its own +25%), 8.25, 8.
+    const dog = tally(build(open, [['bedroom', 0, 0]], [[1, 'dogDoor']]));
+    expect(dog.earned).toBe(8);
+    const pcts = dog.lines.filter((l) => l.op === 'pct').map((l) => l.value);
+    expect(pcts.sort((a, b) => a - b)).toEqual([25, 50, 100]);
+  });
+
   it('counts for Nana’s Room’s +2 for each Pet beside her', () => {
     // Nana's Room (uid 1, 2×2) and a Bedroom touching it (uid 2).
     const placements: Placement[] = [

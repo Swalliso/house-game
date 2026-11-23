@@ -172,6 +172,24 @@ describe('special pieces in the hand (D-200)', () => {
     expect(rules.renovateTargets(s, 'hand', 0)).toEqual([house.pieces[0]!.uid]);
   });
 
+  it('a client’s Library at its limit is halved on each side of Framing, and a strike outweighs it', () => {
+    const vladislav = CONTENT.clients.vladislav.pool;
+    const atLimit: ReadonlySet<PieceId> = new Set(['library']);
+    const library = (phase: number, opts: Parameters<typeof drawWeights>[2]) =>
+      weightOf(drawWeights(CONTENT, phase, { row: 'rooms', mods: vladislav, ...opts }), 'library');
+    // His +20 before Framing, the Library's own 5 on top from it: each at half weight (D-104).
+    expect(library(FRAMING - 1, { atLimit })).toBe(1000);
+    expect(library(FRAMING, { atLimit })).toBe(1250);
+    // The Catalog's even weight halves too.
+    expect(library(0, { special: true, atLimit })).toBe(50);
+    // A struck Library never comes back (D-076), whoever adds to its weight, the Catalog too.
+    const struck = [{ kind: 'piece', id: 'library' }] as const;
+    for (let phase = 0; phase < PHASES; phase++) {
+      expect(library(phase, { struck }), `milestone ${phase + 1}`).toBe(0);
+      expect(library(phase, { struck, special: true }), `milestone ${phase + 1}`).toBe(0);
+    }
+  });
+
   it('the Catalog’s draw is unchanged: the six special pieces in every milestone, at equal weight', () => {
     for (let phase = 0; phase < PHASES; phase++) {
       const now = drawWeights(CONTENT, phase, { special: true });

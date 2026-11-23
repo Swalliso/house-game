@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { rules, type Action, type PlaceAction, type RunState } from '../../rules/index.ts';
-import { overtimeUsed } from '../hud/household.ts';
+import { overtimeClocks, overtimeUsed } from '../hud/household.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { WALKERS } from './crowd.ts';
 import { askCount, neighborFeet, neighborFigure, overHead, stripCells } from './neighbor-ask.ts';
@@ -113,5 +113,7 @@ describe('overtime weeks used, after a neighbor gave one (D-206)', () => {
     // Two at the start, one spent, one given: two left, and still one used.
     expect(drywall.overtimeLeft).toBe(2);
     expect(overtimeUsed(drywall)).toBe(1);
+    // The top bar: three clocks, the spent one still there (it showed two, both lit).
+    expect(overtimeClocks(drywall)).toEqual({ total: 3, left: 2 });
   });
 });

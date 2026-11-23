@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT, rules } from '../src/rules/index.ts';
 import { lotFromRows } from '../src/rules/lot.ts';
 import { houseStats } from './house.ts';
+import { makeChaos } from './policies/chaos.ts';
 import { POLICIES } from './policies/index.ts';
 import { BOT_BLIND } from './policies/shop.ts';
 import {
@@ -15,6 +16,7 @@ import {
   criteriaReport,
   estimateSurvival,
   fmtRate,
+  neighborReport,
   percentile,
   report,
   summarizeLayers,
@@ -538,4 +540,113 @@ describe('the change orders table (M4b, D-144)', () => {
     // No change orders, no table.
     expect(changeOrdersReport(CONTENT, [run('none', 7)])).toBe('');
   });
+});
+
+describe('the lot’s wish, the neighbor’s ask and the upgrades’ cards (D-205, D-206, D-209)', () => {
+  /** The report's line that starts with `head`. */
+  const line = (text: string, head: string) => text.split('\n').find((l) => l.startsWith(head));
+
+  it('rates the neighbor’s ask: asked of every run, then met, missed and open of those asked', () => {
+    const records = [
+      run('met', 4, { neighbor: { side: 'left', result: 'met', have: 5 } }),
+      run('missed', 4, { neighbor: { side: 'right', result: 'missed', have: 2 } }),
+      // The run ended before the ask's milestone was met.
+      run('open', 2, { neighbor: { side: 'left' } }),
+      run('never asked', 4),
+    ];
+    const ask = CONTENT.balance.neighborAsk;
+    const phase = CONTENT.balance.phases[ask.phase]!.name;
+    expect(neighborReport(CONTENT, records)).toBe(
+      `\nThe neighbor’s ask (D-206), at ${phase}: asked in ${fmtRate(3, 4)}` +
+        ' · met 33%, missed 33%, open at the run’s end 33%',
+    );
+    // No ask in any run, no line; and the whole report carries it when there is one.
+    expect(neighborReport(CONTENT, [run('a', 4), run('b', 2)])).toBe('');
+    expect(report(CONTENT, records, 'asks')).toContain('The neighbor’s ask (D-206)');
+  });
+
+  it('rates each lot’s wish: its share of the lots, how often it paid and by when, and its piece built', () => {
+    const records = [
+      run('pond paid, built', 4, { wish: { feature: 'pond', filled: 9, built: 12 } }),
+      run('pond paid', 4, { wish: { feature: 'pond', filled: 7, built: null } }),
+      run('pond unpaid', 4, { wish: { feature: 'pond', filled: null, built: null } }),
+      run('shed unpaid', 4, { wish: { feature: 'oldShed', filled: null, built: null } }),
+    ];
+    // The Pond: 3 of 4 lots, paid in 2 of them (the median of weeks 7 and 9), built in 1 of 2.
+    // The Old Shed: 1 lot, never paid, so no week and nothing to build.
+    expect(line(report(CONTENT, records, 'wishes'), 'The lot’s wish:')).toBe(
+      'The lot’s wish: the Pond’s 75% of lots, filled 67% (week 8), its piece built 50%' +
+        ' · the Old Shed’s 25% of lots, filled 0% (week –), its piece built –',
+    );
+    // Lots with no wish (a first job's) count in no feature's share.
+    expect(line(report(CONTENT, [run('none', 4)], 'no wish'), 'The lot’s wish:')).toBe(
+      'The lot’s wish: the Pond’s 0% of lots, filled – (week –), its piece built –' +
+        ' · the Old Shed’s 0% of lots, filled – (week –), its piece built –',
+    );
+  });
+
+  it('counts the reserve cards played per run from the upgrades and the lot’s wish', () => {
+    const plays = (upgrade: number, wish: number): RunRecord['reservePlays'] => ({
+      own: 0,
+      crew: 0,
+      arrival: 0,
+      client: 0,
+      stock: 0,
+      surprise: 0,
+      upgrade,
+      wish,
+    });
+    const text = report(
+      CONTENT,
+      [run('a', 4, { reservePlays: plays(3, 1) }), run('b', 4, { reservePlays: plays(0, 0) })],
+      'reserve',
+    );
+    expect(line(text, 'Reserve cards played per run:')).toContain(
+      ' · the upgrades’ 1.50 · the lot’s wish’s 0.50 · ',
+    );
+  });
+
+  it('keeps a real run’s wish and ask as its state has them', () => {
+    // The chaos bot fills wishes and lays Fence for asks often enough that a few runs cover a
+    // wish that paid, its piece built, and an ask met. Each run's record agrees with its state.
+    const CLIENTS = ['hendersons', 'vladislav', 'barkers', 'juniper', 'dale'] as const;
+    const CREWS = ['generalContractor', 'landscaper', 'architect', 'handyman'] as const;
+    const seen = new Set<string>();
+    for (let i = 0; i < 8 && seen.size < 3; i++) {
+      const clientId = CLIENTS[i % CLIENTS.length]!;
+      const crewId = CREWS[i % CREWS.length]!;
+      const seed = `chaos-${i}`;
+      const { record, state } = simulateRun(rules, seed, makeChaos({ cheat: true }), {
+        probePhase: null,
+        clientId,
+        crewId,
+      });
+      // The wish is the lot's as the run starts, and it paid if and only if the state says so.
+      const start = rules.newRun({ seed, clientId, crewId, mode: 'standard' });
+      expect(record.wish?.feature, seed).toBe(rules.lotWish(start)?.feature);
+      const wish = record.wish;
+      if (wish) {
+        expect(wish.filled !== null, seed).toBe(state.wishFilled !== undefined);
+        if (wish.filled !== null) seen.add('wish paid');
+        // Its piece is built from Your goods only once the wish has paid it.
+        if (wish.built !== null) {
+          seen.add('wish built');
+          expect(wish.filled, seed).not.toBeNull();
+          expect(wish.built, seed).toBeGreaterThanOrEqual(wish.filled!);
+          expect(record.reservePlays.wish, seed).toBeGreaterThan(0);
+        }
+      }
+      // The ask: its side and result, and the strip's tiles that settled it.
+      expect(record.neighbor?.side, seed).toBe(state.neighbor?.side);
+      expect(record.neighbor?.result, seed).toBe(state.neighbor?.result);
+      if (record.neighbor?.result) {
+        const have = record.neighbor.have!;
+        expect(have >= state.neighbor!.tiles, seed).toBe(record.neighbor.result === 'met');
+        if (record.neighbor.result === 'met') seen.add('ask met');
+      } else {
+        expect(record.neighbor?.have, seed).toBeUndefined();
+      }
+    }
+    expect([...seen].sort()).toEqual(['ask met', 'wish built', 'wish paid']);
+  }, 60_000);
 });
