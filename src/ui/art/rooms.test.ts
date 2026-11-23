@@ -2208,16 +2208,21 @@ describe('a held set’s openings (D-176, D-202, D-208)', () => {
       'livingRoom',
       'hallway',
     ];
-    let openings = 0;
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
         const { m } = setModelOf(randomHouse(seed, SET_ROOMS));
-        openings += [...m.rooms.keys()].filter((uid) => isOpening(m, uid)).length;
         for (const uid of m.rooms.keys()) expect(problems(m, uid), `seed ${seed}`).toEqual([]);
       }),
       { numRuns: 300 },
     );
-    // Rooms with an opening in their walls: about 60 in 300 houses (the Entertainer is one a house).
+    // Such houses have rooms with an opening in their walls (the Entertainer is one a house): 71
+    // in these 300 (2026-11-23), the same every run. fast-check's 300 differ from run to run,
+    // and once drew only 40.
+    let openings = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const { m } = setModelOf(randomHouse(seed, SET_ROOMS));
+      openings += [...m.rooms.keys()].filter((uid) => isOpening(m, uid)).length;
+    }
     expect(openings).toBeGreaterThan(40);
   });
 
