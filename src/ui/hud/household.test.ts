@@ -1,6 +1,7 @@
 // Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods tags it and
-// Inspect says it: the crew, a household member, the client, the standing stock, or (D-188) the
-// wrong delivery. A card in the reserve's own slots (bought, picked or copied) says nothing.
+// Inspect says it: the crew, a household member, the client, the standing stock, (D-188) the
+// wrong delivery, (D-209) a company upgrade, or (D-205) the lot's wish. A card in the reserve's
+// own slots (bought, picked or copied) says nothing.
 
 import { describe, expect, it } from 'vitest';
 import { extraSlotWords } from './household.ts';
@@ -66,5 +67,37 @@ describe('an extra slot’s words', () => {
 
   it('say nothing for a bought card', () => {
     expect(extraSlotWords('dale', { id: 'library' })).toBeNull();
+  });
+
+  it('tag a company upgrade’s card by the upgrade (D-209), in the stock note’s 16 words', () => {
+    const storage = extraSlotWords('dale', { id: 'library', upgrade: 'storageUnit' })!;
+    expect(storage).toEqual({
+      tag: 'Storage',
+      whose: ' (from your Storage Unit)',
+      from: 'From your Storage Unit',
+      note: 'From your Storage Unit: an extra slot, not one of your reserve’s. Another comes each milestone.',
+    });
+    expect(storage.note!.split(/\s+/)).toHaveLength(16);
+  });
+
+  it('say only what they know of where a card came from', () => {
+    // A card the crew started with (M4b), not one from its stock: it came once, so no note.
+    for (const crew of [undefined, 'landscaper'] as const) {
+      expect(extraSlotWords('hendersons', { id: 'fence', crew: true }, crew)).toEqual({
+        tag: 'Crew',
+        whose: ' (your crew’s)',
+        from: 'Your crew’s, from the start',
+      });
+    }
+    // Another client's member, and (D-205) a wish's prize before the run names the feature
+    // that paid it: nothing, as for a bought card.
+    expect(extraSlotWords('dale', { id: 'nursery', arrival: 'twins' })).toBeNull();
+    expect(extraSlotWords('dale', { id: 'hotTub', wish: true })).toBeNull();
+    // A feature's name of two words, whole in each.
+    expect(extraSlotWords('dale', { id: 'henhouse', wish: true }, undefined, 'oldShed')).toEqual({
+      tag: 'Old Shed',
+      whose: ' (from the Old Shed)',
+      from: 'For keeping the Old Shed company',
+    });
   });
 });
