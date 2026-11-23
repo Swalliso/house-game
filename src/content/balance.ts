@@ -283,6 +283,10 @@ export const BALANCE: Balance = {
   // D-157: a strike at each milestone the run goes on from (1–6), on top of the rules' strikes.
   strikesPerMilestone: 1,
 
+  // D-205: one wish a lot. The first of these the lot has asks for company: the Pond, else the
+  // Old Shed (their wishes are in features.ts). A lake lot has no Pond; a first job carries none.
+  lotWish: ['pond', 'oldShed'],
+
   // D-160: the standing stock, the pieces a house always needs and the draw holds back early
   // (D-055 has complexity 3 at 5% in milestone 1 and 25% in milestone 2). It fills the reserve's
   // extra slots up to one Hallway and one Fence pack, adding only what's missing. Both stay in

@@ -1131,6 +1131,8 @@ export const TEST_BALANCE: Balance = {
   standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1, refill: false },
   // D-188: no wrong delivery either; surprise.test.ts turns it on.
   surpriseDelivery: { phase: 1, pieces: [] },
+  // D-205: no lot's wish (the features have none); lot-wish.test.ts turns it on.
+  lotWish: [],
 };
 
 const testTool = (

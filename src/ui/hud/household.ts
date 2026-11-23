@@ -2,7 +2,7 @@
 // they bring. The rules hold the data (each client's `household`); this only phrases it, for the
 // job board, the checklist, the reserve, the inspect panel, and the arrival's banner. D-160:
 // likewise where any card in the reserve's extra slots came from: the crew, an arrival, the
-// client, the standing stock, or (D-188) the wrong delivery.
+// client, the standing stock, (D-188) the wrong delivery, or (D-205) the lot's wish.
 
 import {
   CONTENT,
@@ -15,6 +15,7 @@ import {
   type PieceId,
   type ReservePiece,
   type RunState,
+  type TerrainId,
 } from '../../rules/index.ts';
 
 const W = CONTENT.balance.weeksPerPhase;
@@ -96,16 +97,18 @@ function possessive(name: string): string {
 
 /**
  * Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods and Inspect say
- * it: its slot's tag ("Crew", "Twins", "Dale", "Stock", "Mix-up"), whose it is mid-sentence for
- * the slot's tip (" (with the twins)"), and Inspect's line ("Came with the twins"), or the whole
- * of Inspect's note where it says more (a refilled stock's, the wrong delivery's). Null for a
- * card in the reserve's own slots (bought, picked or copied).
+ * it: its slot's tag ("Crew", "Twins", "Dale", "Stock", "Mix-up", "Pond"), whose it is
+ * mid-sentence for the slot's tip (" (with the twins)"), and Inspect's line ("Came with the
+ * twins"), or the whole of Inspect's note where it says more (a refilled stock's, the wrong
+ * delivery's). Null for a card in the reserve's own slots (bought, picked or copied).
  */
 export function extraSlotWords(
   clientId: ClientId,
   r: ReservePiece,
   /** The run's crew: a card from its stock (D-171) says another comes each milestone. */
   crewId?: CrewId,
+  /** D-205: the feature whose wish paid the run's prize (`RunState.wishFilled`). */
+  wishFrom?: TerrainId,
 ): { tag: string; whose: string; from: string; note?: string } | null {
   if (r.crew) {
     // D-171: a crew's card comes from its stock, one each milestone; a starting card (M4b) came
@@ -157,6 +160,15 @@ export function extraSlotWords(
       whose: ' (delivered by mistake)',
       from: 'Delivered by mistake',
       note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
+    };
+  }
+  if (r.wish && wishFrom) {
+    // D-205: the lot's wish's prize, for the pieces built beside its feature.
+    const name = CONTENT.features[wishFrom].name;
+    return {
+      tag: name,
+      whose: ` (from the ${name})`,
+      from: `For keeping the ${name} company`,
     };
   }
   return null;

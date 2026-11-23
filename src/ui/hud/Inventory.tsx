@@ -30,7 +30,7 @@ import {
   struckText,
   type ReservePiece,
 } from '../../rules/index.ts';
-import { justArrived, justDelivered } from '../fx/director.ts';
+import { justArrived, justDelivered, wishHeld } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS, supplyIcon } from '../sprites.ts';
@@ -108,7 +108,8 @@ function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number):
 /**
  * How a reserve card pops in (inventory.css' slot-arrive), or null: a member's cards after the
  * doorbell (FEEL.arrival), and the stock's, the client's, the crew's or the wrong delivery's at
- * once as they land (FEEL.delivered; D-160, D-171, D-188), only the cards that just came.
+ * once as they land (FEEL.delivered; D-160, D-171, D-188), only the cards that just came. D-205:
+ * the lot's wish's prize pops the same way, after its find's burst on the board.
  */
 function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale: number } | null {
   const member = justArrived.value;
@@ -126,14 +127,14 @@ function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale
 
 /**
  * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins", "Dale", "Stock",
- * "Mix-up") with where it came from in its tip (household.ts extraSlotWords). A card that just
- * came pops in (popOf).
+ * "Mix-up", "Pond") with where it came from in its tip (household.ts extraSlotWords). A card that
+ * just came pops in (popOf); the lot's wish's prize waits, unseen, for its beat (D-205).
  */
 function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
   const s = run.value;
   const def = CONTENT.pieces[r.id];
   const fits = reserveFit.value[i] ?? true;
-  const extra = extraSlotWords(s.setup.clientId, r, s.setup.crewId);
+  const extra = extraSlotWords(s.setup.clientId, r, s.setup.crewId, s.wishFilled);
   const pop = popOf(r, i);
   const whose = extra?.whose ?? '';
   const classes = [
@@ -142,6 +143,7 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
     def.category,
     inExtraSlot(r) ? 'slot-extra' : '',
     pop ? 'just-arrived' : '',
+    r.wish && wishHeld.value ? 'slot-held' : '',
     isSelected('reserve', i) ? 'selected' : '',
     building && !fits ? 'no-fit' : '',
   ];

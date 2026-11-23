@@ -120,7 +120,7 @@ reading the code, not from building anything.
 | [S14](s14-pin-one-card.md) | Keep one card for next week | M | Rules and UI, no re-fit | | Accepted 2026-11-20: #111 (D-186) |
 | [S15](s15-trim-the-upgrade-shelf.md) | The upgrade slot stops offering two dead cards | S | Content | The user's answer | Replaced by S26 on 2026-11-20: the user keeps both upgrades |
 | [S16](s16-wrong-delivery.md) | A free yard showpiece arrives once a run | M | Rules and content | D-171's verdict | Built 2026-11-20 (D-188, #110); waiting on their playtest on /dev/ |
-| [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Not started |
+| [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Built 2026-11-23 (D-205, `phase/lot-wish`); waiting on the user's playtest |
 | [S18](s18-neighbors-ask.md) | A neighbor asks for Fence along their side | L | Rules and content | The batch | Not started |
 | [S19](s19-one-scored-visitor.md) | One visitor's wish, shown in the last shop | L | Rules and content | S01 landed | Not started |
 | [S20](s20-the-bigsbys.md) | A client whose family keeps arriving | L | Content and a little rules | A played spike | Not started |

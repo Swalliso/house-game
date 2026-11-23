@@ -15,6 +15,8 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     clear: 'buildOver',
     viewSource: true,
   },
+  // D-205: a lot's one wish is the Pond's where it has one (balance.lotWish): three Green pieces
+  // beside it bring a Hot Tub to Your goods, once. Starting numbers.
   pond: {
     id: 'pond',
     name: 'Pond',
@@ -23,6 +25,7 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     blocks: true,
     viewSource: true,
     body: true,
+    wish: { count: { tag: 'Green' }, need: 3, reward: { piece: 'hotTub' } },
   },
   creek: {
     id: 'creek',
@@ -58,6 +61,8 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
   // The Old Shed (2×2) blocks building until it's demolished, which pays a random tool. While it
   // stands it's one neighbor, like the pond (D-145): the pieces that would use a shed name it
   // (the Greenhouse, a Herb Garden, the Henhouse), so keeping it competes with clearing it.
+  // D-205: on a lot without a Pond it carries the lot's wish: two of the pieces that would use
+  // it (not the Henhouse, its prize) bring a Henhouse to Your goods, once, if it's still standing.
   oldShed: {
     id: 'oldShed',
     name: 'Old Shed',
@@ -68,6 +73,11 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     body: true,
     size: [2, 2],
     reward: { tool: 'random' },
+    wish: {
+      count: { piece: ['greenhouse', 'garage', 'herbGarden'] },
+      need: 2,
+      reward: { piece: 'henhouse' },
+    },
   },
   // A Time Capsule doesn't block: the first piece built over it pays. It gives nothing as a
   // neighbor.

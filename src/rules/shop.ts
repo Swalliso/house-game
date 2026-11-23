@@ -115,10 +115,10 @@ export function slotsFor(content: Content, state: RunState): Slots {
 /**
  * Whether a reserve piece sits in an extra slot, which doesn't count against the reserve's: a
  * crew's starting piece and an arrival's card (M4b), what the client brought and the standing
- * stock (D-160), or the wrong delivery's piece (D-188).
+ * stock (D-160), the wrong delivery's piece (D-188), or the lot's wish's (D-205).
  */
 export function inExtraSlot(r: ReservePiece): boolean {
-  return !!r.crew || r.arrival !== undefined || !!r.client || !!r.stock || !!r.surprise;
+  return !!r.crew || r.arrival !== undefined || !!r.client || !!r.stock || !!r.surprise || !!r.wish;
 }
 
 /** Reserve pieces that count against its slots: bought, picked, and copied ones. */

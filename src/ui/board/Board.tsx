@@ -1114,6 +1114,7 @@ export function Board() {
           )}
           {installing && <InstallTarget scale={scale} />}
           {choosingHost && <HostBadges scale={scale} />}
+          {building && <WishBadge scale={scale} />}
           {building && <RenovateHints scale={scale} />}
           {building && <ExtendHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
@@ -1716,6 +1717,69 @@ function HostBadges({ scale }: { scale: number }) {
 }
 
 /**
+ * D-205: the lot's wish, on demand (no badge at rest: the text diet, D-167). A chip on its feature
+ * with its prize and its count ("Hot Tub 1/3"), while the pointer is on the feature with nothing
+ * picked, and while a card it counts is picked, with the play under the pointer counted: ▲ in
+ * blue when that play adds to it, and a ★ in the gold ring when it would fill it. Inspect says it
+ * in words. On whole device pixels, off the pieces' digits and badges (useCrispBadges).
+ */
+function WishBadge({ scale }: { scale: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useCrispBadges(
+    ref,
+    viewSize.value?.dpr ?? (window.devicePixelRatio || 1),
+    Math.min(CELL * scale, BADGE_REACH),
+  );
+  const state = run.value;
+  const base = rules.lotWish(state);
+  const sel = selection.value;
+  const hover = hoverCell.value;
+  if (!base || base.filled || base.cells.length === 0 || state.screen !== 'build') return null;
+  const picked = sel?.kind === 'piece' && base.wants.includes(sel.id);
+  const onIt = !sel && !!hover && hasCell(base.cells, hover);
+  if (!picked && !onIt) return null;
+  const play = picked ? activePlay.value : null;
+  const view = (play && rules.lotWish(state, play)) || base;
+  const have = Math.min(view.counted.length, view.need);
+  const adds = view.counted.length > base.counted.length;
+  const fills = view.counted.length >= view.need;
+  const px = CELL * scale;
+  const at = featureMiddle(base.cells);
+  const prize = view.reward.piece ? CONTENT.pieces[view.reward.piece].name : '';
+  return (
+    <div ref={ref} class="host-badges" aria-hidden="true">
+      <div
+        class={`host-badge wish-badge ${adds ? 'good' : ''} ${fills ? 'best' : ''}`}
+        data-x={at.x * px}
+        data-y={at.y * px}
+      >
+        {fills ? '★ ' : adds ? '▲ ' : ''}
+        {prize} {have}/{view.need}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The middle of a feature's cells, in cells: the middle of their bounds where that falls on one
+ * of them (an Old Shed's 2×2), else the middle of the cell nearest it (a crescent of a Pond).
+ */
+function featureMiddle(cells: readonly Cell[]): { x: number; y: number } {
+  const c = center(cells);
+  if (hasCell(cells, { x: Math.floor(c.x), y: Math.floor(c.y) })) return c;
+  let best = cells[0]!;
+  let far = Infinity;
+  for (const cell of cells) {
+    const d = (cell.x + 0.5 - c.x) ** 2 + (cell.y + 0.5 - c.y) ** 2;
+    if (d < far) {
+      far = d;
+      best = cell;
+    }
+  }
+  return { x: best.x + 0.5, y: best.y + 0.5 };
+}
+
+/**
  * The Copy Machine's and the Moving Truck's targets: the piece under the pointer outlined, or
  * the carried piece's ghost at its new spot, with what it would do to the week's Wow.
  */
@@ -1865,8 +1929,10 @@ function DemolishTarget({ scale }: { scale: number }) {
         : '';
   const name = targetName(d.target);
   const verb = armed ? `Click again to demolish ${definite(name)}` : `Demolish ${name}`;
+  // D-205: the Old Shed takes the lot's wish with it, if it hasn't paid.
+  const ends = d.endsWish ? ' · ✕ ends its wish' : '';
   const text = d.legal
-    ? `${verb}${change}${breaksText(d.setsLost)}`
+    ? `${verb}${change}${breaksText(d.setsLost)}${ends}`
     : (d.reason ?? 'That can’t be demolished.');
   const spot = oneLabelSpot(cells, lot.width, px, d.legal ? text : `✕ ${text}`);
   const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };

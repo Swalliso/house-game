@@ -6,7 +6,8 @@
 // drives it through simulateRun (so the step caps apply) and checks every step it takes.
 // M4b: it answers change orders at random (now and then forcing one mid-week), plays the
 // household's arrivals from the reserve (now and then forcing one early), and the test runs
-// it with every crew and client.
+// it with every crew and client. D-205: now and then it builds a card the lot's wish counts
+// beside its feature, so its runs fill the wish (random spots seldom would).
 //
 // It picks a kind of action first and an action of that kind second, so a kind with many
 // listed actions (a placement at every spot, a strike or a pin per hand card, a hold per shop
@@ -27,13 +28,14 @@ import type {
   ChangeOrderId,
   DebugAction,
   Good,
+  PlaceAction,
   Rng,
   Rules,
   RunState,
   ShopOffer,
   UseToolAction,
 } from '../../src/rules/index.ts';
-import { inExtraSlot } from '../../src/rules/index.ts';
+import { inExtraSlot, shapeCells } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 
 export interface ChaosOptions {
@@ -118,6 +120,35 @@ export function findMove(rules: Rules, s: RunState, i: number, rng: Rng): UseToo
 
 const debug = (a: DebugAction): Action => a;
 
+/**
+ * D-205: the legal placements of a card the lot's wish counts that touch its feature, while the
+ * wish waits. By the card's shape alone, so it costs no more than the listing: a run fills the
+ * wish now and then, where random spots seldom put three Green pieces by the Pond.
+ */
+function wishPlays(rules: Rules, s: RunState, legal: readonly Action[]): Action[] {
+  const view = rules.lotWish(s);
+  if (!view || view.filled || view.cells.length === 0) return [];
+  const wants = new Set(view.wants);
+  const by = new Set<string>();
+  for (const c of view.cells) {
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const)
+      by.add(`${c.x + dx},${c.y + dy}`);
+  }
+  return legal.filter((a): a is PlaceAction => {
+    if (a.t !== 'place') return false;
+    const hand = s.hand[a.i];
+    const id = a.from === 'reserve' ? s.reserve[a.i]?.id : hand?.kind === 'piece' ? hand.id : null;
+    if (!id || !wants.has(id)) return false;
+    const shape = a.shape ?? rules.content.pieces[id].shape;
+    return shapeCells(shape, a.rot).some((c) => by.has(`${a.x + c.x},${a.y + c.y}`));
+  });
+}
+
 function buildGroups(
   rules: Rules,
   s: RunState,
@@ -156,6 +187,8 @@ function buildGroups(
     .filter((id) => !s.arrived.includes(id));
   return [
     { kind: 'play', weight: 60 * end, actions: of((a) => a.t === 'place') },
+    // D-205: a card the lot's wish counts, built beside its feature.
+    { kind: 'play:wish', weight: 8 * end, actions: wishPlays(rules, s, legal) },
     // A hand fixture has a few hosts against a placement's hundreds of spots: its own kind.
     {
       kind: 'install:hand',

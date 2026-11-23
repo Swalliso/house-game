@@ -53,6 +53,15 @@ describe('an extra slot’s words', () => {
       note: 'Delivered here by mistake: yours to keep, in an extra slot, not one of your reserve’s.',
     });
     expect(pool.note!.split(/\s+/)).toHaveLength(16);
+    // D-205: the lot's wish's prize, named for the feature that paid it.
+    expect(extraSlotWords('dale', { id: 'hotTub', wish: true }, undefined, 'pond')).toEqual({
+      tag: 'Pond',
+      whose: ' (from the Pond)',
+      from: 'For keeping the Pond company',
+    });
+    expect(
+      extraSlotWords('dale', { id: 'henhouse', wish: true }, 'architect', 'oldShed')!.tag,
+    ).toBe('Old Shed');
   });
 
   it('say nothing for a bought card', () => {

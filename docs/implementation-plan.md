@@ -354,8 +354,9 @@ interface RunState {
   phaseStartScore: number
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
-  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160) and the wrong delivery's piece (surprise, D-188)
+  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160), the wrong delivery's piece (surprise, D-188) and the lot's wish's prize (wish, D-205)
   stocked?: true                       // D-163: the standing stock has come (without `refill`, it comes once)
+  wishFilled?: TerrainId               // D-205: the feature whose wish has paid (once a run); the screen still names it once the Old Shed is gone
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
   bonusRerolls: number                 // bought from the shop; spent after rerollsLeft and never expire
@@ -430,6 +431,7 @@ type Action =
 - `cardPinned` (D-186: the hand card, and whether it's now pinned or its pin came off)
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
+- `wishFilled` (D-205: the lot's wish paid, once a run: its feature, the spot its beat plays at, the reward, and the pieces that filled it). A week's play fills it before its `tally`, so the prize earns nothing that week
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
 - `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`, `extended` (D-168)
 - `delivered` (D-160: the client's cards, the standing stock's top-up, D-171 the crew's own card, and D-188 the wrong delivery's piece, `from: 'surprise'`) and `crewTool` (D-171: the crew's tool came, or was sold with the supplies full)
@@ -485,7 +487,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 **Start of week:**
 
-1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
+1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores. The lot's wish is looked at again after them (D-205).
 2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188).
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
@@ -552,6 +554,7 @@ Derived from `HouseState`, cached by house object identity:
   - The **Old Shed** counts once while it stands, like a water body, with no tags and no view (D-145): the pieces that would use a shed name it (the Garage, a Herb Garden, the Greenhouse, the Henhouse). The **Time Capsule** gives nothing as a neighbor. Both finds pay a one-time reward (below).
 - **Placement:** inside the lot, not overlapping pieces, water, Boulders, or the Old Shed. Building over a Tree removes it, and the preview shows what's lost. Only a Driveway can be built over the Creek (it gets a culvert), so a house on the far bank can still have a Garage. Nothing else can, so the house sits on one bank; yard pieces can go on either.
 - **Finds:** the **Old Shed** (2×2) blocks building until it's demolished, which pays its reward. The **Time Capsule** (1×1) doesn't block: the first piece built over it pays. Rewards are data (`Reward`), and the inspect panel shows them before you commit. A multi-tile feature is one object: demolishing any of its tiles removes all of it, its reward pays once, and its `find/<x>,<y>` key uses its top-left tile.
+- **The lot's wish** (D-205): one feature on the lot asks for company, the first of `balance.lotWish` the lot has (the Pond, else the Old Shed; a lake lot has no Pond, and a first job carries none). Its `FeatureDef.wish` says which pieces it counts, how many, and the prize: once that many pieces it counts touch it (`piecesTouching` in `conditions.ts`), it pays its reward once, a piece into the reserve's extra slots marked `wish`, free to build like everything in Your goods. The rules look at it after everything that changes the house (a placement from the hand or the reserve, a demolition, a move, an install, and the start of a week, after transforms), and a week's play fills it before its tally. An Old Shed demolished before its wish paid takes the wish with it (its tool still pays; `DemolishPreview.endsWish` says so first). `rules.lotWish(state, play?)` is the screen's view: the feature's cells, what it counts and how many, the pieces counted (with a play, as it would stand), the cards it counts, the prize, and whether it has paid.
 - **One house:**
   - If any indoor piece exists, a new indoor piece must touch one.
   - Demolishing an indoor piece that would split the house is illegal ("This would split the house").
@@ -647,6 +650,7 @@ interface FeatureDef {         // terrain (D-049)
   body?: true                  // orthogonally connected tiles of the same feature count as one neighbor: pond, creek
   size?: [number, number]      // a multi-tile object, such as the Old Shed's [2, 2]
   reward?: Reward              // finds: paid once when cleared (oldShed) or first built over (timeCapsule)
+  wish?: { count: Selector; need: number; reward: Reward }   // D-205: the lot's wish, if this is the lot's (balance.lotWish); body features only
 }
 // Generation numbers (counts, sizes, the creek's chance) live in balance.ts, not here.
 
@@ -743,7 +747,8 @@ interface SetDef {
 // RunState.setLevels: Partial<Record<SetId, number>> holds each set type's level, from 1.
 
 interface Reward { score?: number /* a one-time Wow payout */; budget?: number; rerolls?: number; demolitions?: number; overtime?: number
-                  tool?: ToolId | 'random' }          // a tool goes into supplies (the Old Shed's 'random')
+                  tool?: ToolId | 'random'            // a tool goes into supplies (the Old Shed's 'random')
+                  piece?: PieceId }                   // D-205: a special piece into the reserve's extra slots; only a lot's wish pays one
 // No Core content grants overtime, so D-041's 2 overtime weeks per run hold.
 
 type Modifier =
@@ -1798,7 +1803,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171) and the wrong delivery's piece (D-188) use extra slots (D-103, D-160).
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171), the wrong delivery's piece (D-188) and the lot's wish's prize (D-205) use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
   - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
@@ -1821,6 +1826,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - Catalog counts as a draw (`n + 1`) and doesn't use a reroll; it draws special pieces (in every phase: a special piece's `fromPhase` is the weekly draw's, D-200) and fixtures (from their `fromPhase`) at equal weight, and never a shop-only card (the Chandelier)
 - **Company upgrades:** permanent, no duplicates; Savings Account pays `min(floor(budget / 5), 3)` at each milestone, before the shop.
 - **Finds:** paid once. The Old Shed's random tool goes into supplies, or is sold at once for half its price if supplies are full.
+- **The lot's wish** (D-205): paid once a run, its piece into the reserve's extra slots (it never takes one of the reserve's two).
 
 ### M4a and M4b
 
@@ -1908,12 +1914,12 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 |---|---|---|
 | Street | Feature on the bottom edge, tags Loud; one neighbor for pieces touching it; defines the front yard | M1 |
 | Mature tree (woods and lone trees) | Feature per tile, tags Quiet and Green, view source; `clear: buildOver` | M1 |
-| Pond | `blocks`, `body`, view source | M1 |
+| Pond | `blocks`, `body`, view source. The lot's wish where there is one (D-205): 3 Green pieces touching it pay a Hot Tub | M1 (D-205: the wish) |
 | **Lake** *(D-174)* | `blocks`, `body`, view source; a lake lot's back 2–5 rows, drawn running on past the lot's back edge and sides | D-174 |
 | **Creek** *(new)* | `blocks`, `body`, view source; 1 tile wide, never touches the street edge | M1 |
 | The sun (D-120; was the sunny side) | `Lot.sun`, one edge; the `sunny` region: tiles no Tree, Old Shed or building stands in front of, toward the sun; a building with a tile in it gains the Sunny tag | M1 (the band), D-120 (the sun) |
 | Boulder | `blocks`, `clear: demolish`; each tile its own neighbor, no tags (D-145: was `inert`) | M1 (M2 demolish; D-145: a neighbor) |
-| **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; `body`: one neighbor while it stands, no tags (D-145: was `inert`); reward: a random tool | M3b (D-145: a neighbor) |
+| **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; `body`: one neighbor while it stands, no tags (D-145: was `inert`); reward: a random tool. On a lot with no Pond, the lot's wish (D-205): 2 of the Greenhouse, the Garage and the Herb Garden touching it pay a Henhouse, if it still stands | M3b (D-145: a neighbor; D-205: the wish) |
 | **Time Capsule** *(new find)* | 1×1; doesn't block; `inert`; reward when first built over: +3 budget | M3b |
 
 ### Lot traits (D-119, D-166, D-174)

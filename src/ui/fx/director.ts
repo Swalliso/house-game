@@ -279,16 +279,23 @@ export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(nul
  */
 export const walkIn = signal<{ arrival: ArrivalId; id: number } | null>(null);
 /**
- * D-160: the standing stock's or the client's cards, (D-171) the crew's, or (D-188) the wrong
- * delivery's piece, just in the reserve: the reserve slots (`slots`, by index) that pop in, after
- * `delayMs`. `from` is the last of the week's deliveries; `slots` holds them all.
+ * D-160: the standing stock's or the client's cards, (D-171) the crew's, (D-188) the wrong
+ * delivery's piece, or (D-205) the lot's wish's prize, just in the reserve: the reserve slots
+ * (`slots`, by index) that pop in, after `delayMs`. `from` is the last of the week's deliveries;
+ * `slots` holds them all.
  */
 export const justDelivered = signal<{
-  from: 'client' | 'stock' | 'crew' | 'surprise';
+  from: 'client' | 'stock' | 'crew' | 'surprise' | 'wish';
   slots: readonly number[];
   delayMs: number;
   id: number;
 } | null>(null);
+/**
+ * D-205: the lot's wish's prize, in the reserve while the action that paid it plays up to its
+ * beat: Your goods keeps its slot unseen until the beat pops it in (Inventory.tsx). False at
+ * rest, so a loaded run and Reduce motion show it.
+ */
+export const wishHeld = signal(false);
 
 /**
  * The board registers these, so the director can wobble pieces, shake the screen, lean the
@@ -1414,6 +1421,10 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           await wait(FEEL.sparkleStepMs * 0.6);
           break;
         }
+        case 'wishFilled':
+          wishBeat(e, after);
+          await wait(FEEL.sparkleStepMs * 0.6);
+          break;
         case 'installed': {
           const c = pieceCenter([after, base], e.uid);
           if (!skipping) {
@@ -1945,16 +1956,58 @@ function growBeats(events: readonly GameEvent[], after: RunState, gen: number): 
   const grown = events.filter(
     (e): e is Extract<GameEvent, { t: 'transformed' }> => e.t === 'transformed',
   );
-  if (grown.length === 0) return;
-  if (!events.some((e) => e.t === 'arrived')) {
+  // D-205: a piece grown into one the lot's wish counts fills it, and its beat follows theirs.
+  const wished = events.find(
+    (e): e is Extract<GameEvent, { t: 'wishFilled' }> => e.t === 'wishFilled',
+  );
+  if (grown.length === 0 && !wished) return;
+  const beats = () => {
     for (const e of grown) transformBeat(e, after);
+    if (wished) wishBeat(wished, after);
+  };
+  if (!events.some((e) => e.t === 'arrived')) {
+    beats();
     return;
   }
   setTimeout(() => {
-    // Not for a run that's gone, or over a tally that has started since.
-    if (gen !== generation || busy.value) return;
-    for (const e of grown) transformBeat(e, after);
+    // Not for a run that's gone, or over a tally that has started since (the prize just shows).
+    if (gen !== generation) return;
+    if (busy.value) wishHeld.value = false;
+    else beats();
   }, FEEL.transform.afterArrivalMs);
+}
+
+/**
+ * D-205: the lot's wish fills. It plays as a find does (the `findClaimed` beat): the dirt flies
+ * at its feature, then a glint, with its name and its prize over it; the pieces that kept it
+ * company wobble, and the prize pops into Your goods as a delivery's cards do.
+ */
+function wishBeat(e: Extract<GameEvent, { t: 'wishFilled' }>, after: RunState): void {
+  const slot = after.reserve.findIndex((r) => r.wish);
+  const f = FEEL.moments.findRewardMs;
+  const pop = skipping || slot < 0 ? null : { from: 'wish' as const, slots: [slot], delayMs: f };
+  batch(() => {
+    wishHeld.value = false;
+    if (pop) justDelivered.value = { ...pop, id: nextId++ };
+  });
+  if (!pop) return;
+  const id = justDelivered.value!.id;
+  setTimeout(() => {
+    if (justDelivered.value?.id === id) justDelivered.value = null;
+  }, f + FEEL.delivered.popMs);
+  const name = CONTENT.features[e.feature].name;
+  const prize = e.reward.piece
+    ? CONTENT.pieces[e.reward.piece].name
+    : rewardText(CONTENT, e.reward);
+  // Not a score layer, so it reads neutral, as a find's does.
+  popup(e.x + 0.5, Math.max(1.5, e.y), `${name}: ${prize}!`, 'note', FEEL.sparkleStepMs);
+  const at = { x: e.x + 0.5, y: e.y + 0.5 };
+  audio.play('find');
+  boardBurst('dust', at);
+  boardBurst('glints', at, { delayMs: f, scale: 0.8 });
+  audio.play('sparkle', { gain: 0.5, delay: f / 1000 + 0.1 });
+  if (motion()) for (const uid of e.pieces) fxHooks.wobble(uid);
+  shake(FEEL.shake.triggerPx);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -2098,6 +2151,9 @@ onEvents((events, before, after) => {
   // D-181: a room this action finishes keeps its light off until its beat switches it on (with
   // Reduce motion it's just on).
   if (animates(events) && motion() && !instantTally.value) holdLights(finishedBy(before, after));
+  // D-205: so does the lot's wish's prize in Your goods.
+  if (events.some((e) => e.t === 'wishFilled') && motion() && !instantTally.value)
+    wishHeld.value = true;
   chain = chain.then(() => play(events, before, after)).catch((e) => console.error(e));
   if (animates(events)) {
     // Its starting state goes on show now, not when play() starts a microtask later: the
@@ -2134,6 +2190,7 @@ onRunReset(() => {
     lightsHeld.value = new Set();
     lightSwitched.value = null;
     clientVisit.value = null;
+    wishHeld.value = false;
   });
   clearParticles();
 });
