@@ -710,7 +710,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 |---|---|---|
 | `steady` | `amount` | Closet |
 | `neighbor` | `match`, `amount` (negative = penalty), `max?` | Bedroom next to Trees; next to the street; Lawn per adjacent Lawn |
-| `aura` | `match`, `pct?` or `amount?`, `scope: 'adjacent' \| 'region'` | Dining Room boosts the Kitchen; Fire Pit boosts Social neighbors; Mudroom boosts Pet pieces in the fenced yard it borders |
+| `aura` | `match`, `pct?` or `amount?`, `scope: 'adjacent' \| 'region'` | Dining Room and Fire Pit boost Social neighbors (D-201, D-195); Herb Garden boosts the Kitchen; Mudroom boosts Pet pieces in the fenced yard it borders |
 | `rhythm` | `every`, `amount` | Pool |
 | `growth` | `perWeek`, `max?` | Good Bones (granted by a blueprint; counts from the later of placement and purchase) |
 | `enclosure` | `perTile`, `cap?` | Fence: per tile of the fenced yards it borders, with the cap on the total |
@@ -1735,7 +1735,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Shape variants:** separate cards (Kitchen and L-Kitchen; short and long Hallway) sharing a type for specs and sets.
 - **Building over Trees:** allowed and free; the Tree is gone.
 - **Lawn:** a 2×2 piece (was 1×1, so a big lot fills in; D-049), +1 per adjacent Lawn, at most 4. This replaces "per connected Lawn tile", which grows quadratically.
-- **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3).
+- **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3). The Doghouse's Green neighbors (D-201) need none: a 1×1 touches four at most.
 - **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces (`special`) arrive through the shop (M3a) or a client or crew (M4a and M4b), at weight 0 but for the Henhouse and the Library, which the draw deals at 5 from Framing too (D-200). A special piece's `fromPhase` gates only its own weight: a client's or crew's weight deals it from week 1, as before (Count Vladislav's Library, the Architect's). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160). The Hallway and the Fence draw at 5 (D-197), since the standing stock keeps one of each in Your goods; the Long Hallway and the Driveway stay at 10.
 
 ### M2
@@ -1936,7 +1936,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 | Bedroom | `steady 3`; `neighbor {any: [tree, tag Quiet]} +1 max 3`; `neighbor {tag Loud} −2` | M1 |
 | Bathroom | `neighbor bedroom +3 max 1`; `neighbor kitchen −2` | M1 |
 | Kitchen (2×2) and L-Kitchen | Two cards. The L is the 3-tile `['#.', '##']` with `countsAs: 'kitchen'`. Both: `neighbor [diningRoom, herbGarden] +2`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
-| Dining Room | `aura [kitchen, livingRoom] +50% adjacent`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
+| Dining Room | `aura {tag Social} +50% adjacent` (D-201; was `[kitchen, livingRoom]`); `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Living Room | `neighbor {property viewSource} +2 max 3`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Closet | `steady 1`; Suite member | M2 |
 | Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
@@ -1952,7 +1952,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 | Sapling | A pack of 1 to 3 tiles in a line (`pack { maxTiles 3, shapes [#, ##, ###] }`, D-195); `steady 1` for the pack; `transform into tree after 4`, every tile a Tree | M2 (D-195: was one tile) |
 | Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor [flowerBed, boulder] +1` (D-145: Boulders count) | M2 |
 | Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent`; `neighbor oldShed +2, max 1` (D-145) | M2 |
-| Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: the Patio rule) |
+| Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor {tag Social ∧ property room} +2` (D-201; was `[livingRoom, kitchen]`); `neighbor {property viewSource} +1 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: the Patio rule) |
 | Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
 | Driveway | A pack of 1–8 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards; 1–6 tiles until D-140); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `neighbor garage +3, max 1`; `conditional {in: frontYard} → steady 2`, the whole drive in the front yard (D-166; D-140 had `steady 1`, and before it `conditional {in: frontYard} → steady 1`) | M2 (M4a: the pack; D-140) |
 
@@ -1960,7 +1960,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 
 | Item | Encoding | Built in |
 |---|---|---|
-| Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1`; `conditional {in: backYard} → steady 1` (D-166) | M2 |
+| Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor {tag Green} +1` (D-201; was `lawn`); `conditional {in: backYard} → steady 1` (D-166) | M2 |
 | Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105); `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: not counting each other) |
 | Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent`; `neighbor oldShed +4, max 1` (D-145) | M2 |
 

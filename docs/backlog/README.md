@@ -136,7 +136,7 @@ reading the code, not from building anything.
 | [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Built 2026-11-20 (D-198); waiting on the user's playtest |
 | [S31](s31-landmarks-with-reach.md) | A Pool, a Library, a Henhouse and a new Fountain pay what's within 2 tiles, shaded while you place them | M | Rules, content, UI and one sprite | | Not started; the user picked it 2026-11-20 |
 | [S32](s32-specials-in-the-hand.md) | The shop's special pieces turn up in the hand from Framing, once each pays its way | S per stage | Content and a little rules | Stage 2: S31 and S25 played | Stage 1 built 2026-11-22 (D-200, `phase/specials-in-the-hand`): the Henhouse and the Library; waiting on the user's playtest. Stage 2 not started |
-| [S33](s33-categories-not-names.md) | The Patio, Dining Room and Doghouse read a kind of piece, not one name | S | Content | | Not started; the user picked it 2026-11-20 |
+| [S33](s33-categories-not-names.md) | The Patio, Dining Room and Doghouse read a kind of piece, not one name | S | Content | | Built 2026-11-22 (D-201, `phase/categories-not-names`); waiting on the user's playtest |
 
 ## The groups
 
