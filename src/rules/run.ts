@@ -460,9 +460,15 @@ export interface Rules {
   previewStrike(state: RunState, i: number): StrikePreview;
   /**
    * D-186: whether hand card i can be pinned for next week now, or its pin taken off, and why
-   * not: the card last week's pin kept can't be pinned again.
+   * not: the card last week's pin kept can't be pinned again, and D-207, no card can be in the
+   * run's last week.
    */
   canPin(state: RunState, i: number): Availability;
+  /**
+   * D-207: whether this is the run's last week, which no week follows: the last phase's last
+   * week, or an overtime week of it, with no overtime left. Its tally ends the run, won or lost.
+   */
+  lastWeekOfRun(state: RunState): boolean;
   /**
    * D-196: whether shop offer i can be held for the next visit now, or let go, and why not: not
    * a service, a sold good, one the run couldn't own by then, or in a shop no shop follows.
@@ -1957,13 +1963,18 @@ export function createRules(content: Content): Rules {
 
   /** A phase starts (after the shop): say if its target is already met, then its first week. */
   function startPhase(state: RunState, events: GameEvent[]): RunState {
+    // D-207: the card a pin carried past the milestone comes into this first week, unless its
+    // type was struck since (an old run code's typed strike, D-076), as a strike takes a pin.
+    const { pinnedOver, ...rest } = state;
+    const keep =
+      pinnedOver && !isStruck(content, rest.struck, pinnedOver.card) ? pinnedOver : undefined;
     // Again here, so a Foreman bought in the shop counts from this phase.
-    const s = { ...state, rerollsLeft: rule(state, 'rerollsPerPhase') };
+    const s = { ...rest, rerollsLeft: rule(state, 'rerollsPerPhase') };
     const target = targetOf(s);
     if (s.score >= target) {
       events.push({ t: 'targetReached', phase: s.phase, target, score: s.score });
     }
-    return startWeek(s, events);
+    return startWeek(s, events, keep);
   }
 
   /** Adds a tally to the run: score, budget, the tally event, new sets, and targetReached. */
@@ -2033,13 +2044,14 @@ export function createRules(content: Content): Rules {
 
   /** End of week, after the tally: early completion, the milestone, overtime, or the next week. */
   /**
-   * `keep`: the card a pin carries into the next week (D-186). It comes into the phase's next
-   * week or an overtime week; a milestone (its shop) and Complete early drop it.
+   * `keep`: the card a pin carries into the next week you play (D-186): the phase's next week,
+   * an overtime week, or past a milestone and its shop (Complete early's too), the next phase's
+   * first week (D-207). The end of the run drops it.
    */
   function afterTally(s: RunState, events: GameEvent[], keep?: Keep): RunState {
     const target = targetOf(s);
     if (s.overtimeWeek === 0 && s.slot < W && s.autoComplete && s.score >= target) {
-      return completeEarly(s, W - s.slot, false, events);
+      return completeEarly(s, W - s.slot, false, events, keep);
     }
     if (s.overtimeWeek > 0 || s.slot >= W) return endOfPhase(s, events, keep);
     return startWeek({ ...s, slot: s.slot + 1, week: s.week + 1 }, events, keep);
@@ -2049,7 +2061,8 @@ export function createRules(content: Content): Rules {
     const target = targetOf(s);
     const forced = s.forcedMiss === s.phase && s.overtimeWeek === 0;
     if (s.score >= target && !forced) {
-      return resolveMilestone(s, s.overtimeWeek > 0 ? 'overtime' : 'onTime', 0, null, events);
+      const result = s.overtimeWeek > 0 ? 'overtime' : 'onTime';
+      return resolveMilestone(s, result, 0, null, events, keep);
     }
     if (s.overtimeLeft > 0) {
       const next: RunState = {
@@ -2072,12 +2085,14 @@ export function createRules(content: Content): Rules {
     return resolveMilestone(s, 'failed', 0, null, events);
   }
 
+  /** `keep`: the card a pin carries past the milestone, if the run goes on (D-207). */
   function resolveMilestone(
     s: RunState,
     result: MilestoneResult,
     weeksSaved: number,
     bonus: { score: number; budget: number } | null,
     events: GameEvent[],
+    keep?: Keep,
   ): RunState {
     const target = targetOf(s);
     // Savings Account (M3b): +1 per 5 budget held, up to `interestMax`, before the reward.
@@ -2148,6 +2163,9 @@ export function createRules(content: Content): Rules {
       phaseStartScore: next.score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
       strikesLeft: next.strikesLeft + strikes,
+      // D-207: a pin's card waits through the change orders and the shop for the next phase's
+      // first week, as the pin's tip promises: it stays for next week.
+      ...(keep ? { pinnedOver: keep } : {}),
     };
     // M4b, D-144: after milestones 2, 4, and 6, two change orders first, from
     // `co/<milestone>`, to pick one of; with none eligible, straight to the shop.
@@ -2167,7 +2185,9 @@ export function createRules(content: Content): Rules {
     const stocked = openVisit(content, s, number, forced, shelfOf(s));
     const shop = kept.dropped ? { ...stocked, dropped: kept.dropped } : stocked;
     events.push({ t: 'shopOpened', number, offers: shop.offers, sale: shop.sale });
-    // The hand is set aside, and a pin with it (D-186): it doesn't cross a shop.
+    // The hand is set aside, and a pin with it (D-186). After a milestone, the pinned card waits
+    // for the next phase as `pinnedOver` (D-207); the ?debug panel's shop, opened mid-week,
+    // deals a fresh hand in the same week, which takes a pin as a reroll does.
     let next: RunState = { ...unpinned(s), screen: 'shop', hand: [], offers: { shop } };
     // Shop 1's free Housewarming crate: 1 of 3 Common blueprints, to teach blueprints.
     const n = stockFor(content, number).housewarming;
@@ -2185,12 +2205,14 @@ export function createRules(content: Content): Rules {
   /**
    * Fast-forward (§4): the bonus is fixed now; each remaining week then tallies with nothing
    * placed. `manual` means the current week hasn't been tallied yet (its hand is discarded).
+   * `keep`: the card a pin carries past the milestone to the next week played (D-207).
    */
   function completeEarly(
     s: RunState,
     weeksSaved: number,
     manual: boolean,
     events: GameEvent[],
+    keep?: Keep,
   ): RunState {
     const bonus = earlyBonus(
       b,
@@ -2199,7 +2221,7 @@ export function createRules(content: Content): Rules {
       weeksSaved,
       rule(s, 'earlyRewardPct'),
     );
-    // The hand goes, and a pin with it (D-186).
+    // The hand goes: what a pin keeps travels as `keep` (D-207).
     let cur: RunState = { ...unpinned(s), hand: [], draws: 0 };
     for (let k = 0; k < weeksSaved; k++) {
       if (!(manual && k === 0)) {
@@ -2208,7 +2230,7 @@ export function createRules(content: Content): Rules {
       // A fast-forwarded week isn't played, so Last-Minute Push's last week doesn't count.
       cur = recordTally(cur, cur.house, tallyOf(cur, cur.house, true, true), false, true, events);
     }
-    return resolveMilestone(cur, 'early', weeksSaved, bonus, events);
+    return resolveMilestone(cur, 'early', weeksSaved, bonus, events, keep);
   }
 
   function weeksLeft(state: RunState): number {
@@ -2366,6 +2388,11 @@ export function createRules(content: Content): Rules {
   // Pins (D-186): one hand card kept for next week, in its row in place of a fresh card.
 
   const KEPT_AGAIN = 'Kept from last week: it can’t be pinned again.';
+  const NO_WEEK_AFTER = 'No week comes after this one.';
+
+  function lastWeekOfRun(state: RunState): boolean {
+    return state.phase >= phaseCount(b) - 1 && isLastWeek(state) && state.overtimeLeft <= 0;
+  }
 
   function canPin(state: RunState, i: number): Availability {
     if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
@@ -2374,6 +2401,9 @@ export function createRules(content: Content): Rules {
     }
     // Pinned again and again, a card would stand in the hand for good (D-121 turned that down).
     if (i === state.kept) return { ok: false, reason: KEPT_AGAIN };
+    // D-207: a pin keeps its card for the next week played, past a milestone and its shop too,
+    // and the run's last week has none after it, as the last shop has no hold (D-196).
+    if (lastWeekOfRun(state)) return { ok: false, reason: NO_WEEK_AFTER };
     return { ok: true };
   }
 
@@ -3131,7 +3161,8 @@ export function createRules(content: Content): Rules {
       case 'completeEarly': {
         const offer = canCompleteEarly(state);
         if (!offer.ok) throw new IllegalAction(offer.reason!);
-        return done(completeEarly(state, offer.weeksSaved, true, events));
+        // D-207: the pinned card goes on to the next phase's first week.
+        return done(completeEarly(state, offer.weeksSaved, true, events, keepOf(state)));
       }
       case 'setAutoComplete':
         if (typeof action.on !== 'boolean') throw new IllegalAction('Bad toggle.');
@@ -4454,6 +4485,7 @@ export function createRules(content: Content): Rules {
     canStrikeCard,
     previewStrike,
     canPin,
+    lastWeekOfRun,
     canHold,
     canUseTool: (state, action) => canUseTool(toolCtx, state, action),
     previewTool: (state, action) => {

@@ -17,10 +17,12 @@
 //   of the hand stays, and no later hand deals the type; +1 strike adds one, and an old run
 //   code's typed strike (D-084) strikes its type and adds none;
 // - a pin (D-186) is a free action too: it pins a hand card, moves the pin, or takes it off,
-//   and the hand stays; the week after, if no milestone comes first, holds the card in its row
-//   at the slot it was pinned from, in place of a card of that week's own draw, which nothing
-//   else shifts; a reroll and the Catalog leave the kept card where it is and take a pin with
-//   its card, and so does a strike of its type;
+//   and the hand stays; the next week played holds the card in its row at the slot it was
+//   pinned from, in place of a card of that week's own draw, which nothing else shifts; past a
+//   milestone (D-207) the card waits through the change orders and the shop, and the next
+//   phase's first week holds it the same way, unless the shop struck its type; the run's end
+//   keeps nothing, and its last week has no pin; a reroll and the Catalog leave the kept card
+//   where it is and take a pin with its card, and so does a strike of its type;
 // - a hold (D-196) is a free action too: it holds a shop good, moves the hold, or lets it go,
 //   and nothing else changes; canHold agrees with apply(); in the shop the held good is on the
 //   shelf once, unsold; and each stocking after it, a refresh's or the next visit's, puts it back
@@ -68,6 +70,7 @@ import {
   stream,
   weekTotal,
 } from '../src/rules/index.ts';
+import { isStruck } from '../src/rules/draw.ts';
 import { drawnBefore, keptInto, rowSlot } from '../src/rules/testing.ts';
 import { findMove, makeChaos, offerKind } from './policies/chaos.ts';
 import { SimError, simulateRun } from './simulate.ts';
@@ -150,6 +153,26 @@ const onShelf = (s: RunState, good: unknown) =>
 function withoutPin(s: RunState): RunState {
   const { pinned: _pinned, ...rest } = s;
   return rest;
+}
+
+/**
+ * D-207: from past a milestone into the next phase's first week, the shortest way: the first
+ * change order picked, an open crate let go, and the shop left.
+ */
+function intoPhase(s: RunState): { state: RunState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  for (let n = 0; n < 8 && (s.screen === 'changeOrder' || s.screen === 'shop'); n++) {
+    const a: Action =
+      s.screen === 'changeOrder'
+        ? { t: 'answerChangeOrder', i: 0 }
+        : s.offers?.pick
+          ? { t: 'pick', i: -1 }
+          : { t: 'leaveShop' };
+    const out = rules.apply(s, a);
+    events.push(...out.events);
+    s = out.state;
+  }
+  return { state: s, events };
 }
 
 /** Whether apply() accepts the action: true, false for an IllegalAction, or the other error. */
@@ -338,6 +361,7 @@ class Checker {
     }
     if (a.t === 'strikeCard') this.checkStrike(s, a, out.state, out.events);
     if (a.t === 'pin') this.checkPin(s, a, out.state, out.events);
+    if (s.pinnedOver !== undefined) this.checkPinnedOver(s, out.state);
     if (a.t === 'hold') this.checkHold(s, a, out.state, out.events);
     this.checkHeldBack(s, out.state, out.events);
     if (a.t === 'reroll' || (a.t === 'useTool' && out.events.some((e) => e.t === 'handDrawn'))) {
@@ -585,9 +609,10 @@ class Checker {
 
   /**
    * D-186: a pin is a free action. It pins hand card i, moves the pin there, or takes it off,
-   * and the hand, the week and the draws stay. The week after (a pass here), unless a milestone
-   * comes first, holds the card in its row at the slot it was pinned from, in place of a card of
-   * that week's own draw: the same week without the pin draws the rest.
+   * and the hand, the week and the draws stay. The next week played (after a pass here, and
+   * D-207, past a milestone, the change orders and the shop) holds the card in its row at the
+   * slot it was pinned from, in place of a card of that week's own draw: the same week without
+   * the pin draws the rest. The run's end keeps nothing.
    */
   checkPin(
     s: RunState,
@@ -608,26 +633,68 @@ class Checker {
       this.fail('a pin sent no cardPinned event, or the wrong one', e);
     if (!on) return;
     const card = s.hand[a.i]!;
-    const withPin = rules.apply(out, { t: 'pass' });
-    const without = rules.apply(withoutPin(out), { t: 'pass' });
-    const next = withPin.state;
-    if (withPin.events.some((x) => x.t === 'milestone') || !isBuild(next)) {
-      if (next.kept !== undefined || next.pinned !== undefined)
-        this.fail('a pin crossed a milestone');
-      return;
+    const slot = rowSlot(CONTENT, s.hand, a.i);
+    let withPin = rules.apply(out, { t: 'pass' });
+    let without = rules.apply(withoutPin(out), { t: 'pass' });
+    if (!isBuild(withPin.state)) {
+      // D-207: past a milestone the run goes on from, the card waits for the next phase's first
+      // week; the run's end keeps nothing.
+      const goesOn = withPin.state.screen === 'shop' || withPin.state.screen === 'changeOrder';
+      const want = goesOn ? { card, k: slot } : undefined;
+      const over = withPin.state.pinnedOver;
+      if (withPin.state.kept !== undefined || withPin.state.pinned !== undefined)
+        this.fail('a pin or a kept card outlasted the hand');
+      if (J(over) !== J(want))
+        this.fail('a pin’s card didn’t wait past the milestone, or outlived the run', {
+          over,
+          want,
+        });
+      if (!goesOn) return;
+      this.see('check:pinOver');
+      withPin = intoPhase(withPin.state);
+      without = intoPhase(without.state);
+      if (!isBuild(withPin.state)) {
+        this.fail('the way into the next phase didn’t get there', withPin.state.screen);
+        return;
+      }
     }
+    const next = withPin.state;
     this.see('check:pinKept');
     const k = next.kept;
     if (k === undefined || J(next.hand[k]) !== J(card)) {
       this.fail('the pinned card isn’t kept in next week’s hand', { card, kept: k });
       return;
     }
-    if (next.pinned !== undefined) this.fail('a pin outlasted its week');
+    if (next.pinned !== undefined || next.pinnedOver !== undefined)
+      this.fail('a pin outlasted its week');
     const drawn = firstHand(withPin.events);
     const plain = firstHand(without.events);
-    const expected = plain && keptInto(CONTENT, plain, card, rowSlot(CONTENT, s.hand, a.i)).hand;
+    const expected = plain && keptInto(CONTENT, plain, card, slot).hand;
     if (J(drawn) !== J(expected)) this.fail('a pin shifted next week’s draw', { drawn, expected });
     if (rules.canPin(next, k).ok) this.fail('a kept card can be pinned again');
+  }
+
+  /**
+   * D-207: the card a pin carried past a milestone waits, unchanged, through the change orders
+   * and the shop, and the next phase's first week takes it in as its kept card, unless the shop
+   * struck its type (an old run code's typed strike), which takes it as a strike takes a pin.
+   */
+  checkPinnedOver(s: RunState, out: RunState) {
+    const over = s.pinnedOver!;
+    if (!isBuild(out)) {
+      if (J(out.pinnedOver) !== J(over))
+        this.fail('a pin’s card didn’t wait through the shop', { was: over, now: out.pinnedOver });
+      return;
+    }
+    if (out.pinnedOver !== undefined) this.fail('a pin’s card waited past its phase’s start');
+    const k = out.kept;
+    if (isStruck(CONTENT, out.struck, over.card)) {
+      if (k !== undefined && J(out.hand[k]) === J(over.card))
+        this.fail('a struck type came back as the kept card', over.card);
+      return;
+    }
+    if (k === undefined || J(out.hand[k]) !== J(over.card))
+      this.fail('the card a pin carried past a milestone isn’t kept', { card: over.card, kept: k });
   }
 
   /**
@@ -1007,6 +1074,10 @@ class Checker {
         this.fail(`${k} points at no hand card`, { [k]: v, hand: s.hand.length });
     }
     if (s.pinned !== undefined && s.pinned === s.kept) this.fail('the kept card is pinned again');
+    // D-207: a pin's card waits past a milestone only on the change order and shop screens.
+    if (s.pinnedOver !== undefined && s.screen !== 'changeOrder' && s.screen !== 'shop')
+      this.fail('a pin’s card waits off the shop and change order screens', s.screen);
+    if (s.pinned !== undefined && rules.lastWeekOfRun(s)) this.fail('a pin in the run’s last week');
     const drawn = events.findLast((e) => e.t === 'handDrawn');
     if (drawn?.t === 'handDrawn' && isBuild(s) && drawn.kept !== s.kept)
       this.fail('handDrawn’s kept card isn’t the state’s', { event: drawn.kept, state: s.kept });
@@ -1238,6 +1309,7 @@ const CHECKS: readonly string[] = [
   'check:strikeBuys',
   'check:pin',
   'check:pinKept',
+  'check:pinOver',
   'check:keptRedraw',
   'check:hold',
   'check:holdRefresh',
