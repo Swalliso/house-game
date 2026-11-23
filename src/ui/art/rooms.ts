@@ -74,15 +74,25 @@
 // Count. It lies down after everything else, the lamp included, where the furniture leaves floor
 // free, so nothing else moves and a full room goes without. Only the board's house has one: a
 // piece alone (a card's picture, the ghost) never does.
+//
+// A Closet dresses by the older rooms it shares a wall with (D-216, closetDress): beside a Bedroom
+// it holds clothes, in its arrangement; else beside a Kitchen it's the pantry (a shelf of jars, a
+// tin and a box of cereal, our own drawing, and a sack of flour), else beside a Bathroom the
+// laundry (a washer and a basket). Only rooms built before it count, so building a room never
+// changes an older one (D-173); demolishing the Kitchen or Bathroom it was built beside does. Its
+// ghost reads the rooms it will touch (closetLook), so it still shows what will be built. A card's
+// picture holds clothes.
 
 import {
   CONTENT,
   isFinished,
+  type Cell,
   type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
 } from '../../rules/index.ts';
+import { isIndoor, occupancy, uidAt } from '../board/geometry.ts';
 import {
   EDGE,
   WALL,
@@ -92,6 +102,7 @@ import {
   inset,
   overlaps,
   uidHash,
+  type ClosetDress,
   type HouseModel,
   type PieceLook,
   type Rect,
@@ -230,6 +241,8 @@ const BACK: Readonly<Record<string, number>> = {
   'hall-bench': 10,
   // D-183: the client's own things. The candle hangs on the north wall's band and face.
   'wall-candle': 14,
+  // D-216: a pantry's shelf, as high over the floor as a Closet's rail, so it stands where that does.
+  'own-pantry': 15,
 };
 
 function family(sprite: ArtId): string {
@@ -335,6 +348,43 @@ function floorIn(m: HouseModel, room: Room): Pick<Geo, 'ix0' | 'iy0' | 'ix1' | '
   };
 }
 
+/**
+ * The straight stretches of `cells` along each row, of the cells `keep` keeps: each one's row
+ * (`y`), its columns west to east, and its extent inside the side walls (lot art px).
+ */
+function stretches(
+  m: HouseModel,
+  cells: readonly Cell[],
+  keep: (x: number, y: number) => boolean,
+): { y: number; cols: number[]; x0: number; x1: number }[] {
+  const rows = new Map<number, number[]>();
+  for (const c of cells) {
+    if (!keep(c.x, c.y)) continue;
+    const list = rows.get(c.y);
+    if (list) list.push(c.x);
+    else rows.set(c.y, [c.x]);
+  }
+  const out: { y: number; cols: number[]; x0: number; x1: number }[] = [];
+  for (const [y, xs] of rows) {
+    xs.sort((a, b) => a - b);
+    for (let i = 0; i < xs.length;) {
+      let j = i;
+      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
+      const cols = xs.slice(i, j + 1);
+      const first = cols[0]!;
+      const last = cols[cols.length - 1]!;
+      out.push({
+        y,
+        cols,
+        x0: first * CELL + inset(m, first, y, 'W'),
+        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
+      });
+      i = j + 1;
+    }
+  }
+  return out;
+}
+
 function analyze(m: HouseModel, room: Room): Geo {
   const { cells } = room;
   const g: Geo = {
@@ -351,66 +401,32 @@ function analyze(m: HouseModel, room: Room): Geo {
   };
 
   // North wall runs: each row's cells with a face, in straight stretches.
-  const runs: Run[] = [];
-  const rows = new Map<number, number[]>();
-  for (const c of cells) {
-    if (!hasFace(m, c.x, c.y)) continue;
-    const list = rows.get(c.y);
-    if (list) list.push(c.x);
-    else rows.set(c.y, [c.x]);
-  }
-  for (const [y, xs] of rows) {
-    xs.sort((a, b) => a - b);
-    for (let i = 0; i < xs.length;) {
-      let j = i;
-      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
-      const cols = xs.slice(i, j + 1);
-      const first = cols[0]!;
-      const last = cols[cols.length - 1]!;
-      let bottom = y;
-      while (cols.every((x) => inRoom(g, x, bottom + 1))) bottom++;
-      runs.push({
-        x0: first * CELL + inset(m, first, y, 'W'),
-        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
-        yb: Math.max(...cols.map((x) => y * CELL + inset(m, x, y, 'N'))),
-        top: y * CELL,
-        shared: cols.some((x) => edge(m, x, y, 'N') === EDGE.inner),
-        rb: (bottom + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, bottom, 'S'))),
-        row: y,
-      });
-      i = j + 1;
-    }
-  }
+  const runs: Run[] = stretches(m, cells, (x, y) => hasFace(m, x, y)).map(({ y, cols, x0, x1 }) => {
+    let bottom = y;
+    while (cols.every((x) => inRoom(g, x, bottom + 1))) bottom++;
+    return {
+      x0,
+      x1,
+      yb: Math.max(...cols.map((x) => y * CELL + inset(m, x, y, 'N'))),
+      top: y * CELL,
+      shared: cols.some((x) => edge(m, x, y, 'N') === EDGE.inner),
+      rb: (bottom + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, bottom, 'S'))),
+      row: y,
+    };
+  });
   // The widest first, then the northmost, then the westmost.
   runs.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || p.row - q.row || p.x0 - q.x0);
   g.runs = runs;
   // South wall runs: each row's cells with a wall on their south edge (not where a hall opens on
   // into the next, D-159), in straight stretches; the widest first, then the southmost.
-  const south: SouthRun[] = [];
-  const souths = new Map<number, number[]>();
-  for (const c of cells) {
-    if (edge(m, c.x, c.y, 'S') === EDGE.none) continue;
-    const list = souths.get(c.y);
-    if (list) list.push(c.x);
-    else souths.set(c.y, [c.x]);
-  }
-  for (const [y, xs] of souths) {
-    xs.sort((a, b) => a - b);
-    for (let i = 0; i < xs.length;) {
-      let j = i;
-      while (j + 1 < xs.length && xs[j + 1] === xs[j]! + 1) j++;
-      const cols = xs.slice(i, j + 1);
-      const first = cols[0]!;
-      const last = cols[cols.length - 1]!;
-      south.push({
-        x0: first * CELL + inset(m, first, y, 'W'),
-        x1: (last + 1) * CELL - inset(m, last, y, 'E'),
-        yt: (y + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, y, 'S'))),
-        row: y,
-      });
-      i = j + 1;
-    }
-  }
+  const south: SouthRun[] = stretches(m, cells, (x, y) => edge(m, x, y, 'S') !== EDGE.none).map(
+    ({ y, cols, x0, x1 }) => ({
+      x0,
+      x1,
+      yt: (y + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, y, 'S'))),
+      row: y,
+    }),
+  );
   south.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || q.row - p.row || p.x0 - q.x0);
   g.south = south;
   const doors = m.doors.filter((d) => d.a === room.uid || d.b === room.uid);
@@ -1270,6 +1286,26 @@ function closet(c: Ctx, rail: SpriteId, below: SpriteId): Want[] {
 }
 
 /**
+ * D-216: a Closet's pantry and laundry, in place of its arrangement: the pantry's shelf of jars and
+ * tins and a sack of flour where there's floor for it, or a washer and a laundry basket. A big one
+ * (D-168) takes a second shelf, or a second machine for the drying, beside the first.
+ */
+const DRESSES: Readonly<Record<ClosetDress, (c: Ctx) => Want[]>> = {
+  pantry: (c) => [
+    { sprites: ['own-pantry'], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    ...(c.big ? [want('own-pantry', ...corners(c, 'NL', 'NR'))] : []),
+    want('own-sack', 'S', 'C'),
+  ],
+  laundry: (c) => [
+    { sprites: ['washer'], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    ...(c.big ? [want('washer', ...corners(c, 'NL', 'NR'))] : []),
+    want(pick(HAMPERS, c.rank), 'S', 'C'),
+  ],
+};
+
+/**
  * A Home Office's old computer between two narrow bookcases where the room is deep enough for
  * them (a lamp and a plant on side tables where it isn't), a square rug, a globe.
  */
@@ -1348,14 +1384,16 @@ interface Theirs {
 /** Rugs, runners and mats lie under the furniture: left out of how much of it a room keeps. */
 const UNDERFOOT = /^(rug-|runner-|mat-|bath-mat)/;
 
-/**
- * How much furniture a layout has: its pieces' area in art px, what lies underfoot left out, and
- * the house cat (D-185), which isn't furniture.
- */
+/** Whether an item is furniture: not what lies underfoot, nor the house cat (D-185). */
+function isFurniture(it: Item): boolean {
+  return !UNDERFOOT.test(it.sprite) && !isCat(it.sprite);
+}
+
+/** How much furniture a layout has (isFurniture): its pieces' area in art px. */
 function furniture(l: RoomLayout): number {
   let n = 0;
   for (const it of l.items) {
-    if (UNDERFOOT.test(it.sprite) || isCat(it.sprite)) continue;
+    if (!isFurniture(it)) continue;
     const { w, h } = artSize(it.sprite);
     n += w * h;
   }
@@ -1391,6 +1429,18 @@ export function theirsIn(
   return first;
 }
 
+/** Whether a want stands beside the one before it: NL or NR on its wall, CL or CR on the floor. */
+function beside(w: Want | undefined): boolean {
+  return /^[NC][LR]$/.test(w?.slots[0] ?? '');
+}
+
+/** Where the group of want `i` ends: just past it and the wants after it that stand beside it. */
+function groupEnd(wants: readonly Want[], i: number): number {
+  let end = i + 1;
+  while (end < wants.length && beside(wants[end])) end++;
+  return end;
+}
+
 /**
  * `wants` with `extra` among them, in each place it can go: last first, where nothing makes way
  * for it, then one place earlier at a time, so the least of the room's furniture does, down to
@@ -1399,9 +1449,7 @@ export function theirsIn(
  * sofa that its doors push into the middle of the room).
  */
 function placesFor(wants: readonly Want[], extra: Want): Want[][] {
-  const beside = (w: Want | undefined) => /^[NC][LR]$/.test(w?.slots[0] ?? '');
-  let key = 1;
-  while (key < wants.length && beside(wants[key])) key++;
+  const key = groupEnd(wants, 0);
   const ways: Want[][] = [];
   for (let i = wants.length; i >= key; i--) {
     if (!beside(wants[i])) ways.push([...wants.slice(0, i), extra, ...wants.slice(i)]);
@@ -1449,7 +1497,8 @@ function coffinRoom(wants: readonly Want[], c: Ctx): Want[][] {
  */
 function inPlaceOf(wants: readonly Want[], sprite: ArtId, small: RegExp): Want[][] {
   const ways: Want[][] = [];
-  for (let i = 1; i < wants.length && /^[NC][LR]$/.test(wants[i]!.slots[0] ?? ''); i++) {
+  const key = groupEnd(wants, 0);
+  for (let i = 1; i < key; i++) {
     const w = wants[i]!;
     if (w.fixture || !w.sprites.every((sp) => small.test(sp))) continue;
     ways.push(wants.map((x, j) => (j === i ? { sprites: [sprite], slots: [w.slots[0]!] } : x)));
@@ -1458,43 +1507,40 @@ function inPlaceOf(wants: readonly Want[], sprite: ArtId, small: RegExp): Want[]
 }
 
 /**
- * The Barkers' first Living Room: the dogs' bed (our own drawing, as in Nana's Room) in a south
- * corner, else on the floor in front, by the south wall, a side wall or the north wall. Where the
- * room is full, it takes the place of a plant or a lamp beside the sofa, the bookcase or the
- * television, or some of the room's furniture makes way for it (placesFor): whichever keeps the
- * most furniture (THEIRS' `most`).
+ * The dogs' bed: our own drawing, in Nana's Room, the Barkers' Living Room (D-183) and a Dog
+ * Door's room, with the dog in it (D-210).
  */
-function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
-  const [anywhere, ...ways] = placesFor(wants, {
-    sprites: ['own-dog-bed'],
+const DOG_BED: ArtId = 'own-dog-bed';
+
+/**
+ * The dogs' bed as a want, the Barkers' and a Dog Door's: in a south corner, else on the floor in
+ * front, by the south wall, a side wall or the north wall.
+ */
+function dogBedWant(c: Ctx): Want {
+  return {
+    sprites: [DOG_BED],
     slots: [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N', 'NW', 'NE'],
-  });
-  return [anywhere!, ...inPlaceOf(wants, 'own-dog-bed', /^(plant-|side-|lamp-)/), ...ways];
+  };
 }
 
 /**
- * D-210: a Dog Door's room has a dog in it, in the dogs' bed: our own drawing, as in Nana's Room
- * and the Barkers' Living Room.
+ * The Barkers' first Living Room: the dogs' bed (dogBedWant). Where the room is full, it takes the
+ * place of a plant or a lamp beside the sofa, the bookcase or the television, or some of the
+ * room's furniture makes way for it (placesFor): whichever keeps the most furniture (THEIRS'
+ * `most`).
  */
-const DOG_BED: ArtId = 'own-dog-bed';
+function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
+  const [anywhere, ...ways] = placesFor(wants, dogBedWant(c));
+  return [anywhere!, ...inPlaceOf(wants, DOG_BED, /^(plant-|side-|lamp-)/), ...ways];
+}
 
 /**
  * D-210: how many of a room's wants never make way for a Dog Door's dog: the key piece and what
  * stands beside it, and a dining table (one that keeps an aisle for its chairs) with its chairs.
  */
 function keptBefore(wants: readonly Want[]): number {
-  const beside = (w: Want | undefined) => /^[NC][LR]$/.test(w?.slots[0] ?? '');
-  let key = 1;
-  while (key < wants.length && beside(wants[key])) key++;
-  let table = wants.findIndex((w) => w.aisle !== undefined);
-  if (table >= 0) while (table + 1 < wants.length && beside(wants[table + 1])) table++;
-  return Math.max(key, table + 1);
-}
-
-/** The dogs' bed as a want: a south corner first, as the Barkers' (dogsBed). */
-function dogBedWant(c: Ctx): Want {
-  const slots: Slot[] = [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N'];
-  return want(DOG_BED, ...slots, 'NW', 'NE');
+  const table = wants.findIndex((w) => w.aisle !== undefined);
+  return Math.max(groupEnd(wants, 0), table < 0 ? 0 : groupEnd(wants, table));
 }
 
 /**
@@ -1539,6 +1585,7 @@ const CATS: Readonly<Partial<Record<ClientId, SpriteId>>> = {
   vladislav: 'cat-black',
   juniper: 'cat',
   dale: 'cat',
+  bigsbys: 'cat', // D-219
 };
 
 /** The room type the cat lives in: the run's first one of it (catIn). */
@@ -1615,7 +1662,7 @@ function catKeepsOff(m: HouseModel, room: Room): Rect[] {
   // A member in the doorway from their room south of it (people.ts doorwaySpot): their feet on
   // the south edge of its clear floor, anywhere along it.
   const household = m.client ? CONTENT.clients[m.client].household.arrivals : [];
-  const members = new Set(household.flatMap((a) => a.room));
+  const members = new Set(household.flatMap((a) => a.room ?? []));
   for (const dw of m.doors) {
     const south = dw.dir === 'h' && dw.a === room.uid ? m.rooms.get(dw.b) : undefined;
     if (!south || !members.has(south.defId)) continue;
@@ -1631,7 +1678,8 @@ function catKeepsOff(m: HouseModel, room: Room): Rect[] {
     const { mat, gap } = front;
     const mid = mat.x + mat.w / 2;
     const built = new Set([...m.rooms.values()].map((r) => r.defId));
-    const n = household.filter((a) => !a.room.some((id) => built.has(id))).length;
+    // D-219: a member with no room of their own (the Bigsbys') has no figure, so never waits.
+    const n = household.filter((a) => a.room && !a.room.some((id) => built.has(id))).length;
     heads(mid - (n / 2 + 1) * pair - 1, mid + (n / 2) * pair + figure.w + 1, mat.y + mat.h, gap.y);
   }
   return out;
@@ -1693,9 +1741,16 @@ function passes(w: Want): readonly Pass[] {
 interface Placed {
   item: Item;
   want: Want;
-  /** Its footprint for collisions: the sprite below the band. Flat pieces have none. */
+  /** Its footprint for collisions: the sprite below the band (footOf). Flat pieces have none. */
   rect: Rect | null;
   run: Run | null;
+}
+
+/** The footprint of `sprite` at (x, y): below the band of the north run it stands against, if any. */
+function footOf(sprite: ArtId, x: number, y: number, run: Run | null): Rect {
+  const { w, h } = artSize(sprite);
+  const top = run ? Math.max(y, run.yb) : y;
+  return { x, y: top, w, h: y + h - top };
 }
 
 class Layout {
@@ -1723,11 +1778,10 @@ class Layout {
   }
 
   add(want: Want, sprite: ArtId, x: number, y: number, run: Run | null, flat = false): Placed {
-    const { w, h } = artSize(sprite);
+    const { w } = artSize(sprite);
     const item: Item = { sprite, x, y };
     if (run && y < run.yb) item.over = run.yb;
-    const top = run ? Math.max(y, run.yb) : y;
-    const p: Placed = { item, want, rect: flat ? null : { x, y: top, w, h: y + h - top }, run };
+    const p: Placed = { item, want, rect: flat ? null : footOf(sprite, x, y, run), run };
     this.placed.push(p);
     if (run) {
       const t = this.taken.get(run);
@@ -1749,20 +1803,11 @@ class Layout {
   }
 
   /** Whether `sprite` fits at (x, y) against run `r`: on the floor, clear, and off its windows if the pass says so. */
-  fitsWall(
-    r: Run,
-    sprite: ArtId,
-    x: number,
-    y: number,
-    pass: Pass,
-    also: readonly Rect[] = [],
-  ): boolean {
-    const { w, h } = artSize(sprite);
+  fitsWall(r: Run, sprite: ArtId, x: number, y: number, pass: Pass): boolean {
+    const { w } = artSize(sprite);
     if (x < r.x0 - 1 || x + w > r.x1 + 1) return false;
-    const top = Math.max(y, r.yb);
-    const foot = { x, y: top, w, h: y + h - top };
+    const foot = footOf(sprite, x, y, r);
     if (!onFloor(this.g, foot, true) || !this.free(foot, 0, pass.walkways)) return false;
-    if (also.some((a) => overlaps(foot, a))) return false;
     return (
       !pass.windows ||
       y >= r.yb ||
@@ -1855,29 +1900,48 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
       ...chosen.filter(([m]) => m.slots[0] === 'NR'),
     ] as (readonly [Want, ArtId])[];
   };
+  /**
+   * The pieces side by side along a wall `span`, from each start in turn (spots: the middle
+   * first): the first line in which each stands where `stand` says (the top of its sprite at x,
+   * or null where it can't stand), clear of the ones before it. Against north run `run`, if any.
+   */
+  const line = (
+    order: readonly (readonly [Want, ArtId])[],
+    span: { x0: number; x1: number },
+    run: Run | null,
+    stand: (w: Want, sprite: ArtId, x: number) => number | null,
+  ): Trial | null => {
+    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
+    for (const start of spots(span.x0, span.x1, total)) {
+      let x = start;
+      const trial: Trial = [];
+      const feet: Rect[] = [];
+      for (const [w, sp] of order) {
+        const y = stand(w, sp, x);
+        if (y === null) break;
+        const foot = footOf(sp, x, y, run);
+        if (feet.some((f) => overlaps(f, foot))) break;
+        trial.push({ want: w, sprite: sp, x, y, run });
+        feet.push(foot);
+        x += foot.w;
+      }
+      if (trial.length === order.length) return trial;
+    }
+    return null;
+  };
   const north = (sprite: ArtId, option: readonly (ArtId | null)[]): Trial | null => {
     const order = orderOf(sprite, option);
-    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
     for (const pass of passes(key)) {
       for (const r of L.g.runs) {
         if (L.taken.has(r)) continue;
-        for (const start of spots(r.x0, r.x1, total)) {
-          let x = start;
-          const trial: Trial = [];
-          const feet: Rect[] = [];
-          for (const [w, sp] of order) {
-            const y = L.wallY(r, sp, w.lift);
-            // Only the key piece may stand in a walkway (a one-cell room's toilet), never what
-            // stands beside it (D-173: a hamper beside the toilet).
-            const p = w === key ? pass : { ...pass, walkways: true };
-            if (y === null || !L.fitsWall(r, sp, x, y, p, feet)) break;
-            const { w: sw, h } = artSize(sp);
-            trial.push({ want: w, sprite: sp, x, y, run: r });
-            feet.push({ x, y: Math.max(y, r.yb), w: sw, h: y + h - Math.max(y, r.yb) });
-            x += sw;
-          }
-          if (trial.length === order.length) return trial;
-        }
+        const trial = line(order, r, r, (w, sp, x) => {
+          const y = L.wallY(r, sp, w.lift);
+          // Only the key piece may stand in a walkway (a one-cell room's toilet), never what
+          // stands beside it (D-173: a hamper beside the toilet).
+          const p = w === key ? pass : { ...pass, walkways: true };
+          return y !== null && L.fitsWall(r, sp, x, y, p) ? y : null;
+        });
+        if (trial) return trial;
       }
     }
     return null;
@@ -1885,24 +1949,14 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
   /** The same group with its feet on a south wall's band, all of it on the floor and clear. */
   const south = (sprite: ArtId, option: readonly (ArtId | null)[]): Trial | null => {
     const order = orderOf(sprite, option);
-    const total = order.reduce((s, [, sp]) => s + artSize(sp).w, 0);
     for (const r of L.g.south) {
-      for (const start of spots(r.x0, r.x1, total)) {
-        let x = start;
-        const trial: Trial = [];
-        const feet: Rect[] = [];
-        for (const [w, sp] of order) {
-          const { w: sw, h } = artSize(sp);
-          const foot = { x, y: r.yt - h, w: sw, h };
-          if (x < r.x0 - 1 || x + sw > r.x1 + 1) break;
-          if (!onFloor(L.g, foot, false) || !L.free(foot)) break;
-          if (feet.some((f) => overlaps(f, foot))) break;
-          trial.push({ want: w, sprite: sp, x, y: foot.y, run: null });
-          feet.push(foot);
-          x += sw;
-        }
-        if (trial.length === order.length) return trial;
-      }
+      const trial = line(order, r, null, (_, sp, x) => {
+        const { w: sw, h } = artSize(sp);
+        const foot = { x, y: r.yt - h, w: sw, h };
+        if (x < r.x0 - 1 || x + sw > r.x1 + 1) return null;
+        return onFloor(L.g, foot, false) && L.free(foot) ? foot.y : null;
+      });
+      if (trial) return trial;
     }
     return null;
   };
@@ -2354,12 +2408,85 @@ function sameType(m: HouseModel, room: Room): number[] {
 /** Which way a room's small choices go: a bit of its uid's hash. */
 const flipOf = (uid: number) => ((uidHash(uid, 7) >>> 3) & 1) === 1;
 
+/** The type a room counts as: a member's room is a Bedroom (D-103), an L-Kitchen a Kitchen. */
+const typeOf = (id: PieceId): PieceId => CONTENT.pieces[id].countsAs ?? id;
+
+/**
+ * D-216: what a Closet holds, by the types of the older rooms it shares a wall with: clothes beside
+ * a Bedroom (a member's room is one), or else the pantry beside a Kitchen (an L-Kitchen is one), or
+ * else the laundry beside a Bathroom, and clothes beside anything else (undefined).
+ */
+export function closetDress(beside: Iterable<PieceId>): ClosetDress | undefined {
+  const types = new Set([...beside].map(typeOf));
+  if (types.has('bedroom')) return undefined;
+  if (types.has('kitchen')) return 'pantry';
+  if (types.has('bathroom')) return 'laundry';
+  return undefined;
+}
+
+const STEPS: readonly (readonly [number, number])[] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+];
+
+/**
+ * The types of the rooms older than room `uid` (built before it: a lower uid) that share a wall
+ * with its `cells` in model `m` (D-216).
+ */
+function olderBeside(m: HouseModel, cells: readonly Cell[], uid: number): PieceId[] {
+  const out: PieceId[] = [];
+  for (const c of cells) {
+    for (const [dx, dy] of STEPS) {
+      const x = c.x + dx;
+      const y = c.y + dy;
+      if (x < 0 || y < 0 || x >= m.width || y >= m.height) continue;
+      const u = m.room[y * m.width + x]!;
+      const other = u !== 0 && u < uid ? m.rooms.get(u) : undefined;
+      if (other) out.push(other.defId);
+    }
+  }
+  return out;
+}
+
+/**
+ * D-216: the look a Closet standing on `cells` will have, by the house's rooms older than it that
+ * it shares a wall with there: placed room `uid` (the Moving Truck carries it, or a card extends
+ * it), or a new one, which every room is older than.
+ */
+function closetLook(
+  house: HouseState,
+  defId: PieceId,
+  cells: readonly Cell[] | undefined,
+  uid = Infinity,
+): Pick<PieceLook, 'dress'> {
+  if (!cells || typeOf(defId) !== 'closet') return {};
+  const occ = occupancy(house);
+  const beside: PieceId[] = [];
+  for (const c of cells) {
+    for (const [dx, dy] of STEPS) {
+      const u = uidAt(occ, c.x + dx, c.y + dy);
+      const other = u !== 0 && u < uid ? occ.byUid.get(u) : undefined;
+      if (other && isIndoor(other.defId)) beside.push(other.defId);
+    }
+  }
+  const dress = closetDress(beside);
+  return dress ? { dress } : {};
+}
+
 /**
  * How placed room `uid` looks (its color, its arrangement, its choices, its fixture, and whether
  * it has the run's `client`'s own things, D-183): its ghost's while the Moving Truck carries it,
- * or while a card extends it (D-168).
+ * or while a card extends it (D-168). `cells` are the ones it will stand on, for a Closet's pantry
+ * or laundry (D-216).
  */
-export function roomLook(house: HouseState, uid: number, client?: ClientId): PieceLook {
+export function roomLook(
+  house: HouseState,
+  uid: number,
+  client?: ClientId,
+  cells?: readonly Cell[],
+): PieceLook {
   const piece = house.pieces.find((p) => p.uid === uid);
   if (!piece) return { color: 0 };
   const same = house.pieces.filter((p) => p.defId === piece.defId).map((p) => p.uid);
@@ -2370,14 +2497,21 @@ export function roomLook(house: HouseState, uid: number, client?: ClientId): Pie
     ...(piece.fixture ? { fixture: piece.fixture.id } : {}),
     ...(isFinished(piece) ? { lit: true } : {}),
     ...(client && theirsIn(house.pieces, client) === uid ? { client } : {}),
+    ...closetLook(house, piece.defId, cells, uid),
   };
 }
 
 /**
  * How a new room of type `defId` will look once it's placed (its uid is the house's next): its
- * ghost's, with the run's `client`'s own things if it will be the first room of their type (D-183).
+ * ghost's, with the run's `client`'s own things if it will be the first room of their type (D-183),
+ * and a Closet's pantry or laundry by the rooms beside `cells`, where it would stand (D-216).
  */
-export function newRoomLook(house: HouseState, defId: PieceId, client?: ClientId): PieceLook {
+export function newRoomLook(
+  house: HouseState,
+  defId: PieceId,
+  client?: ClientId,
+  cells?: readonly Cell[],
+): PieceLook {
   const uid = house.nextUid;
   const same = [...house.pieces.filter((p) => p.defId === defId).map((p) => p.uid), uid];
   return {
@@ -2385,6 +2519,7 @@ export function newRoomLook(house: HouseState, defId: PieceId, client?: ClientId
     flip: flipOf(uid),
     style: arrangementOf(defId, same, uid),
     ...(client && theirsIn([...house.pieces, { uid, defId }], client) === uid ? { client } : {}),
+    ...closetLook(house, defId, cells),
   };
 }
 
@@ -2427,7 +2562,17 @@ function layOut(
   };
   // Its arrangement (D-173): the first is its type's SPECS entry, the others ARRANGEMENTS'.
   const style = look ? (look.style ?? 0) : arrangementOf(room.defId, same, uid);
-  const wants = given ?? ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
+  // D-216: a Closet built beside a Kitchen or a Bathroom is its pantry or its laundry, in any
+  // arrangement; a ghost as its look says it will be.
+  const dress =
+    typeOf(room.defId) !== 'closet'
+      ? undefined
+      : look
+        ? look.dress
+        : closetDress(olderBeside(m, room.cells, uid));
+  const wants =
+    given ??
+    (dress ? DRESSES[dress] : (style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
   // D-183: the client's own things go in over whichever arrangement it has, the first of their
   // ways that shows them (or the one of those that keeps the most furniture), or else the last.
   // Each is weighed as the room stood before it was finished: the lamp a finished room adds
@@ -2533,7 +2678,6 @@ function layOut(
   // (D-210), as in any room: a kitchen's are the plan it keeps, its counter staying where it stood.
   let laid: readonly Want[] = wants.map((w) => (w.alone ? { ...w, alone: undefined } : w));
   if (wants.some((w) => w.alone)) {
-    const shows = (l: RoomLayout, re: RegExp) => l.items.some((it) => re.test(it.sprite));
     const keeps = (l: RoomLayout) => KEPT.every((re) => !shows(out, re) || shows(l, re));
     for (const plan of kitchenPlans(wants)) {
       // The dog lies down in each on free floor only.
@@ -2563,23 +2707,20 @@ function layOut(
   // most makes way for it, and the room keeps the rest of its furniture.
   if (f === 'dogDoor' && !chosen.fixtureShown && !dogWay) {
     const small = /^(plant-|side-|lamp-|nightstand-|nightlamp-)/;
+    const bed = dogBedWant(c);
+    const swaps = inPlaceOf(laid, DOG_BED, small);
     const ways = [
-      ...inPlaceOf(laid, DOG_BED, small),
+      ...swaps,
       // Or the small piece gives way, and the bed goes wherever the floor is free.
-      ...inPlaceOf(laid, DOG_BED, small).map((way) => [
-        ...way.filter((w) => !w.sprites.includes(DOG_BED)),
-        dogBedWant(c),
-      ]),
+      ...swaps.map((way) => [...way.filter((w) => !w.sprites.includes(DOG_BED)), bed]),
     ];
-    for (const way of ways) {
-      const layout = layOut(m, uid, way, lit, true);
-      if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
-    }
     // Else one of the pieces after the key piece's group and any table's makes way: the bed goes
     // down before it, one place earlier at a time, as placesFor puts the Barkers'.
-    const bed = dogBedWant(c);
     for (let i = laid.length - 1; i >= keptBefore(laid); i--) {
-      const layout = layOut(m, uid, [...laid.slice(0, i), bed, ...laid.slice(i)], lit, true);
+      ways.push([...laid.slice(0, i), bed, ...laid.slice(i)]);
+    }
+    for (const way of ways) {
+      const layout = layOut(m, uid, way, lit, true);
       if (layout.fixtureShown && pieces(layout) >= pieces(chosen)) return layout;
     }
   }
@@ -2587,12 +2728,16 @@ function layOut(
 }
 
 /**
- * How many pieces a layout stands in the room: what lies underfoot, the house cat and a Dog
- * Door's dog (D-210) left out.
+ * How many pieces a layout stands in the room: its furniture (isFurniture), a Dog Door's dog
+ * (D-210) left out.
  */
 function pieces(l: RoomLayout): number {
-  return l.items.filter((it) => !UNDERFOOT.test(it.sprite) && !isCat(it.sprite) && it !== l.dog)
-    .length;
+  return l.items.filter((it) => isFurniture(it) && it !== l.dog).length;
+}
+
+/** Whether a layout shows a sprite that `re` matches. */
+function shows(l: RoomLayout, re: RegExp): boolean {
+  return l.items.some((it) => re.test(it.sprite));
 }
 
 /**
@@ -2636,13 +2781,9 @@ const KEPT: readonly RegExp[] = [KITCHEN_TABLE, /^fridge/];
  * without it (D-210).
  */
 function kitchenScore(l: RoomLayout): number[] {
-  const shows = (re: RegExp) => Number(l.items.some((it) => re.test(it.sprite)));
   return [
     Number(l.fixtureShown && !l.dog),
-    shows(/^range/),
-    shows(/^counter/),
-    shows(KITCHEN_TABLE),
-    shows(/^counter-sink/),
+    ...[/^range/, /^counter/, KITCHEN_TABLE, /^counter-sink/].map((re) => Number(shows(l, re))),
     pieces(l),
   ];
 }

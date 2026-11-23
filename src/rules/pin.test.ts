@@ -9,11 +9,19 @@
 // week, which no week follows. Run codes replay it.
 
 import { describe, expect, it } from 'vitest';
-import type { Action, Card, GameEvent, RunState } from './index.ts';
+import type { Action, Card, Content, GameEvent, RunState } from './index.ts';
 import { rowOf } from './draw.ts';
 import { decodeRunCode, encodeRunCode } from './runcode.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
-import { drawnBefore, keptInto, rowSlot, setup, TEST_CONTENT } from './testing.ts';
+import {
+  drawnBefore,
+  emptyRows,
+  houseFrom,
+  keptInto,
+  rowSlot,
+  setup,
+  TEST_CONTENT,
+} from './testing.ts';
 
 const C = TEST_CONTENT;
 const rules = createRules(C);
@@ -366,7 +374,87 @@ describe('past a milestone (D-207)', () => {
     expect(back.week).toBe(1);
     expect(back.kept).toBeUndefined();
   });
+
+  it('a change order the ?debug panel forces mid-week keeps the pin: the card comes next week', () => {
+    const s = rules.apply(rules.newRun(setup('pin-forced-order')), { t: 'pin', i: 1 }).state;
+    const card = s.hand[1]!;
+    const offered = rules.apply(s, {
+      t: 'debug',
+      op: 'forceChangeOrder',
+      id: 'workingFromHome',
+    }).state;
+    expect(offered.screen).toBe('changeOrder');
+    expect('pinnedOver' in offered).toBe(false);
+    // Answered, it goes back to the same week and the same hand, the pin still on its card.
+    const back = rules.apply(offered, { t: 'answerChangeOrder', i: 0 }).state;
+    expect([back.screen, back.week]).toEqual(['build', 1]);
+    expect(back.hand).toEqual(s.hand);
+    expect(back.pinned).toBe(1);
+    const next = run(rules, back, [{ t: 'pass' }]);
+    const want = keptInto(
+      C,
+      drawnBefore(drawnEvent(rules.apply(withoutPin(back), { t: 'pass' }).events)),
+      card,
+      rowSlot(C, s.hand, 1),
+    );
+    expect(drawnBefore(drawnEvent(next.events))).toEqual(want.hand);
+    expect(next.state.kept).toBe(want.i);
+  });
+
+  it('the shop’s own actions and the ?debug panel’s gifts leave the waiting card; its opener and a forced order are refused', () => {
+    const s = lastWeekMet('pin-shop-actions');
+    const card = s.hand[0]!;
+    const shop = run(rules, s, [{ t: 'pin', i: 0 }, { t: 'pass' }]).state;
+    const over = { card, k: rowSlot(C, s.hand, 0) };
+    expect(shop.pinnedOver).toEqual(over);
+    const after = run(rules, shop, [
+      { t: 'debug', op: 'addBudget', amount: 20 },
+      { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'catalog' } },
+      { t: 'sell', from: 'supplies', i: 0 },
+      { t: 'refreshShop' },
+      { t: 'debug', op: 'addScore', amount: 3 },
+      { t: 'setAutoComplete', on: true },
+    ]).state;
+    expect(after.screen).toBe('shop');
+    expect(after.pinnedOver).toEqual(over);
+    // The ?debug panel's shop and forced orders open from the build screen only.
+    expect(() => rules.apply(after, { t: 'debug', op: 'forceShop' })).toThrow(IllegalAction);
+    expect(() =>
+      rules.apply(after, { t: 'debug', op: 'forceChangeOrder', id: 'workingFromHome' }),
+    ).toThrow(IllegalAction);
+    const next = intoPhase(rules, after).state;
+    expect(next.hand[next.kept!]).toEqual(card);
+  });
+
+  it('a milestone missed in an earlier phase, the run lost, keeps nothing; met there, the card waits', () => {
+    // Groundbreaking's second overtime week, with none left: its tally meets the milestone or
+    // ends the run, which the player can't know yet, so a pin is there to set (D-207).
+    const s = run(rules, rules.newRun(setup('pin-lost')), [
+      { t: 'pass' },
+      { t: 'pass' },
+      { t: 'pass' },
+    ]).state;
+    expect([s.phase, s.overtimeWeek, s.overtimeLeft]).toEqual([0, 2, 0]);
+    expect(rules.lastWeekOfRun(s)).toBe(false);
+    const i = s.kept === 0 ? 1 : 0;
+    expect(rules.canPin(s, i)).toEqual({ ok: true });
+    const lost = run(rules, s, [{ t: 'pin', i }, { t: 'pass' }]);
+    expect(lost.events.some((e) => e.t === 'milestone' && e.result === 'failed')).toBe(true);
+    expect(lost.state.screen).toBe('lost');
+    expect('pinned' in lost.state || 'pinnedOver' in lost.state || 'kept' in lost.state).toBe(
+      false,
+    );
+    const met = run(rules, { ...s, score: 5 }, [{ t: 'pin', i }, { t: 'pass' }]).state;
+    expect(met.screen).toBe('shop');
+    expect(met.pinnedOver).toEqual({ card: s.hand[i]!, k: rowSlot(C, s.hand, i) });
+  });
 });
+
+/** The state with no pin: the same week as a player who didn't pin would have it. */
+function withoutPin(s: RunState): RunState {
+  const { pinned: _pinned, ...rest } = s;
+  return rest;
+}
 
 describe('the run’s last week (D-207)', () => {
   /** Foundation, the last phase, in its last week, with `overtime` weeks of overtime left. */
@@ -424,6 +512,67 @@ describe('the run’s last week (D-207)', () => {
     expect(rules.lastWeekOfRun({ ...first, overtimeLeft: 0 })).toBe(false);
     const s = lastPhaseLastWeek('pin-not-last-2', 0);
     expect(rules.lastWeekOfRun({ ...s, slot: 1 })).toBe(false);
+  });
+
+  it('the overtime week the neighbor gives (D-206) is a week after it: a pin carries into it', () => {
+    // Four two-week phases, the last one's target out of reach, and the neighbor's ask at the
+    // third, for 5 tiles of Fence along their side.
+    const asking: Content = {
+      ...C,
+      balance: {
+        ...C.balance,
+        phases: [0, 0, 0, 1e9].map((target, k) => ({ name: `Phase ${k + 1}`, target })),
+        neighborAsk: { phase: 2, piece: 'fence', depth: 2, tiles: 5, reward: { overtime: 1 } },
+      },
+    };
+    const r = createRules(asking);
+    const lot = emptyRows(12, 8);
+    const start = r.newRun(setup('pin-neighbor'));
+    const opening = { ...start, house: houseFrom(asking, lot, [['bedroom', 5, 3]]) };
+    const at = (s: RunState, phase: number, slot: number) =>
+      s.screen === 'build' && s.phase === phase && s.slot === slot;
+    /** Passes, and leaves shops, to `slot` of `phase`. */
+    const to = (s: RunState, phase: number, slot: number) => {
+      for (let n = 0; n < 40 && !at(s, phase, slot); n++)
+        s = r.apply(s, s.screen === 'shop' ? { t: 'leaveShop' } : { t: 'pass' }).state;
+      expect(at(s, phase, slot)).toBe(true);
+      return s;
+    };
+    // The ask comes as the third phase starts; by then no overtime is left.
+    const asked = { ...to(opening, 2, 1), overtimeLeft: 0 };
+    expect(asked.neighbor).toBeDefined();
+    // Five tiles of Fence down both edges: whichever side they asked, it's met.
+    const five = ['#', '#', '#', '#', '#'];
+    const fenced: RunState = {
+      ...asked,
+      house: houseFrom(asking, lot, [
+        ['bedroom', 5, 3],
+        ['fence', 0, 0, 0, five],
+        ['fence', 10, 0, 0, five],
+      ]),
+    };
+    expect(r.neighbor(fenced)).toMatchObject({ met: true });
+
+    // Unmet, the last phase's last week is the run's last.
+    const plain = to(asked, 3, 2);
+    expect(plain.overtimeLeft).toBe(0);
+    expect(r.lastWeekOfRun(plain)).toBe(true);
+    expect(r.canPin(plain, 0)).toEqual({ ok: false, reason: NO_WEEK_AFTER });
+    // Met, the neighbor's week follows it: a pin is there to set, and carries into that week.
+    const s = to(fenced, 3, 2);
+    expect(s.overtimeLeft).toBe(1);
+    expect(r.lastWeekOfRun(s)).toBe(false);
+    const i = s.kept === 0 ? 1 : 0;
+    expect(r.canPin(s, i)).toEqual({ ok: true });
+    const card = s.hand[i]!;
+    const over = run(r, s, [{ t: 'pin', i }, { t: 'pass' }]).state;
+    expect([over.phase, over.overtimeWeek, over.overtimeLeft]).toEqual([3, 1, 0]);
+    expect(over.hand[over.kept!]).toEqual(card);
+    // That week is the run's last: its tally ends the run, and nothing is kept.
+    expect(r.lastWeekOfRun(over)).toBe(true);
+    const lost = r.apply(over, { t: 'pass' }).state;
+    expect(lost.screen).toBe('lost');
+    expect('pinned' in lost || 'pinnedOver' in lost || 'kept' in lost).toBe(false);
   });
 });
 
@@ -543,6 +692,33 @@ describe('run codes (D-186)', () => {
     const replayed = rules.replay(decoded.data.setup, decoded.data.actions);
     expect(replayed.failedAt).toBeUndefined();
     expect(replayed.state).toEqual(played);
+  });
+
+  it('a code saved in the shop while a pinned card waits replays to it, and on into the next phase (D-207)', () => {
+    const s = rules.newRun(setup('pin-code-over'));
+    const toShop: Action[] = [
+      { t: 'pass' },
+      { t: 'debug', op: 'addScore', amount: 5 },
+      { t: 'pin', i: 1 },
+      { t: 'pass' },
+      { t: 'refreshShop' },
+    ];
+    const replay = (actions: readonly Action[]) => {
+      const code = encodeRunCode({ build: 'test', contentHash: 'x', setup: s.setup, actions });
+      const decoded = decodeRunCode(code);
+      if (!decoded.ok) throw new Error(decoded.error);
+      const out = rules.replay(decoded.data.setup, decoded.data.actions);
+      expect(out.failedAt).toBeUndefined();
+      return out.state;
+    };
+    const inShop = run(rules, s, toShop).state;
+    expect(inShop.screen).toBe('shop');
+    expect(inShop.pinnedOver?.card).toEqual(run(rules, s, toShop.slice(0, 2)).state.hand[1]);
+    expect(replay(toShop)).toEqual(inShop);
+    const onward: Action[] = [...toShop, { t: 'leaveShop' }];
+    const next = run(rules, s, onward).state;
+    expect(next.hand[next.kept!]).toEqual(inShop.pinnedOver!.card);
+    expect(replay(onward)).toEqual(next);
   });
 
   it('a pin with no card is refused when the code is read', () => {

@@ -200,4 +200,37 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     ],
     targetPct: 140, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
+  // D-219: a spike. A family of eleven (content-brainstorm.md §10), cut down: someone new rings
+  // the doorbell at each milestone from Foundation to Finishes with a plain Bedroom card
+  // (households.ts), and the one wish is a Playroom. Uncommon, so they share the rarity's weight
+  // with Juniper on the job board. Their target factor is a placeholder until the user has played
+  // them and the batch's fit sets it.
+  bigsbys: {
+    id: 'bigsbys',
+    name: 'The Bigsbys',
+    rarity: 'uncommon',
+    tier: 'core',
+    brief: 'We need room. Lots of room.',
+    household: HOUSEHOLDS.bigsbys,
+    changeOrders: ['triplets', 'familyReunion'],
+    specs: [
+      // Their 7 Bedrooms (the brainstorm's) are where this household ends up: 7–8 by Finishes.
+      ...houseRules({ household: HOUSEHOLDS.bigsbys }),
+      {
+        id: 'playroom',
+        name: 'A Playroom',
+        group: 'wishes',
+        condition: { count: { piece: 'playroom' }, min: 1 },
+      },
+    ],
+    // The brainstorm's "Bedrooms earn more"; its halved Loud penalty is left out (D-219).
+    tastes: [{ kind: 'earn', target: { piece: 'bedroom' }, pct: 50 }],
+    // The Playroom, their signature special piece, at weight 20 (as the Count's Library and the
+    // Barkers' Mudroom); their spec pieces +100%, the Bathrooms that serve so many Bedrooms too.
+    pool: [
+      { kind: 'drawWeight', target: { piece: 'playroom' }, add: 20 },
+      { kind: 'drawWeight', target: { piece: ['bedroom', 'bathroom'] }, pct: 100 },
+    ],
+    targetPct: 100, // a placeholder (D-219): the batch's fit sets it once the user has played them
+  },
 };

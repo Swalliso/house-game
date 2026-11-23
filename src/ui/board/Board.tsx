@@ -1311,9 +1311,9 @@ function Ghost({
         scale={scale}
         look={
           grows !== undefined
-            ? roomLook(run.value.house, grows, run.value.setup.clientId)
+            ? roomLook(run.value.house, grows, run.value.setup.clientId, cells)
             : isIndoor(defId)
-              ? newRoomLook(run.value.house, defId, run.value.setup.clientId)
+              ? newRoomLook(run.value.house, defId, run.value.setup.clientId, cells)
               : {
                   ...newPieceLook(run.value.house, defId),
                   // D-179: as the preview says it will land (the Doghouse's dog on its lead).
@@ -1864,7 +1864,7 @@ function ToolTarget({ scale }: { scale: number }) {
         scale={scale}
         look={
           isIndoor(piece.defId)
-            ? roomLook(state.house, piece.uid, state.setup.clientId)
+            ? roomLook(state.house, piece.uid, state.setup.clientId, cells)
             : pieceLook(state.house, piece.uid, unmetOf(currentTally.value.pieces))
         }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}

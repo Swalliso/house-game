@@ -60,6 +60,19 @@ describe('the change orders', () => {
       ['startedAPodcast', 'request', 'dale'],
       ['outOfOffice', 'phase', 'dale'],
     ]);
+    // D-219.
+    expect(own('bigsbys')).toEqual([
+      ['triplets', 'request', 'bigsbys'],
+      ['familyReunion', 'phase', 'bigsbys'],
+    ]);
+    // D-137: every client has four phase effects (the three generic ones and one of its own), so
+    // the offer after milestone 6 always has two.
+    for (const id of CLIENT_IDS) {
+      const phases = [...GENERIC, ...CONTENT.clients[id].changeOrders].filter(
+        (o) => ORDERS[o].kind === 'phase',
+      );
+      expect(phases, id).toHaveLength(4);
+    }
     expect(CONTENT.balance.changeOrderAfter).toEqual([2, 4, 6]);
   });
 
@@ -78,6 +91,7 @@ describe('the change orders', () => {
       teaGarden: { budget: 4 },
       bigDeadline: { budget: 4 },
       startedAPodcast: { budget: 4 },
+      triplets: { budget: 4 },
     });
   });
 
@@ -139,6 +153,13 @@ describe('the change orders', () => {
     expect(terms('outOfOffice')).toEqual([
       'Outdoor pieces earn +100%',
       'Home Offices earn nothing',
+      'For the next phase',
+    ]);
+    // D-219's.
+    expect(terms('triplets')).toEqual(['2 new Bedrooms, by the next milestone', 'Met: +4 budget']);
+    expect(terms('familyReunion')).toEqual([
+      'Social pieces earn +100%',
+      'Quiet rooms earn −50%',
       'For the next phase',
     ]);
     for (const o of Object.values(ORDERS)) {

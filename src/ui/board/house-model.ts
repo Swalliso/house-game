@@ -181,7 +181,15 @@ export interface PieceLook {
    * or will be once placed, the first room of the type their things go in (rooms.ts THEIRS).
    */
   client?: ClientId;
+  /**
+   * D-216: a Closet's pantry or laundry, by the older rooms it will share a wall with once placed
+   * (rooms.ts closetDress). A Closet without one holds clothes, as a card's picture does.
+   */
+  dress?: ClosetDress;
 }
+
+/** D-216: what a Closet holds besides clothes: a pantry beside a Kitchen, a laundry beside a Bathroom. */
+export type ClosetDress = 'pantry' | 'laundry';
 
 export interface HouseModel {
   /** The lot, in cells. */
@@ -453,6 +461,19 @@ export function heldSets(state: RunState): HeldSets {
 const solo = new Map<string, HouseModel>();
 
 /**
+ * Every field of a look as one string, the same for the same look: `pieceModel`'s cache key and
+ * the ghost's memo (HouseLayers.tsx GhostPiece), so a field added to `PieceLook` reaches both by
+ * being added here, and the test that sets every field fails until it is.
+ */
+export function lookKey(look: PieceLook | undefined): string {
+  if (!look) return '';
+  return (
+    `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:` +
+    `${look.unmet ? 'unmet' : ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}:${look.dress ?? ''}`
+  );
+}
+
+/**
  * One piece alone, for the ghost: its own outline walls, no doors or windows, looking as `look`
  * says it will once placed (its fixture included), in a pack's own tiles (D-106) when `own` gives
  * them. In the piece's own frame: its bounding box's top-left cell is (0, 0).
@@ -465,11 +486,7 @@ export function pieceModel(
   own?: readonly string[],
 ): HouseModel {
   // Every field of the look, so the model's own `look` is always the one asked for.
-  const looks = look
-    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:` +
-      `${look.unmet ? 'unmet' : ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}`
-    : '';
-  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
+  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${lookKey(look)}`;
   let m = solo.get(key);
   if (!m) {
     const shape = own ?? CONTENT.pieces[defId].shape;

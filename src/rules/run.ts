@@ -991,6 +991,17 @@ export function createRules(content: Content): Rules {
     };
   }
 
+  /**
+   * The house as a play looked at would leave it, for the views that count with one (the
+   * checklist, D-205's wish, D-206's ask): a legal play's on the build screen; otherwise the
+   * house as it stands.
+   */
+  function houseWith(state: RunState, play?: Play): HouseState {
+    if (!play || state.screen !== 'build') return state.house;
+    const check = checkPlay(state, play);
+    return check.legal ? applyPlay(state, play, check).house : state.house;
+  }
+
   /** A play's change to the house (checked here), with its event. */
   function applyPlay(
     state: RunState,
@@ -1303,12 +1314,9 @@ export function createRules(content: Content): Rules {
         (id) => content.tools[id].offered,
       );
       tool = reward.tool === 'random' ? stream(s.setup.seed, key).pick(offered) : reward.tool;
-      if (s.supplies.length < slotsFor(content, s).supplies) {
-        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-      } else {
-        soldTool = sellPrice(content, s, content.tools[tool].price);
-        s = { ...s, budget: s.budget + soldTool, budgetEarned: s.budgetEarned + soldTool };
-      }
+      const took = takeTool(s, tool);
+      s = took.state;
+      soldTool = took.sold;
     }
     if (reward.piece) s = { ...s, reserve: [...s.reserve, { id: reward.piece, wish: true }] };
     if (find) {
@@ -1323,6 +1331,19 @@ export function createRules(content: Content): Rules {
       );
     }
     return s;
+  }
+
+  /**
+   * A tool into the supplies, or sold at once for half its price when they're full: a reward's,
+   * the crew's (D-171) and a company upgrade's (D-209). `sold` is what the sale paid, if it sold.
+   */
+  function takeTool(state: RunState, tool: ToolId): { state: RunState; sold?: number } {
+    if (state.supplies.length < slotsFor(content, state).supplies) {
+      return { state: { ...state, supplies: [...state.supplies, { kind: 'tool', id: tool }] } };
+    }
+    const sold = sellPrice(content, state, content.tools[tool].price);
+    const budget = { budget: state.budget + sold, budgetEarned: state.budgetEarned + sold };
+    return { state: { ...state, ...budget }, sold };
   }
 
   /** A reward without its tool field, so the resolved tool can take its place. */
@@ -1450,13 +1471,10 @@ export function createRules(content: Content): Rules {
   const wishViews = new WeakMap<RunState, LotWishView | null>();
   /** D-205: the lot's wish as the screen shows it, as the house stands or with a play. */
   function lotWish(state: RunState, play?: Play): LotWishView | null {
-    let house = state.house;
-    if (play && state.screen === 'build' && !state.wishFilled) {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    } else if (wishViews.has(state)) {
-      return wishViews.get(state)!;
-    }
+    // A play is looked at while the wish is open; otherwise the house's view, kept per state.
+    const looking = !!play && state.screen === 'build' && !state.wishFilled;
+    if (!looking && wishViews.has(state)) return wishViews.get(state)!;
+    const house = looking ? houseWith(state, play) : state.house;
     const wish = wishOf(state, house.lot);
     const view: LotWishView | null = wish && {
       feature: wish.feature,
@@ -1571,9 +1589,10 @@ export function createRules(content: Content): Rules {
    * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
    * what the client brings for that phase, the standing stock's top-up (D-160), the crew's own
    * card and the wrong delivery's piece (D-171, D-188), a company upgrade's special piece
-   * (D-209), the crew's tool, a company upgrade's tool, and the neighbor's ask (D-206).
+   * (D-209), the crew's tool, a company upgrade's tool, and the neighbor's ask (D-206). `keep`:
+   * the card a pin carries into the week (D-186, D-207), which the hand takes after this.
    */
-  function arrive(state: RunState, events: GameEvent[]): RunState {
+  function arrive(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     if (state.overtimeWeek !== 0) return state;
     let s = state;
     if (s.slot === 1) {
@@ -1583,7 +1602,7 @@ export function createRules(content: Content): Rules {
       s = deliver(s, events);
     }
     s = surprise(crewStock(restock(s, events), events), events);
-    s = upgradeTools(crewTool(upgradePieces(s, events), events), events);
+    s = upgradeTools(crewTool(upgradePieces(s, events, keep), events), events);
     // D-206: then the neighbor, with the standing stock's Fence already in Your goods.
     return askNeighbor(s, events);
   }
@@ -1594,7 +1613,7 @@ export function createRules(content: Content): Rules {
    */
   function addExtra(
     s: RunState,
-    from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade',
+    from: Extract<GameEvent, { t: 'delivered' }>['from'],
     cards: readonly PieceId[],
     events: GameEvent[],
     upgrade?: UpgradeId,
@@ -1719,20 +1738,16 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-171: the crew's tool (CrewDef.orderTool), in the first week of each milestone that
-   * follows a change order. Into the supplies, or sold at once when they're full (payReward's
-   * rule for a reward's tool).
+   * follows a change order. Into the supplies, or sold at once when they're full (takeTool, a
+   * reward's tool's rule).
    */
   function crewTool(s: RunState, events: GameEvent[]): RunState {
     const tool = content.crews[s.setup.crewId].orderTool;
     if (!tool || s.overtimeWeek !== 0 || s.slot !== 1) return s;
     if (!b.changeOrderAfter.includes(s.phase)) return s;
-    if (s.supplies.length < slotsFor(content, s).supplies) {
-      events.push({ t: 'crewTool', tool, phase: s.phase });
-      return { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-    }
-    const sold = sellPrice(content, s, content.tools[tool].price);
-    events.push({ t: 'crewTool', tool, phase: s.phase, sold });
-    return { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+    const { state, sold } = takeTool(s, tool);
+    events.push({ t: 'crewTool', tool, phase: s.phase, ...(sold === undefined ? {} : { sold }) });
+    return state;
   }
 
   // -------------------------------------------------------------------------------------
@@ -1756,14 +1771,15 @@ export function createRules(content: Content): Rules {
 
   /**
    * The special piece an upgrade brings this milestone: the first in its run's order
-   * (`upgrade/<id>`) that the house doesn't have yet, built or waiting in Your goods, and whose
-   * type isn't at a limit for the client (the checklist's ceilings and the per-house caps, as
-   * the wrong delivery reads them). With every one there, the first a house can hold two of
-   * (a second Pool, never a second Library: D-165's one of each special room), and only failing
-   * that the first whose type isn't at a limit. So it brings a different one each milestone, and
-   * a second Pool only once all six are in.
+   * (`upgrade/<id>`) that the house doesn't have yet, built, waiting in Your goods or kept in the
+   * hand by a pin past the milestone (`keep`, D-207), and whose type isn't at a limit for the
+   * client (the checklist's ceilings and the per-house caps, as the wrong delivery reads them).
+   * With every one there, the first a house can hold two of (a second Pool, never a second
+   * Library: D-165's one of each special room), and only failing that the first whose type isn't
+   * at a limit. So it brings a different one each milestone, and a second Pool only once all six
+   * are in.
    */
-  function upgradePiece(s: RunState, id: UpgradeId): PieceId | null {
+  function upgradePiece(s: RunState, id: UpgradeId, keep?: Keep): PieceId | null {
     const full = typesAtLimit(limitsOf(s));
     const root = (p: PieceId) => rootType(content.pieces[p]);
     const open = runOrder(s.setup.seed, `upgrade/${id}`, specialPieces).filter(
@@ -1772,6 +1788,7 @@ export function createRules(content: Content): Rules {
     const have = new Set([
       ...s.house.pieces.map((p) => root(p.defId)),
       ...s.reserve.map((r) => root(r.id)),
+      ...(keep?.card.kind === 'piece' ? [root(keep.card.id)] : []),
     ]);
     const holdsTwo = (p: PieceId) => (perHouseOf(content, content.pieces[p]) ?? Infinity) > 1;
     return open.find((p) => !have.has(root(p))) ?? open.find(holdsTwo) ?? open[0] ?? null;
@@ -1779,12 +1796,13 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-209: each upgrade that delivers a special piece (the Storage Unit) adds the milestone's to
-   * the reserve's extra slots, marked with the upgrade, after the wrong delivery's piece.
+   * the reserve's extra slots, marked with the upgrade, after the wrong delivery's piece. `keep`:
+   * the card a pin carried past the milestone (D-207), which joins the hand after the deliveries.
    */
-  function upgradePieces(state: RunState, events: GameEvent[]): RunState {
+  function upgradePieces(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     let s = state;
     for (const id of upgradesDue(s, 'specialPiece')) {
-      const piece = upgradePiece(s, id);
+      const piece = upgradePiece(s, id, keep);
       if (piece) s = addExtra(s, 'upgrade', [piece], events, id);
     }
     return s;
@@ -1813,7 +1831,7 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-209: each upgrade that delivers a tool (the Tool Belt) puts the milestone's in the
-   * supplies, after the crew's, or sells it at once when they're full (crewTool's rule).
+   * supplies, after the crew's, or sells it at once when they're full (takeTool, as the crew's).
    */
   function upgradeTools(state: RunState, events: GameEvent[]): RunState {
     let s = state;
@@ -1821,14 +1839,10 @@ export function createRules(content: Content): Rules {
       const d = content.upgrades[id].delivers;
       const tool = d?.kind === 'tool' ? upgradeTool(s, id, d) : null;
       if (!tool) continue;
-      if (s.supplies.length < slotsFor(content, s).supplies) {
-        events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase });
-        s = { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
-        continue;
-      }
-      const sold = sellPrice(content, s, content.tools[tool].price);
-      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, sold });
-      s = { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+      const took = takeTool(s, tool);
+      const sold = took.sold === undefined ? {} : { sold: took.sold };
+      events.push({ t: 'upgradeTool', upgrade: id, tool, phase: s.phase, ...sold });
+      s = took.state;
     }
     return s;
   }
@@ -1976,11 +1990,7 @@ export function createRules(content: Content): Rules {
   function neighborView(state: RunState, play?: Play): NeighborView | null {
     const n = state.neighbor;
     if (!n) return null;
-    let house = state.house;
-    if (play && n.result === undefined && state.screen === 'build') {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    }
+    const house = n.result === undefined ? houseWith(state, play) : state.house;
     const have = askHave(state, n.side, house);
     return {
       side: n.side,
@@ -2307,7 +2317,7 @@ export function createRules(content: Content): Rules {
   function startWeek(state: RunState, events: GameEvent[], keep?: Keep): RunState {
     // Step 1: transforms (and the lot's wish, D-205); step 2 (M4b): arrivals, in their phase's
     // first week; step 3: the draw.
-    let s = unpinned(arrive(settleWish(resolveTransforms(state, events), events), events));
+    let s = unpinned(arrive(settleWish(resolveTransforms(state, events), events), events, keep));
     s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
     // D-186: the kept card takes a slot of its row, on the draw's own keys: nothing shifts.
     if (keep) {
@@ -4557,12 +4567,7 @@ export function createRules(content: Content): Rules {
   const noun: NounFn = (sel, n) => selectorText(content, sel, n === 1 ? 'one' : 'some');
 
   function checklist(state: RunState, play?: Play): ChecklistLine[] {
-    let house = state.house;
-    if (play && state.screen === 'build') {
-      const check = checkPlay(state, play);
-      if (check.legal) house = applyPlay(state, play, check).house;
-    }
-    const layout = layoutFor(state, house);
+    const layout = layoutFor(state, houseWith(state, play));
     const ctx = { phase: state.phase };
     return clientOf(state).specs.map((spec) => ({
       id: spec.id,

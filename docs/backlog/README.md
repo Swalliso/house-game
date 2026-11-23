@@ -105,7 +105,7 @@ reading the code, not from building anything.
 | Story | What the player gets | Size | Kind | Needs first | Status |
 |---|---|---|---|---|---|
 | [S01](s01-open-house-day.md) | A win brings a crowd to the kerb, hearts and a fanfare | M | UI only | | Accepted 2026-11-18: #94, batch #93 (D-175) |
-| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Stage 1 merged by the user (#102, width B) and Accepted 2026-11-18 (D-176); stage 2 not started |
+| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Stage 1 merged by the user (#102, width B) and Accepted 2026-11-18 (D-176); stage 2 built 2026-11-22 (D-202, #133), with D-208's kitchens after it; waiting on the user's playtest |
 | [S03](s03-household-walks-in.md) | An arriving member walks up and waits at the door | M | UI and art | | Accepted 2026-11-18: #95, batch #93 (D-177) |
 | [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Accepted 2026-11-18: #96, batch #93 (D-178) |
 | [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Accepted 2026-11-18: #97, batch #93 (D-179) |
@@ -123,7 +123,7 @@ reading the code, not from building anything.
 | [S17](s17-one-wish-on-the-lot.md) | The Pond or the Old Shed asks for company and pays a piece | M to L | Rules and content | The batch | Built 2026-11-23 (D-205, #143); waiting on the user's playtest on /dev/ |
 | [S18](s18-neighbors-ask.md) | A neighbor asks for Fence along their side | L | Rules and content | The batch | Built 2026-11-23 (D-206, `phase/neighbors-ask`): at Roofing's start on about 2 runs in 3, 5 Fence tiles along their side pay an overtime week; waiting on the user's playtest |
 | [S19](s19-one-scored-visitor.md) | One visitor's wish, shown in the last shop | L | Rules and content | S01 landed | Not started |
-| [S20](s20-the-bigsbys.md) | A client whose family keeps arriving | L | Content and a little rules | A played spike | Not started |
+| [S20](s20-the-bigsbys.md) | A client whose family keeps arriving | L | Content and a little rules | A played spike | Spike built 2026-11-23 (D-219, `phase/the-bigsbys`), steps 1 to 8 at a placeholder target; waiting on the user's play before step 9's fit |
 | [S21](s21-house-already-on-the-lot.md) | Some lots start with a tired cottage | L | Rules, content and art | D-174's and D-145's verdicts | Not started; D-174 Accepted 2026-11-18, D-145 still Proposed |
 | [S22](s22-shop-for-your-house.md) | The shelf leans toward goods that can pay in your house | M | Rules and content | Before S27 | Built 2026-11-20 (D-192, #119); waiting on the user's playtest |
 | [S23](s23-every-good-shows-its-worth.md) | Every piece and tool on the shelf says what it's worth | M to L | Rules views and UI | | Built 2026-11-20 (D-193, `phase/every-good-shows-its-worth`); waiting on the user's playtest |
@@ -207,7 +207,10 @@ alongside.
 - Four small ones from the review's summary. They were rated marginal as pitched, but their
   cut-down versions are about a day each and could be added here:
   - A Closet that dresses by its neighbor: a pantry beside a Kitchen, a laundry beside a
-    Bathroom (`src/ui/art/rooms.ts` only).
+    Bathroom (`src/ui/art/rooms.ts` only). *Built 2026-11-23 (D-216,
+    `phase/closet-by-neighbor`), reading only the rooms built before it; waiting on the user's
+    playtest.*
   - A stepping-stone walk from the front doormat to the kerb, as art only.
-  - A Play button in the photo viewer that flips through the milestone polaroids.
+  - A Play button in the photo viewer that flips through the milestone polaroids. *Built
+    2026-11-20 with S10 (D-187), stage 1.*
   - A second click on the ghost builds the piece, the outside tester's ask.

@@ -1,9 +1,12 @@
 // Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods tags it and
-// Inspect says it: the crew, a household member, the client, the standing stock, or (D-188) the
-// wrong delivery. A card in the reserve's own slots (bought, picked or copied) says nothing.
+// Inspect says it: the crew, a household member, the client, the standing stock, (D-188) the
+// wrong delivery, (D-209) a company upgrade, or (D-205) the lot's wish. A card in the reserve's
+// own slots (bought, picked or copied) says nothing. And who the checklist says is still to
+// move in (D-219), and the overtime weeks of a run lost in them.
 
 import { describe, expect, it } from 'vitest';
-import { extraSlotWords } from './household.ts';
+import { rules, type Action, type ClientId, type RunState } from '../../rules/index.ts';
+import { checklistArrivals, extraSlotWords, overtimeUsed } from './household.ts';
 
 describe('an extra slot’s words', () => {
   it('tag each card by where it came from', () => {
@@ -66,5 +69,90 @@ describe('an extra slot’s words', () => {
 
   it('say nothing for a bought card', () => {
     expect(extraSlotWords('dale', { id: 'library' })).toBeNull();
+  });
+
+  it('tag a company upgrade’s card by the upgrade (D-209), in the stock note’s 16 words', () => {
+    const storage = extraSlotWords('dale', { id: 'library', upgrade: 'storageUnit' })!;
+    expect(storage).toEqual({
+      tag: 'Storage',
+      whose: ' (from your Storage Unit)',
+      from: 'From your Storage Unit',
+      note: 'From your Storage Unit: an extra slot, not one of your reserve’s. Another comes each milestone.',
+    });
+    expect(storage.note!.split(/\s+/)).toHaveLength(16);
+  });
+
+  it('say only what they know of where a card came from', () => {
+    // A card the crew started with (M4b), not one from its stock: it came once, so no note.
+    for (const crew of [undefined, 'landscaper'] as const) {
+      expect(extraSlotWords('hendersons', { id: 'fence', crew: true }, crew)).toEqual({
+        tag: 'Crew',
+        whose: ' (your crew’s)',
+        from: 'Your crew’s, from the start',
+      });
+    }
+    // Another client's member, and (D-205) a wish's prize before the run names the feature
+    // that paid it: nothing, as for a bought card.
+    expect(extraSlotWords('dale', { id: 'nursery', arrival: 'twins' })).toBeNull();
+    expect(extraSlotWords('dale', { id: 'hotTub', wish: true })).toBeNull();
+    // A feature's name of two words, whole in each.
+    expect(extraSlotWords('dale', { id: 'henhouse', wish: true }, undefined, 'oldShed')).toEqual({
+      tag: 'Old Shed',
+      whose: ' (from the Old Shed)',
+      from: 'For keeping the Old Shed company',
+    });
+  });
+
+  it('tag a Bigsby’s Bedroom with who brought it (D-219)', () => {
+    expect(extraSlotWords('bigsbys', { id: 'bedroom', arrival: 'auntBea' })).toEqual({
+      tag: 'Aunt Bea',
+      whose: ' (with Aunt Bea)',
+      from: 'Came with Aunt Bea',
+    });
+    expect(extraSlotWords('bigsbys', { id: 'bedroom', arrival: 'newlyweds' })!.tag).toBe(
+      'Newlyweds',
+    );
+  });
+});
+
+describe('who the checklist says is still to move in', () => {
+  const start = (clientId: ClientId) =>
+    rules.newRun({ seed: 'coming', clientId, crewId: 'generalContractor', mode: 'standard' });
+  const names = (clientId: ClientId, arrived: readonly string[] = []) =>
+    checklistArrivals({ ...start(clientId), arrived } as ReturnType<typeof start>).map((a) => a.id);
+
+  it('is everyone still to come for a household of one or two', () => {
+    expect(names('hendersons')).toEqual(['twins', 'grandma']);
+    expect(names('hendersons', ['twins'])).toEqual(['grandma']);
+    expect(names('dale')).toEqual(['ivy']);
+    expect(names('dale', ['ivy'])).toEqual([]);
+  });
+
+  it('is only who’s next for a household that grows each milestone (D-219)', () => {
+    expect(names('bigsbys')).toEqual(['auntBea']);
+    expect(names('bigsbys', ['auntBea', 'cousins'])).toEqual(['grandpa']);
+    expect(names('bigsbys', ['auntBea', 'cousins', 'grandpa', 'newlyweds', 'baby'])).toEqual([]);
+  });
+});
+
+// Overtime weeks used (D-041, D-206), played to a run's end in them: overtime-clocks.test.ts sets
+// the same end up by hand, and neighbor-ask.test.ts counts a run won in its last overtime week.
+describe('overtime weeks used', () => {
+  it('counts the overtime weeks of a run lost in them once', () => {
+    // Nothing built, so the first milestone is missed after both overtime weeks.
+    let s: RunState = rules.newRun({
+      seed: 'overtime',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    for (let k = 0; k < 100 && s.screen !== 'lost'; k++) {
+      const a: Action =
+        s.screen === 'changeOrder' ? { t: 'answerChangeOrder', i: 0 } : { t: 'pass' };
+      s = rules.apply(s, a).state;
+    }
+    expect(s).toMatchObject({ screen: 'lost', overtimeLeft: 0, overtimeWeek: 2 });
+    expect(s.milestones).toMatchObject([{ phase: 0, result: 'failed', overtimeUsed: 2 }]);
+    expect(overtimeUsed(s)).toBe(2);
   });
 });

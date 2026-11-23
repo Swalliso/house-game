@@ -179,7 +179,7 @@ export type SetId =
 export type CrewId = 'generalContractor' | 'landscaper' | 'architect' | 'handyman';
 
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
-export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
+export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale' | 'bigsbys';
 
 /** Lot traits (D-119, D-166): what a lot has that changes how you'd build there. */
 export type LotTraitId =
@@ -205,8 +205,22 @@ export type BiomeId = 'meadow' | 'lakeside' | 'autumn' | 'dry';
  */
 export type RoomRuleId = 'cozy' | 'bathroomNearby';
 
-/** The household's arrivals (M4b, D-103): who moves in, by client. */
-export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
+/**
+ * The household's arrivals (M4b, D-103): who moves in, by client. D-219: the Bigsbys' five,
+ * one each milestone from Foundation to Finishes.
+ */
+export type ArrivalId =
+  | 'twins'
+  | 'grandma'
+  | 'renfield'
+  | 'nana'
+  | 'rowan'
+  | 'ivy'
+  | 'auntBea'
+  | 'cousins'
+  | 'grandpa'
+  | 'newlyweds'
+  | 'baby';
 
 /**
  * Change orders (M4b, D-011): two offered after each of milestones 2, 4, and 6, to pick one
@@ -238,7 +252,10 @@ export type ChangeOrderId =
   // Dale.
   | 'bigDeadline'
   | 'startedAPodcast'
-  | 'outOfOffice';
+  | 'outOfOffice'
+  // The Bigsbys (D-219).
+  | 'triplets'
+  | 'familyReunion';
 
 /**
  * The checklist's headings: the house rules every client starts with (the household, the
@@ -740,7 +757,8 @@ export interface SpecDef {
  * client, shown from week 1 (the job board), and can't be declined. At the first week of their
  * phase (after transforms, before the draw) their cards go into the reserve's extra slots.
  * From then on Room for everyone counts one more Bedroom at each end of its range and needs
- * one of their rooms.
+ * one of their rooms, if they have one (D-219: a member without one brings a plain Bedroom card
+ * and only raises the range).
  */
 export interface ArrivalDef {
   id: ArrivalId;
@@ -750,8 +768,12 @@ export interface ArrivalDef {
   phase: number;
   /** What lands in the reserve: their room's card, and anything they bring (Grandma's Bathroom). */
   cards: readonly PieceId[];
-  /** The member room types that count as theirs (the Nursery, and the Kids' Room it grows into). */
-  room: readonly PieceId[];
+  /**
+   * The member room types that count as theirs (the Nursery, and the Kids' Room it grows into).
+   * D-219: unset for a member with no room of their own, who brings a plain Bedroom card: Room
+   * for everyone then only counts one more Bedroom.
+   */
+  room?: readonly PieceId[];
   /** One line for the job board: who's coming, and when. */
   text: string;
 }
@@ -900,9 +922,10 @@ export interface UpgradeDef {
  * from the first after the shop that sold it (its first week, never an overtime week); the pick
  * opens as it's bought.
  * - `specialPiece`: a special piece in Your goods' extra slots, marked with the upgrade: the first
- *   in an order drawn once a run from `upgrade/<id>` that the house doesn't have yet (built or
- *   waiting in Your goods) and whose type isn't at a limit; with every one there, the first
- *   whose type isn't at a limit; with none, nothing.
+ *   in an order drawn once a run from `upgrade/<id>` that the house doesn't have yet (built,
+ *   waiting in Your goods, or pinned past the milestone, D-207) and whose type isn't at a limit;
+ *   with every one there, the first a house can hold two of, then the first, each of a type that
+ *   isn't at a limit; with none, nothing.
  * - `tool`: an offered tool of `rarity` in the supplies, or sold at once when they're full: the
  *   milestone's in an order drawn once a run from `upgrade/<id>`, as the crew's own card is
  *   (D-171), passing over one already in the supplies and one that can't pay in the house as it
@@ -1299,8 +1322,9 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
 /**
  * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
  * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b),
- * the client's or the standing stock's (D-160), the wrong delivery's (D-188), or a company
- * upgrade's (D-209). shop.ts' inExtraSlot says which.
+ * the client's or the standing stock's (D-160), the wrong delivery's (D-188), a company
+ * upgrade's (D-209), or the lot's wish's (D-205). Each extra slot's card carries one mark, named
+ * as its ReserveSource; shop.ts' reserveSource reads it, and inExtraSlot says whether it has one.
  */
 export interface ReservePiece {
   id: PieceId;
@@ -1322,6 +1346,14 @@ export interface ReservePiece {
   /** D-209: the company upgrade that brought it (UpgradeDef.delivers), in an extra slot. */
   upgrade?: UpgradeId;
 }
+
+/**
+ * Where a reserve card came from (D-160): bought, picked or copied (`own`, in the reserve's own
+ * slots), or the mark it carries in an extra slot, named as its ReservePiece field. A new mark
+ * on ReservePiece is a new source here at once, and shop.ts' list of marks fails to compile
+ * until it's read.
+ */
+export type ReserveSource = 'own' | Exclude<keyof ReservePiece, 'id'>;
 
 export interface OwnedBlueprint {
   id: BlueprintId;
@@ -2124,7 +2156,8 @@ export type GameEvent =
    */
   | {
       t: 'delivered';
-      from: 'client' | 'stock' | 'crew' | 'surprise' | 'upgrade';
+      /** The mark the cards carry (ReserveSource): an arrival's come with `arrived`. */
+      from: Exclude<ReserveSource, 'own' | 'arrival' | 'wish'>;
       phase: number;
       cards: readonly PieceId[];
       /** D-209: the upgrade that brought them, with `from: 'upgrade'`. */
@@ -2722,8 +2755,17 @@ export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
+export { eachMilestone } from './household.ts';
 export { fitsText } from './fixtures.ts';
-export { giftRarity, HOLD_REASONS, inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
+export {
+  giftRarity,
+  HOLD_REASONS,
+  inExtraSlot,
+  reserveSource,
+  reserveUsed,
+  SERVICE_NAMES,
+  SHOP_REASONS,
+} from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 export { isFinished } from './finished.ts';
