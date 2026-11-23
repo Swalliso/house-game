@@ -141,11 +141,16 @@ const CLIENT_OF: Readonly<Record<ArrivalId, ClientId>> = {
   nana: 'barkers',
   rowan: 'juniper',
   ivy: 'dale',
+  auntBea: 'bigsbys',
+  cousins: 'bigsbys',
+  grandpa: 'bigsbys',
+  newlyweds: 'bigsbys',
+  baby: 'bigsbys',
 };
 
 /** A member's room type: the first their arrival counts. */
 const roomOf = (id: ArrivalId): PieceId =>
-  CONTENT.clients[CLIENT_OF[id]].household.arrivals.find((a) => a.id === id)!.room[0]!;
+  CONTENT.clients[CLIENT_OF[id]].household.arrivals.find((a) => a.id === id)!.room![0]!;
 
 const CASTED = Object.keys(CAST) as ArrivalId[];
 

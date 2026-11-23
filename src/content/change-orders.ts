@@ -240,4 +240,30 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
       { kind: 'earnNothing', target: { piece: 'homeOffice' } },
     ],
   },
+
+  // ---------------------------------------------------------------------------------------
+  // The Bigsbys (D-219). The request counts the Bedroom the phase's arrival brings, so it asks
+  // for one more from the hand, and a household at the bottom of its range stays inside it.
+  triplets: {
+    id: 'triplets',
+    name: 'It’s triplets!',
+    scope: 'bigsbys',
+    tier: 'core',
+    kind: 'request',
+    text: 'Two new Bedrooms. Three cribs take some room.',
+    condition: { countNew: { piece: 'bedroom' }, min: 2 },
+    reward: { budget: 4 },
+  },
+  familyReunion: {
+    id: 'familyReunion',
+    name: 'The family reunion',
+    scope: 'bigsbys',
+    tier: 'core',
+    kind: 'phase',
+    text: 'This phase, Social pieces earn double, and Quiet rooms earn half. Nobody gets any sleep.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Social' }, pct: 100 },
+      { kind: 'earn', target: { all: [ROOM, { tag: 'Quiet' }] }, pct: -50 },
+    ],
+  },
 };

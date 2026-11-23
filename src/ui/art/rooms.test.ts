@@ -1787,6 +1787,7 @@ describe('the client’s own things (D-183)', () => {
       barkers: undefined,
       juniper: 'cat',
       dale: 'cat',
+      bigsbys: 'cat',
     };
     const catsIn = (m: HouseModel, uid: number) => sprites(m, uid).filter((sp) => isCat(sp));
 

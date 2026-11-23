@@ -548,7 +548,8 @@ function expectTrue(s: RunState) {
   // The flaw, if any: what it says is so, and with none, the house has none of them.
   const missing = s.arrived.filter((id) => {
     const a = arrivalOf(s.setup.clientId, id);
-    return a && count({ piece: a.room }) === 0;
+    // D-219: a member with no room of their own (the Bigsbys') is never one missing.
+    return a?.room && count({ piece: a.room }) === 0;
   });
   const unmetPieces = rules.currentTally(s).pieces.filter((p) => p.unmet !== undefined);
   // The client's own most rooms (Juniper Vale's 8, D-101).

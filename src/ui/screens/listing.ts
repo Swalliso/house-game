@@ -145,9 +145,13 @@ const BEDS: Selector = { piece: 'bedroom' };
 const BATHS: Selector = { piece: 'bathroom' };
 const KITCHENS: Selector = { piece: 'kitchen' };
 
-/** Each arrival's rooms as one selector, kept so the rules' count cache can hit. */
+/**
+ * Each arrival's rooms as one selector, kept so the rules' count cache can hit. Null for a member
+ * with no room of their own (D-219: the Bigsbys'), whose Bedroom Room for everyone counts.
+ */
 const memberRooms = new Map<string, Selector>();
-function roomsOf(a: ArrivalDef): Selector {
+function roomsOf(a: ArrivalDef): Selector | null {
+  if (!a.room) return null;
   let sel = memberRooms.get(a.id);
   if (!sel) memberRooms.set(a.id, (sel = { piece: a.room }));
   return sel;
@@ -322,7 +326,8 @@ function flawLine(s: RunState): ListingLine | null {
   const line = (kind: ListingKind, text: string): ListingLine => ({ part: 'flaw', kind, text });
   for (const id of s.arrived) {
     const a = arrivalOf(s.setup.clientId, id);
-    if (a && rules.countPieces(s, roomsOf(a)) === 0) {
+    const rooms = a && roomsOf(a);
+    if (a && rooms && rules.countPieces(s, rooms) === 0) {
       return line('noMemberRoom', SAY.noMemberRoom(midName(a)));
     }
   }

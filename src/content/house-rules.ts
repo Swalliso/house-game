@@ -17,6 +17,7 @@
 //   - Room for everyone is built from the client's household (M4b, D-103; households.ts): its
 //     Bedroom range rises by one at each end at each arrival's phase, and from each arrival on
 //     it also needs one of that member's rooms. A member's room counts as a Bedroom (countsAs).
+//     D-219: a member with no room of their own (the Bigsbys') only raises the range.
 //   - A compact house: rooms that fill their box, no longer than twice its width. D-160 renamed
 //     it from "Under one roof", which an outside playtester read as "everything connected", the
 //     placement rule; its id stays underOneRoof.
@@ -33,6 +34,7 @@ import type {
   Selector,
   SpecDef,
 } from '../rules/index.ts';
+import { eachMilestone } from '../rules/household.ts';
 
 /**
  * What Room for everyone and A Bathroom nearby count as a Bedroom. Member rooms count as
@@ -104,7 +106,9 @@ function arrivalStages(h: Household): { phase: number; arrived: readonly Arrival
 
 /**
  * Room for everyone's condition (D-103): the Bedroom range, one more at each end for each
- * arrival from its phase on, and from then one of each arrived member's rooms.
+ * arrival from its phase on, and from then one of each arrived member's rooms. D-219: a member
+ * with no room of their own only raises the range, and a stage with no rooms to need is the
+ * count alone.
  */
 export function roomForEveryone(h: Household): HouseCondition {
   const [min, max] = h.bedrooms;
@@ -113,15 +117,17 @@ export function roomForEveryone(h: Household): HouseCondition {
   return {
     stages: [
       { fromPhase: 0, condition: { count: BEDROOMS, min, max } },
-      ...stages.map(({ phase, arrived }) => ({
-        fromPhase: phase,
-        condition: {
-          and: [
-            { count: BEDROOMS, min: min + arrived.length, max: max + arrived.length },
-            ...arrived.map((a): HouseCondition => ({ count: { piece: a.room }, min: 1 })),
-          ],
-        },
-      })),
+      ...stages.map(({ phase, arrived }) => {
+        const count: HouseCondition = {
+          count: BEDROOMS,
+          min: min + arrived.length,
+          max: max + arrived.length,
+        };
+        const rooms = arrived.flatMap((a): HouseCondition[] =>
+          a.room ? [{ count: { piece: a.room }, min: 1 }] : [],
+        );
+        return { fromPhase: phase, condition: rooms.length ? { and: [count, ...rooms] } : count };
+      }),
     ],
   };
 }
@@ -135,19 +141,28 @@ function memberRoom(a: ArrivalDef): string {
 /**
  * "Bedrooms for the household: 2–3 to start, then one more for each arrival, and each arrival
  * has their own room: 3–4 and the twins’ room from Framing, 4–5 and Grandma’s room from Drywall."
+ * D-219: a household that grows by a Bedroom each milestone (eachMilestone) says so once: "2–3 to
+ * start, then one more each milestone from Foundation to Finishes, up to 7–8." A member with no
+ * room of their own adds no room to their clause.
  */
 function bedroomText(h: Household): string {
   const [min, max] = h.bedrooms;
   const head = `Bedrooms for the household: ${range(min, max)}`;
   const stages = arrivalStages(h);
   if (stages.length === 0) return `${head}.`;
+  if (eachMilestone(h)) {
+    const k = h.arrivals.length;
+    const [first, last] = [stages[0]!.phase, stages.at(-1)!.phase];
+    return `${head} to start, then one more each milestone from ${PHASE_NAMES[first]} to ${PHASE_NAMES[last]}, up to ${range(min + k, max + k)}.`;
+  }
   const later = stages.map(({ phase, arrived }) => {
     const k = arrived.length;
-    const rooms = arrived.filter((a) => a.phase === phase).map(memberRoom);
-    return `${range(min + k, max + k)} and ${rooms.join(' and ')} from ${PHASE_NAMES[phase]}`;
+    const rooms = arrived.filter((a) => a.phase === phase && a.room).map(memberRoom);
+    return `${[range(min + k, max + k), ...rooms].join(' and ')} from ${PHASE_NAMES[phase]}`;
   });
   const tail = later.length === 1 ? later[0] : `${later.slice(0, -1).join(', ')}, ${later.at(-1)}`;
-  return `${head} to start, then one more for each arrival, and each arrival has their own room: ${tail}.`;
+  const own = h.arrivals.every((a) => a.room) ? ', and each arrival has their own room' : '';
+  return `${head} to start, then one more for each arrival${own}: ${tail}.`;
 }
 
 /** The house rules on the checklist (D-165: three of D-101's seven), in checklist order. */
