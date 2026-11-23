@@ -28,6 +28,10 @@
 // away that nothing on screen showed (617 px below the fold on a 1728×963 laptop), and a
 // playtester couldn't find it. After a loss, Try this lot again and the tip come straight under
 // the verdict, over the milestones: under the stats they were below the fold on every window.
+//
+// D-212 (backlog S13): the house as a listing, on a paper card over the milestones, under the
+// verdict (after a loss, under the tip): "3 bed, 2 bath Charmer on a creekside lot.", the client
+// and the wishes it holds, and at most one flaw (listing.ts). Copy result stays D-135's line.
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -47,6 +51,7 @@ import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { goToTitle, run } from '../store.ts';
 import { ICON_SIZES } from '../theme/art.ts';
+import { listing } from './listing.ts';
 import { nextTime } from './next-time.ts';
 import { endSignShown, Notes } from './Overlays.tsx';
 import { resultLine } from './result-line.ts';
@@ -367,6 +372,25 @@ function Standing({ s }: { s: RunState }) {
   );
 }
 
+/**
+ * D-212: the house as a listing (listing.ts), on a paper card under the verdict, or after a loss
+ * under the tip: the headline from its counts, the client and the wishes it holds, and at most
+ * one flaw.
+ */
+function Listing({ s }: { s: RunState }) {
+  const lines = listing(s);
+  if (lines.length === 0) return null;
+  return (
+    <section class="run-end-listing" aria-label="The listing">
+      {lines.map((l) => (
+        <p key={l.part} class={`run-end-listing-${l.part} ${l.kind}`}>
+          {l.text}
+        </p>
+      ))}
+    </section>
+  );
+}
+
 /** D-150: a lost run's tip for the next one (next-time.ts), just under Try this lot again (D-152). */
 function NextTimeTip({ s }: { s: RunState }) {
   const tip = nextTime(s);
@@ -505,6 +529,8 @@ export function EndPanel({ s }: { s: RunState }) {
           <NextTimeTip s={s} />
         </>
       )}
+      {/* D-212: the listing, over the milestones: it's about this house, they're the ledger. */}
+      <Listing s={s} />
       <Milestones s={s} />
       <Stats s={s} />
       {s.debug && <p class="run-end-debug">A debug run: cheats were used.</p>}

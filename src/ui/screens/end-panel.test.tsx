@@ -1,13 +1,15 @@
 // The end panel's buttons (D-152, playtest 2026-11-11): Copy run code sits on the plank beside
 // "Job done!" ("Run over"), where it's in view as the screen comes up, not under the stats. After
 // a loss, Try this lot again and the "Next time" tip come straight under the verdict, before the
-// milestones; after a win, Play this lot again stays under the stats, over Title.
+// milestones; after a win, Play this lot again stays under the stats, over Title. The listing
+// (D-212) comes over the milestones: under the verdict, or after a loss under the tip.
 
 import type { ComponentChildren, VNode } from 'preact';
 import { describe, expect, it } from 'vitest';
 import type { RunState } from '../../rules/index.ts';
 import { run } from '../store.ts';
 import { EndPanel } from './EndScreen.tsx';
+import { listing } from './listing.ts';
 
 type Host = VNode<Record<string, unknown>>;
 
@@ -61,7 +63,9 @@ function places(s: RunState) {
     at((v) => typeof v !== 'string' && v.type === 'button' && text(v).includes(label));
   return {
     parts,
+    verdict: at((v) => hasClass(v, 'run-end-verdict')),
     tip: at((v) => hasClass(v, 'run-end-tip')),
+    listing: at((v) => hasClass(v, 'run-end-listing')),
     again: at((v) => hasClass(v, 'run-end-again')),
     milestones: at((v) => v === 'Milestones'),
     stats: at((v) => v === 'Stats'),
@@ -115,7 +119,9 @@ describe("the end panel's order", () => {
     expect(text(p.parts[p.again] as Host)).toContain('Try this lot again');
     // The button leads: on a short window the tip's lines would push it under the sticky bar.
     expect(p.again).toBeLessThan(p.tip);
-    expect(p.tip).toBeLessThan(p.milestones);
+    // The listing (D-212) under the tip, over the milestones.
+    expect(p.tip).toBeLessThan(p.listing);
+    expect(p.listing).toBeLessThan(p.milestones);
     expect(p.milestones).toBeLessThan(p.stats);
     // Title stays under the stats, on its own there.
     expect(p.stats).toBeLessThan(p.more);
@@ -123,10 +129,32 @@ describe("the end panel's order", () => {
     expect(text(p.parts[p.more] as Host)).toBe('Title');
   });
 
+  it('shows the listing (D-212) a line to a paragraph, after a win and after a loss', () => {
+    for (const screen of ['won', 'lost'] as const) {
+      const s = over(screen);
+      const p = places(s);
+      const lines = listing(s);
+      expect(lines.length).toBeGreaterThanOrEqual(2);
+      const shown = p.parts.filter(
+        (v): v is Host =>
+          typeof v !== 'string' &&
+          v.type === 'p' &&
+          /\brun-end-listing-/.test(String(v.props.class)),
+      );
+      expect(shown.map(text)).toEqual(lines.map((l) => l.text));
+      expect(shown.map((v) => v.props.class)).toEqual(
+        lines.map((l) => `run-end-listing-${l.part} ${l.kind}`),
+      );
+    }
+  });
+
   it('after a win, keeps Play this lot again under the stats, over Title', () => {
     const p = places(over('won'));
     expect(p.tip).toBe(-1);
     expect(text(p.parts[p.again] as Host)).toContain('Play this lot again');
+    // The listing (D-212) under the verdict, over the milestones.
+    expect(p.verdict).toBeLessThan(p.listing);
+    expect(p.listing).toBeLessThan(p.milestones);
     expect(p.milestones).toBeLessThan(p.stats);
     expect(p.stats).toBeLessThan(p.more);
     expect(p.more).toBeLessThan(p.again);

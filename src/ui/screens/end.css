@@ -178,6 +178,36 @@
   font-weight: 400;
 }
 
+/* --- The listing (D-212): the house in two or three lines, on a paper card --------------- */
+
+/* Under the verdict, or after a loss under the tip (EndScreen.tsx), over the milestones: the
+   headline in bold, then the client, then any flaw a little quieter. Left-aligned, as a listing
+   reads, at the body size with the tight leading, so its lines take as little of the column as
+   the font allows. */
+.run-end-listing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    var(--shadow-card);
+  line-height: var(--lh-tight);
+}
+.run-end-listing p {
+  margin: 0;
+}
+.run-end-listing-headline {
+  font-weight: 700;
+}
+.run-end-listing-flaw {
+  color: var(--ink-soft);
+}
+
 /* --- Milestones: ✓ met, ✕ missed, ○ not reached (an icon and a word, never color alone) ---- */
 
 .run-end-section {
